@@ -1,0 +1,30 @@
+﻿[36mvite v7.3.1 [32mbuilding client environment for production...[36m[39m
+[32mΓ£ô[39m 0 modules transformed.
+node.exe : [31mΓ£ù[39m Build failed in 28ms
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program 
+Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([31mΓ£ù[ 
+   39m Build failed in 28ms:String) [], RemoteExceptio  
+  n
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+[31merror during build:
+[31m[vite:build-html] Failed to resolve 
+/demos/medpro/src/main.tsx from D:/new 
+5/public/demos/medpro/index.html[31m
+file: [36mD:/new 5/public/demos/medpro/index.html[31m
+    at file:///D:/new%205/public/demos/medpro/node_modul
+es/vite/dist/node/chunks/config.js:23919:64
+    at async Promise.all (index 0)
+    at async Object.handler (file:///D:/new%205/public/d
+emos/medpro/node_modules/vite/dist/node/chunks/config.js
+:24016:5)
+    at async transform (file:///D:/new%205/public/demos/
+medpro/node_modules/rollup/dist/es/shared/node-entry.js:
+21269:16)
+    at async ModuleLoader.addModuleSource (file:///D:/ne
+w%205/public/demos/medpro/node_modules/rollup/dist/es/sh
+ared/node-entry.js:21497:36)[39m
