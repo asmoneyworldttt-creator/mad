@@ -1,232 +1,196 @@
-import { useState, useEffect } from 'react';
-import { useToast } from '../Toast';
-import { Calendar as CalendarIcon, Clock, MoreVertical, Plus, History } from 'lucide-react';
-import { Modal } from '../../components/Modal';
-import { supabase } from '../../supabase';
+
 
 export function Appointments() {
-    const { showToast } = useToast();
-    const [activeTab, setActiveTab] = useState<'Schedule' | 'History'>('Schedule');
-    const [activeView, setActiveView] = useState('Today');
-    const [statusFilter, setStatusFilter] = useState('All');
-    const [isSlotModalOpen, setIsSlotModalOpen] = useState(false);
-
-    // Forms
-    const [newAppt, setNewAppt] = useState({ date: '', time: '', name: '', doctor: 'Dr. Jenkins (Available)' });
-
-    const [appointments, setAppointments] = useState<any[]>([]);
-    const [pending, setPending] = useState<any[]>([]);
-
-    useEffect(() => {
-        fetchAppointments();
-    }, []);
-
-    const fetchAppointments = async () => {
-        const { data: appts } = await supabase.from('appointments').select('*');
-        if (appts) setAppointments(appts);
-
-        const { data: pends } = await supabase.from('pending_appointments').select('*');
-        if (pends) setPending(pends);
-    };
-
-    const handleConfirm = async (id: string, name: string, time: string, type: string) => {
-        await supabase.from('pending_appointments').delete().eq('id', id);
-        await supabase.from('appointments').insert({
-            id: `conf-${id}`,
-            name,
-            time: time.split(', ')[1] || time,
-            type,
-            status: 'Confirmed',
-            date: 'Today'
-        });
-        showToast('Appointment Confirmed!', 'success');
-        fetchAppointments();
-    };
-
-    const handleReject = async (id: string, name: string, time: string, type: string) => {
-        await supabase.from('pending_appointments').delete().eq('id', id);
-        await supabase.from('appointments').insert({
-            id: `rej-${id}`,
-            name,
-            time: time.split(', ')[1] || time,
-            type,
-            status: 'Rejected',
-            date: 'Today'
-        });
-        showToast('Appointment Rejected.', 'error');
-        fetchAppointments();
-    };
-
-    const handleBookSlot = async () => {
-        if (!newAppt.name || !newAppt.date || !newAppt.time) return showToast('Please fill all fields', 'error');
-        await supabase.from('appointments').insert({
-            id: `apt-${Date.now()}`,
-            name: newAppt.name,
-            time: newAppt.time,
-            type: 'Consultation',
-            status: 'Booked',
-            date: newAppt.date
-        });
-        showToast('Slot booked and added to calendar.', 'success');
-        setIsSlotModalOpen(false);
-        fetchAppointments();
-    };
-
-    // Status change
-    const updateStatus = async (id: string, status: string) => {
-        await supabase.from('appointments').update({ status }).eq('id', id);
-        showToast(`Status updated to ${status}`, 'success');
-        fetchAppointments();
-    };
-
-    const filteredAppointments = appointments.filter(apt => {
-        if (activeTab === 'Schedule') {
-            if (statusFilter !== 'All' && apt.status !== statusFilter) return false;
-            if (activeView === 'Today') return apt.date === 'Today' || apt.date === new Date().toISOString().split('T')[0] || !apt.date;
-            if (activeView === 'Weekly') return apt.date === 'Today' || apt.date === 'Weekly' || !apt.date;
-            return true; // Monthly
-        } else {
-            // History Tab
-            if (statusFilter !== 'All') return apt.status === statusFilter;
-            return true;
-        }
-    });
-
-    const statusOptions = ['All', 'Pending', 'Booked', 'Confirmed', 'Engaged', 'Completed (Treatment Done)', 'Checked-Out (Patient Left)', 'Rejected'];
-
     return (
-        <div className="animate-slide-up space-y-6">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h2 className="text-3xl font-display font-bold text-text-dark tracking-tight">Appointments</h2>
-                    <p className="text-text-muted font-medium">Manage your daily schedule and upcoming bookings.</p>
-                </div>
-                <div className="flex gap-3">
-                    <button
-                        onClick={() => setActiveTab(activeTab === 'Schedule' ? 'History' : 'Schedule')}
-                        className="bg-white border border-slate-200 text-slate-600 px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 hover:bg-slate-50 transition-colors"
-                    >
-                        {activeTab === 'Schedule' ? <><History size={16} /> History Menu</> : <><CalendarIcon size={16} /> Active Schedule</>}
-                    </button>
-                    <button
-                        onClick={() => setIsSlotModalOpen(true)}
-                        className="bg-primary hover:bg-primary-hover text-white shadow-premium px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 transition-transform active:scale-95"
-                    >
-                        <Plus size={16} /> Book Slot
-                    </button>
-                </div>
-            </div>
+        <div className="bg-background-soft font-sans text-slate-900 min-h-screen pb-32 animated-gradient-bg relative">
+            <div className="max-w-md mx-auto relative min-h-screen overflow-hidden">
+                <div className="absolute -top-20 -left-20 w-64 h-64 bg-medical-teal/10 rounded-full blur-3xl"></div>
+                <div className="absolute top-1/4 -right-20 w-72 h-72 bg-medical-blue/10 rounded-full blur-3xl"></div>
 
-            <div className={`grid grid-cols-1 ${activeTab === 'Schedule' ? 'lg:grid-cols-3' : ''} gap-6`}>
-                <div className={`${activeTab === 'Schedule' ? 'lg:col-span-2' : ''} bg-surface border border-slate-200 rounded-2xl p-6 shadow-sm min-h-[60vh]`}>
-                    <div className="flex flex-wrap justify-between items-center mb-6 border-b border-slate-100 pb-4 gap-4">
-                        {activeTab === 'Schedule' ? (
-                            <div className="flex items-center gap-4">
-                                {['Today', 'Weekly', 'Monthly'].map(view => (
-                                    <button key={view} onClick={() => setActiveView(view)} className={`pb-2 transition-colors ${activeView === view ? 'font-bold text-text-dark border-b-2 border-primary' : 'font-medium text-slate-400 hover:text-slate-600'}`}>
-                                        {view}
-                                    </button>
-                                ))}
-                            </div>
-                        ) : (
-                            <h3 className="font-bold text-lg text-text-dark">All Bookings History</h3>
-                        )}
-                        <div className="flex items-center gap-3">
-                            <select
-                                value={statusFilter}
-                                onChange={e => setStatusFilter(e.target.value)}
-                                className="bg-slate-50 border border-slate-200 text-slate-600 font-bold text-sm rounded-lg px-3 py-1.5 focus:ring-1 focus:ring-primary outline-none"
-                            >
-                                {statusOptions.map(o => <option key={o} value={o}>{o === 'All' ? 'All Statuses' : o}</option>)}
-                            </select>
-                            {activeTab === 'Schedule' && <div className="text-sm font-bold text-primary bg-primary/10 px-3 py-1.5 rounded-lg whitespace-nowrap"><CalendarIcon size={14} className="inline mr-1" /> {activeView}</div>}
+                <header className="pt-10 px-6 pb-6 sticky top-0 z-40 bg-white/40 backdrop-blur-xl border-b border-white/20">
+                    <div className="flex items-center justify-between mb-8">
+                        <div>
+                            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-medical-blue/60 mb-1">Medical Protocol</p>
+                            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 flex items-center gap-1">
+                                Smart <span className="text-transparent bg-clip-text bg-gradient-to-r from-medical-teal to-medical-blue">Schedule</span>
+                            </h1>
                         </div>
+                        <button className="w-12 h-12 rounded-full glass-morphism flex items-center justify-center text-medical-blue shadow-lg hover:scale-105 transition-transform duration-300">
+                            <span className="material-symbols-outlined font-bold">add</span>
+                        </button>
                     </div>
 
-                    <div className="space-y-4">
-                        {filteredAppointments.length === 0 ? (
-                            <p className="text-center text-slate-500 py-10">No appointments found matching this criteria.</p>
-                        ) : filteredAppointments.map((apt) => (
-                            <div key={apt.id} className={`flex items-center justify-between p-4 rounded-xl border transition-colors hover:border-slate-300 ${apt.status === 'Engaged' ? 'bg-primary/5 border-primary/20' : 'bg-slate-50 border-slate-100'}`}>
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-white rounded-full border border-slate-200 flex items-center justify-center font-bold text-slate-600">{apt.name.charAt(0)}</div>
-                                    <div>
-                                        <p className="font-bold text-text-dark">{apt.name}</p>
-                                        <p className="text-xs text-slate-500 font-medium">{apt.type} • {apt.date || 'Today'}</p>
-                                    </div>
+                    <div className="flex p-1.5 glass-morphism rounded-2xl mb-8">
+                        <button className="flex-1 py-2.5 rounded-xl bg-white shadow-sm text-xs font-bold text-slate-900 tracking-wide uppercase">Active</button>
+                        <button className="flex-1 py-2.5 rounded-xl text-xs font-bold text-slate-400 tracking-wide uppercase">History</button>
+                    </div>
+
+                    <div className="flex gap-4 overflow-x-auto pb-2 -mx-6 px-6 no-scrollbar">
+                        <div className="flex flex-col items-center justify-center min-w-[64px] h-24 rounded-2xl bg-gradient-to-br from-medical-teal to-medical-blue text-white date-active-glow">
+                            <span className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">Mon</span>
+                            <span className="text-2xl font-extrabold">12</span>
+                            <div className="w-1.5 h-1.5 bg-white rounded-full mt-2 animate-pulse"></div>
+                        </div>
+                        <div className="flex flex-col items-center justify-center min-w-[64px] h-24 rounded-2xl glass-morphism text-slate-400 border-white/60">
+                            <span className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-1">Tue</span>
+                            <span className="text-2xl font-bold">13</span>
+                        </div>
+                        <div className="flex flex-col items-center justify-center min-w-[64px] h-24 rounded-2xl glass-morphism text-slate-400 border-white/60">
+                            <span className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-1">Wed</span>
+                            <span className="text-2xl font-bold">14</span>
+                        </div>
+                        <div className="flex flex-col items-center justify-center min-w-[64px] h-24 rounded-2xl glass-morphism text-slate-400 border-white/60">
+                            <span className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-1">Thu</span>
+                            <span className="text-2xl font-bold">15</span>
+                        </div>
+                        <div className="flex flex-col items-center justify-center min-w-[64px] h-24 rounded-2xl glass-morphism text-slate-400 border-white/60">
+                            <span className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-1">Fri</span>
+                            <span className="text-2xl font-bold">16</span>
+                        </div>
+                    </div>
+                </header>
+
+                <main className="px-6 space-y-6 pt-6 relative z-10">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-sm font-bold text-slate-500 uppercase tracking-widest">Upcoming Sessions</h2>
+                        <span className="text-[11px] font-bold bg-medical-blue/10 text-medical-blue px-3 py-1 rounded-full border border-medical-blue/20">4 Appointments</span>
+                    </div>
+
+                    <div className="glass-morphism card-gradient-1 rounded-3xl p-5 flex flex-col gap-5 border-white/50 relative overflow-hidden group">
+                        <div className="flex justify-between items-start">
+                            <div className="flex gap-4">
+                                <div className="w-14 h-14 rounded-2xl bg-slate-200 overflow-hidden ring-4 ring-white/80 shadow-inner">
+                                    <img alt="Sarah Jenkins" className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAZH8D4DCqyxVSbWe9l77huLvcXKa1aVQ76TYOKcHr8CtKah2xLyG6tre55lo9a3jf5G9iWGEHUPwAZNfNK3afb08YjdrawfFLLqSBQtgv-QK9CJ0ZgHHyN1sDerSv03yVLGwApiMjyH-8tsjADY56hfwGpZlh7X3BXdc0MtWkyaXyuftzrbphDi2eXeLKwXOMvd5GkotEO3ffelcp7W3LVVQOEzMT3KGEijR2yAF3GLCQ3YTiiZTcBygzvNvzUF2yISt4QNn7znSx7" />
                                 </div>
-                                <div className="flex items-center gap-4">
-                                    <div className="flex items-center gap-2 text-slate-500 font-medium text-sm w-24">
-                                        <Clock size={14} /> {apt.time}
-                                    </div>
-                                    <select
-                                        value={apt.status}
-                                        onChange={(e) => updateStatus(apt.id, e.target.value)}
-                                        className={`px-3 py-1 text-xs font-bold uppercase tracking-wide rounded-md border-none cursor-pointer outline-none md:w-44 ${apt.status === 'Confirmed' ? 'bg-success/10 text-success' :
-                                            apt.status === 'Pending' ? 'bg-alert/10 text-alert' :
-                                                apt.status === 'Engaged' ? 'bg-primary text-white animate-pulse' :
-                                                    apt.status === 'Rejected' ? 'bg-red-100 text-red-600' :
-                                                        apt.status.includes('Completed') ? 'bg-purple-100 text-purple-600' :
-                                                            apt.status.includes('Checked-Out') ? 'bg-blue-100 text-blue-700' :
-                                                                'bg-slate-200 text-slate-600'
-                                            }`}
-                                    >
-                                        {statusOptions.filter(o => o !== 'All').map(o => <option key={o} value={o}>{o}</option>)}
-                                    </select>
-                                    <button onClick={() => showToast(`Options for ${apt.name}`)} className="text-slate-400 hover:text-slate-600 p-2"><MoreVertical size={16} /></button>
+                                <div>
+                                    <h3 className="font-bold text-slate-900 text-lg">Sarah Jenkins</h3>
+                                    <p className="text-xs font-semibold text-medical-teal flex items-center gap-1">
+                                        <span className="material-symbols-outlined text-sm">cardiology</span> Cardiology Consultation
+                                    </p>
                                 </div>
                             </div>
-                        ))}
-                    </div>
-                </div>
-
-                {activeTab === 'Schedule' && (
-                    <div className="space-y-6">
-                        <div className="bg-surface border border-slate-200 rounded-2xl p-6 shadow-sm">
-                            <h3 className="font-display font-bold text-lg text-text-dark mb-4">Pending Confirmations</h3>
-                            {pending.length === 0 ? (
-                                <p className="text-sm text-slate-500">No pending requests.</p>
-                            ) : pending.map(p => (
-                                <div key={p.id} className="p-4 bg-alert/5 border border-alert/20 rounded-xl mb-3">
-                                    <p className="font-bold text-text-dark">{p.name}</p>
-                                    <p className="text-xs text-slate-500 font-medium mb-3">{p.time} • {p.type}</p>
-                                    <div className="flex gap-2">
-                                        <button onClick={() => handleConfirm(p.id, p.name, p.time, p.type)} className="flex-1 py-2 bg-text-dark text-white rounded-lg text-xs font-bold hover:bg-black transition-colors">Confirm</button>
-                                        <button onClick={() => handleReject(p.id, p.name, p.time, p.type)} className="flex-1 py-2 border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 transition-colors">Reject</button>
-                                    </div>
+                            <span className="bg-amber-100/50 backdrop-blur-md text-amber-700 text-[10px] font-extrabold px-3 py-1.5 rounded-xl uppercase tracking-wider border border-amber-200/50">Pending</span>
+                        </div>
+                        <div className="flex items-center gap-6 py-4 border-y border-white/30">
+                            <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-lg bg-medical-blue/10 flex items-center justify-center">
+                                    <span className="material-symbols-outlined text-md text-medical-blue">schedule</span>
                                 </div>
-                            ))}
+                                <span className="text-xs font-bold text-slate-700">09:30 AM</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-lg bg-medical-teal/10 flex items-center justify-center">
+                                    <span className="material-symbols-outlined text-md text-medical-teal">apartment</span>
+                                </div>
+                                <span className="text-xs font-bold text-slate-700">Room 402</span>
+                            </div>
+                        </div>
+                        <div className="flex gap-3">
+                            <button className="flex-1 py-3.5 rounded-2xl bg-gradient-to-r from-medical-teal to-medical-blue text-white text-xs font-extrabold shadow-lg shadow-medical-blue/20 hover:opacity-90 transition-all uppercase tracking-widest">Accept Slot</button>
+                            <button className="w-12 h-12 flex items-center justify-center rounded-2xl glass-morphism text-slate-400 hover:text-red-500 hover:bg-red-50/50 transition-all">
+                                <span className="material-symbols-outlined text-lg">close</span>
+                            </button>
                         </div>
                     </div>
-                )}
+
+                    <div className="glass-morphism rounded-3xl p-5 flex flex-col gap-5 border-white/50 relative overflow-hidden group">
+                        <div className="flex justify-between items-start">
+                            <div className="flex gap-4">
+                                <div className="w-14 h-14 rounded-2xl bg-slate-200 overflow-hidden ring-4 ring-white/80 shadow-inner">
+                                    <img alt="Marcus Wright" className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBefO1nSPs19pvvakJgyaUTP9QSfE8owsUzRoU7siHB0qP9n_v-caDlyD89D88pLtu8iLZHiPHixH32rY5qkjLGujxViv7GSKTB0M1mrZZJNnrXYfpc2amncY0aP6q-BNcSVCnPxiK3y8z1DGxAyKkolTkWRR7iHMAbG3Dg0vND5CZB7RNMNew0Rjov-Pok5sQZBsKD7YlWakE5OEbN2Z-U2vNNzUR3ezJ0EEGYJmGllHd52kj0SOdx6z10rfZ61wxr6O6LV78d1n6B" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-slate-900 text-lg">Marcus Wright</h3>
+                                    <p className="text-xs font-semibold text-medical-blue flex items-center gap-1">
+                                        <span className="material-symbols-outlined text-sm">biotech</span> MRI Analysis Result
+                                    </p>
+                                </div>
+                            </div>
+                            <span className="bg-emerald-100/50 backdrop-blur-md text-emerald-700 text-[10px] font-extrabold px-3 py-1.5 rounded-xl uppercase tracking-wider border border-emerald-200/50">Confirmed</span>
+                        </div>
+                        <div className="flex items-center gap-6 py-4 border-y border-white/30">
+                            <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-lg bg-medical-blue/10 flex items-center justify-center">
+                                    <span className="material-symbols-outlined text-md text-medical-blue">schedule</span>
+                                </div>
+                                <span className="text-xs font-bold text-slate-700">11:15 AM</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                                    <span className="material-symbols-outlined text-md text-indigo-500">videocam</span>
+                                </div>
+                                <span className="text-xs font-bold text-slate-700">Telehealth</span>
+                            </div>
+                        </div>
+                        <button className="w-full py-3.5 rounded-2xl glass-morphism text-slate-600 text-xs font-extrabold border-slate-200/50 hover:bg-slate-50 transition-all uppercase tracking-widest">Patient History</button>
+                    </div>
+
+                    <div className="glass-morphism rounded-3xl p-5 flex flex-col gap-5 border-white/50 relative overflow-hidden group">
+                        <div className="flex justify-between items-start">
+                            <div className="flex gap-4">
+                                <div className="w-14 h-14 rounded-2xl bg-slate-200 overflow-hidden ring-4 ring-white/80 shadow-inner">
+                                    <img alt="Elena Rossi" className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBwFFYRyJ2NcAHCvZR0wBLcDvLny2RNscLqSnpwcxP6PhY9pUVpkTiItVF2EmIMJtCb0kPliyJEx3bt5J_GP8PtngCQh44GmvZfdne5YCzYpuAe7Jpa9EklqnStadYcq8EG1KUt-NeHoN5HffVWXIAowi13SIL-u_Ni-mIY0hZnaiaGP_iYXgJnViRZcHT-bO4Vx0trluPO-XZW2tuWAj3ZYxSKEOFFP3_63Cn563uYZkWirL3-jk-MqHzMcWZ_nvagtjIuKEUC2VLF" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-slate-900 text-lg">Elena Rossi</h3>
+                                    <p className="text-xs font-semibold text-pink-500 flex items-center gap-1">
+                                        <span className="material-symbols-outlined text-sm">dermatology</span> Dermatology Screen
+                                    </p>
+                                </div>
+                            </div>
+                            <span className="bg-primary/10 backdrop-blur-md text-primary text-[10px] font-extrabold px-3 py-1.5 rounded-xl uppercase tracking-wider border border-primary/20">In Progress</span>
+                        </div>
+                        <div className="flex items-center gap-6 py-4 border-y border-white/30">
+                            <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-lg bg-medical-blue/10 flex items-center justify-center">
+                                    <span className="material-symbols-outlined text-md text-medical-blue">schedule</span>
+                                </div>
+                                <span className="text-xs font-bold text-slate-700">02:45 PM</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-lg bg-medical-teal/10 flex items-center justify-center">
+                                    <span className="material-symbols-outlined text-md text-medical-teal">meeting_room</span>
+                                </div>
+                                <span className="text-xs font-bold text-slate-700">Room 105</span>
+                            </div>
+                        </div>
+                        <button className="w-full py-3.5 rounded-2xl bg-primary/10 text-primary text-xs font-extrabold hover:bg-primary/20 transition-all uppercase tracking-widest border border-primary/20">Resume Session</button>
+                    </div>
+                </main>
+
+                <div className="h-20"></div>
             </div>
 
-            <Modal isOpen={isSlotModalOpen} onClose={() => setIsSlotModalOpen(false)} title="Block Slot / New Booking">
-                <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="text-xs font-bold text-slate-500 mb-1 block">Date</label>
-                            <input type="date" value={newAppt.date} onChange={e => setNewAppt({ ...newAppt, date: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-600" />
-                        </div>
-                        <div>
-                            <label className="text-xs font-bold text-slate-500 mb-1 block">Time</label>
-                            <input type="time" value={newAppt.time} onChange={e => setNewAppt({ ...newAppt, time: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-600" />
-                        </div>
-                    </div>
-                    <div>
-                        <label className="text-xs font-bold text-slate-500 mb-1 block">Patient Name & Phone</label>
-                        <input type="text" value={newAppt.name} onChange={e => setNewAppt({ ...newAppt, name: e.target.value })} placeholder="e.g. John Doe - 9876543210" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-600" />
-                    </div>
-                    <div>
-                        <label className="text-xs font-bold text-slate-500 mb-1 block">Doctor</label>
-                        <select value={newAppt.doctor} onChange={e => setNewAppt({ ...newAppt, doctor: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-600">
-                            <option>Dr. Jenkins (Available)</option>
-                            <option>Dr. Smith (Busy)</option>
-                        </select>
-                    </div>
-                    <button onClick={handleBookSlot} className="w-full py-2 bg-primary text-white rounded-lg text-sm font-bold mt-4 shadow-premium active:scale-95 transition-transform">Confirm Slot</button>
-                </div>
-            </Modal>
+            <style>{`
+                .glass-morphism {
+                    background: rgba(255, 255, 255, 0.65);
+                    backdrop-filter: blur(16px);
+                    border: 1px solid rgba(255, 255, 255, 0.4);
+                    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+                }
+                .glass-nav-dock {
+                    background: rgba(255, 255, 255, 0.75);
+                    backdrop-filter: blur(24px) saturate(180%);
+                    border: 1px solid rgba(255, 255, 255, 0.5);
+                    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.15);
+                }
+                .card-gradient-1 {
+                    background: linear-gradient(135deg, rgba(6, 182, 212, 0.05) 0%, rgba(59, 130, 246, 0.05) 100%);
+                }
+                .animated-gradient-bg {
+                    background: linear-gradient(-45deg, #f8fafc, #f1f5f9, #e2e8f0, #f8fafc);
+                    background-size: 400% 400%;
+                    animation: gradientMove 15s ease infinite;
+                }
+                @keyframes gradientMove {
+                    0% { background-position: 0% 50%; }
+                    50% { background-position: 100% 50%; }
+                    100% { background-position: 0% 50%; }
+                }
+                .date-active-glow {
+                    box-shadow: 0 0 20px rgba(14, 165, 233, 0.3);
+                }
+            `}</style>
         </div>
     );
 }

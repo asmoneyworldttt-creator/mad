@@ -10,30 +10,76 @@
 }
 
 @layer components {
-    .glass {
-        background: rgba(255, 255, 255, 0.7);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-    }
-    .glass-panel {
-        background: rgba(255, 255, 255, 0.7);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(19, 91, 236, 0.1);
-    }
-    .neo-shadow {
-        box-shadow: 0 8px 32px 0 rgba(19, 91, 236, 0.08);
-    }
-    .tooth-card {
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    .tooth-card:active {
-        transform: scale(0.95);
-    }
-    .active-tooth {
-        box-shadow: 0 0 20px rgba(19, 91, 236, 0.3);
-        border: 2px solid #135bec;
-    }
+  .glass {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(19, 91, 236, 0.1);
+  }
+
+  .neo-shadow {
+    box-shadow: 0 8px 32px 0 rgba(19, 91, 236, 0.08);
+  }
+
+  .tooth-3d {
+    background: radial-gradient(circle at 30% 30%, #ffffff 0%, #f0f4f8 50%, #dbeafe 100%);
+    box-shadow:
+      inset 4px 4px 10px rgba(255, 255, 255, 0.9),
+      /* Highlight */
+      inset -4px -4px 10px rgba(100, 116, 139, 0.2),
+      /* Core Shading */
+      inset 0 -10px 15px -5px rgba(255, 255, 255, 0.7),
+      /* Reflective rim */
+      3px 5px 10px rgba(0, 0, 0, 0.08);
+    /* Drop shadow */
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Add a specular gleam */
+  .tooth-3d::after {
+    content: '';
+    position: absolute;
+    top: 5%;
+    left: 10%;
+    width: 30%;
+    height: 40%;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0) 100%);
+    border-radius: 50%;
+    transform: rotate(-45deg);
+    pointer-events: none;
+  }
+
+  .tooth-3d:active {
+    transform: scale(0.95);
+  }
+
+  .tooth-3d.active {
+    background: radial-gradient(circle at 30% 30%, #3b82f6 0%, #1d4ed8 100%);
+    box-shadow:
+      inset 2px 2px 8px rgba(255, 255, 255, 0.4),
+      inset -4px -4px 10px rgba(0, 0, 0, 0.4),
+      0 0 20px rgba(59, 130, 246, 0.6);
+    border: 1px solid #135bec;
+  }
+
+  .tooth-3d.warning {
+    background: radial-gradient(circle at 30% 30%, #fff5f5 0%, #fed7d7 100%);
+    box-shadow:
+      inset 4px 4px 10px rgba(255, 255, 255, 0.9),
+      inset -4px -4px 10px rgba(226, 232, 240, 0.5),
+      inset 0 -10px 15px -5px rgba(255, 255, 255, 0.7),
+      3px 5px 10px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(254, 215, 215, 0.8);
+  }
 }
 
 /* Custom Scrollbar */

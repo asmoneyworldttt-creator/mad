@@ -9,6 +9,7 @@ export default {
             colors: {
                 background: '#f6f6f8',
                 'background-light': '#f6f6f8',
+                'background-soft': '#f8fafc',
                 'background-dark': '#101622',
                 surface: '#FFFFFF',
                 'surface-hover': '#F8FAFC',
@@ -17,6 +18,8 @@ export default {
                 primary: '#135bec',
                 'primary-hover': '#0c42b4',
                 'primary-light': '#eff6ff',
+                'medical-teal': '#06b6d4',
+                'medical-blue': '#3b82f6',
                 accent: '#00D4AA',
                 alert: '#F59E0B',
                 success: '#10B981',

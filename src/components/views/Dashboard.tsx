@@ -139,7 +139,7 @@ export function Dashboard() {
                         </div>
                     </div>
                     <div className="flex gap-3">
-                        <a href="https://github.com/asmoneyworldttt-creator/mad/releases/latest/download/MedPro-Android-APK.zip" target="_blank" rel="noreferrer" className="px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white text-sm font-semibold shadow-sm transition-all flex items-center gap-2 neo-shadow">
+                        <a href="https://github.com/asmoneyworldttt-creator/mad/releases/latest/download/MedPro-Android-APK.apk" target="_blank" rel="noreferrer" className="px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white text-sm font-semibold shadow-sm transition-all flex items-center gap-2 neo-shadow">
                             <Smartphone size={16} />
                             Download APK
                         </a>
