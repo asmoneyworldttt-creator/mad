@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">MedPro</string>
+    <string name="title_activity_main">MedPro</string>
+    <string name="package_name">com.cityclinic.medpro</string>
+    <string name="custom_url_scheme">com.cityclinic.medpro</string>
+</resources>
