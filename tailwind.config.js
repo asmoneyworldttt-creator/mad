@@ -7,15 +7,17 @@ export default {
     theme: {
         extend: {
             colors: {
-                background: '#E2E8F0', // slate-200 for a medium contrast backdrop
+                background: '#f6f6f8',
+                'background-light': '#f6f6f8',
+                'background-dark': '#101622',
                 surface: '#FFFFFF',
                 'surface-hover': '#F8FAFC',
                 'surface-muted': '#F1F5F9',
                 panel: '#FFFFFF',
-                primary: '#3B82F6', // Modern blue
-                'primary-hover': '#2563EB',
-                'primary-light': '#EFF6FF',
-                accent: '#00D4AA', // Kept for futuristic teal touches
+                primary: '#135bec',
+                'primary-hover': '#0c42b4',
+                'primary-light': '#eff6ff',
+                accent: '#00D4AA',
                 alert: '#F59E0B',
                 success: '#10B981',
                 danger: '#EF4444',
@@ -26,8 +28,8 @@ export default {
                 }
             },
             fontFamily: {
-                sans: ['"DM Sans"', 'sans-serif'],
-                display: ['"Playfair Display"', 'serif'],
+                sans: ['"Space Grotesk"', 'sans-serif'],
+                display: ['"Space Grotesk"', 'sans-serif'],
             },
             animation: {
                 pulse: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',

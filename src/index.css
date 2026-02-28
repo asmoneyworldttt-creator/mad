@@ -9,6 +9,33 @@
   }
 }
 
+@layer components {
+    .glass {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    .glass-panel {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(19, 91, 236, 0.1);
+    }
+    .neo-shadow {
+        box-shadow: 0 8px 32px 0 rgba(19, 91, 236, 0.08);
+    }
+    .tooth-card {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .tooth-card:active {
+        transform: scale(0.95);
+    }
+    .active-tooth {
+        box-shadow: 0 0 20px rgba(19, 91, 236, 0.3);
+        border: 2px solid #135bec;
+    }
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

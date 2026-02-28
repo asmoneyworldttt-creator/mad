@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { ArrowUpRight, ChevronRight, Clock, Activity, FileText } from 'lucide-react';
+import { ChevronRight, Clock, Activity, FileText, Smartphone, Download } from 'lucide-react';
 import { useState } from 'react';
 import { Modal } from '../../components/Modal';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -20,15 +20,14 @@ function StatCard({ title, value, change, trend, delay }: any) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay, duration: 0.4 }}
-            className="bg-surface border border-slate-200 p-6 rounded-2xl relative overflow-hidden group shadow-sm hover:shadow-premium transition-shadow"
+            className="glass neo-shadow p-5 rounded-xl relative overflow-hidden group hover:scale-[1.02] transition-transform"
         >
             <div className="absolute -right-6 -top-6 w-24 h-24 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/20 transition-colors" />
-            <p className="text-sm text-text-muted mb-2 font-medium">{title}</p>
-            <div className="flex items-end gap-3">
-                <h3 className="text-3xl font-display font-bold text-text-dark">{value}</h3>
-                <span className={`text-xs font-bold mb-1 flex items-center gap-1 ${trend === 'up' ? 'text-success bg-success/10' : 'text-alert bg-alert/10'} px-2 py-0.5 rounded-full`}>
-                    {trend === 'up' ? <ArrowUpRight size={14} /> : null}
-                    {change}
+            <p className="text-xs text-slate-500 font-medium mb-3">{title}</p>
+            <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-bold">{value}</span>
+                <span className={`text-[10px] font-bold ${trend === 'up' ? 'text-green-600' : 'text-red-500'}`}>
+                    {trend === 'up' ? '+' : '-'}{change}
                 </span>
             </div>
         </motion.div>
@@ -43,32 +42,31 @@ function LiveQueue() {
     ];
 
     return (
-        <div className="bg-surface border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <div className="glass neo-shadow rounded-2xl p-6">
             <div className="flex items-center justify-between mb-6">
-                <h3 className="font-display font-bold text-lg text-text-dark">Live Waiting Room</h3>
-                <button className="text-primary text-sm font-bold hover:text-primary-hover flex items-center gap-1 bg-primary/5 px-3 py-1 rounded-full">
+                <h3 className="font-display font-bold text-lg text-text-dark flex items-center gap-2">
+                    <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                    Live Queue
+                </h3>
+                <button className="text-primary text-sm font-bold hover:text-primary-hover flex items-center gap-1">
                     Manage Queue <ChevronRight size={16} />
                 </button>
             </div>
 
             <div className="space-y-3">
                 {queue.map((p, i) => (
-                    <div key={i} className={`flex items-center justify-between p-4 rounded-xl border transition-colors ${p.status === 'Engaged' ? 'border-primary/30 bg-primary/5 shadow-sm' : 'border-slate-100 bg-slate-50 hover:border-slate-300'}`}>
+                    <div key={i} className={`flex items-center justify-between p-4 rounded-xl border-l-4 transition-colors glass ${p.status === 'Engaged' ? 'border-orange-400 bg-orange-50/10 shadow-sm' : p.status === 'Checked-In' ? 'border-green-500 bg-green-50/10' : 'border-slate-300'}`}>
                         <div className="flex items-center gap-4">
-                            <img src={p.avatar} className="w-10 h-10 rounded-full object-cover shadow-sm bg-white" alt={p.name} />
+                            <img src={p.avatar} className="w-10 h-10 rounded-full object-cover shadow-sm bg-slate-200" alt={p.name} />
                             <div>
-                                <p className="text-sm font-bold text-text-dark mb-0.5">{p.name}</p>
-                                <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-                                    <span className="flex items-center gap-1 text-slate-400"><Clock size={12} /> {p.time}</span>
-                                    <span>•</span>
-                                    <span>{p.condition}</span>
-                                </div>
+                                <p className="font-bold text-sm text-text-dark">{p.name}</p>
+                                <p className="text-xs text-slate-500 font-medium">{p.condition} • {p.time}</p>
                             </div>
                         </div>
 
-                        <div className={`px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-widest ${p.status === 'Engaged' ? 'bg-primary text-white shadow-premium shadow-primary/30 animate-pulse' :
-                            p.status === 'Checked-In' ? 'bg-alert/10 text-alert border border-alert/20' :
-                                'bg-white text-slate-400 border border-slate-200'
+                        <div className={`px-3 py-1 rounded-full text-[10px] uppercase font-bold tracking-tighter ${p.status === 'Engaged' ? 'bg-orange-100 text-orange-600' :
+                            p.status === 'Checked-In' ? 'bg-green-100 text-green-600' :
+                                'bg-slate-100 text-slate-500'
                             }`}>
                             {p.status}
                         </div>
@@ -81,35 +79,32 @@ function LiveQueue() {
 
 function RevenueChart() {
     return (
-        <div className="bg-surface border border-slate-200 rounded-2xl p-6 shadow-sm h-full flex flex-col">
+        <div className="glass neo-shadow rounded-2xl p-5 h-full flex flex-col">
             <div className="flex items-center justify-between mb-6">
                 <div>
                     <h3 className="font-display font-bold text-lg text-text-dark">Revenue Analytics</h3>
-                    <p className="text-xs text-text-muted mt-1">Collections over the last 7 days</p>
+                    <p className="text-xs text-slate-500">Weekly Performance</p>
                 </div>
-                <select className="bg-slate-50 border border-slate-200 text-sm font-medium text-slate-600 rounded-lg px-3 py-1.5 outline-none">
-                    <option>This Week</option>
-                    <option>This Month</option>
-                </select>
+                <div className="flex items-center gap-1 text-green-600 bg-green-50 px-2 py-1 rounded">
+                    <span className="text-xs font-bold">+12%</span>
+                </div>
             </div>
-            <div className="w-full mt-4 h-64 min-h-[250px] relative">
+            <div className="w-full mt-2 h-64 min-h-[250px] relative">
                 <div className="absolute inset-0">
                     <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={data}>
+                        <AreaChart data={data} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
                             <defs>
                                 <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
-                                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                                    <stop offset="0%" stopColor="#135bec" stopOpacity={0.2} />
+                                    <stop offset="100%" stopColor="#135bec" stopOpacity={0} />
                                 </linearGradient>
                             </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 12 }} dy={10} />
-                            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 12 }} dx={-10} tickFormatter={(val) => `$${val}`} />
+                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 'bold' }} dy={10} />
                             <Tooltip
-                                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                                cursor={{ stroke: '#CBD5E1', strokeWidth: 1, strokeDasharray: '4 4' }}
+                                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 15px -3px rgba(0, 0, 0, 0.1)' }}
+                                cursor={{ stroke: '#135bec', strokeWidth: 1, strokeDasharray: '4 4' }}
                             />
-                            <Area type="monotone" dataKey="revenue" stroke="#3B82F6" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
+                            <Area type="monotone" dataKey="revenue" stroke="#135bec" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
                         </AreaChart>
                     </ResponsiveContainer>
                 </div>
@@ -130,15 +125,27 @@ export function Dashboard() {
     return (
         <>
             <div className="animate-slide-up space-y-8">
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                    <div>
-                        <h2 className="text-3xl font-display font-bold text-text-dark tracking-tight mb-2">Good morning, Dr. Jenkins</h2>
-                        <p className="text-text-muted font-medium">Here is what's happening at City Cardiovascular Clinic today.</p>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 glass neo-shadow p-6 rounded-2xl mx-1 mt-1">
+                    <div className="flex items-center gap-4">
+                        <div className="relative">
+                            <div className="w-12 h-12 rounded-full border-2 border-primary/20 p-0.5">
+                                <img src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=150" className="w-full h-full rounded-full object-cover" alt="Dr Profile" />
+                            </div>
+                            <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
+                        </div>
+                        <div>
+                            <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Welcome back</p>
+                            <h2 className="text-xl font-display font-bold text-text-dark tracking-tight">Dr. Sarah Jenkins</h2>
+                        </div>
                     </div>
                     <div className="flex gap-3">
-                        <button onClick={() => setIsReportModalOpen(true)} className="px-5 py-2.5 rounded-full bg-white hover:bg-slate-50 border border-slate-200 text-sm font-bold text-text-dark shadow-sm transition-all flex items-center gap-2">
-                            <FileText size={16} className="text-slate-400" />
-                            Generate Report
+                        <a href="https://github.com/asmoneyworldttt-creator/mad/actions/workflows/android.yml" target="_blank" rel="noreferrer" className="px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white text-sm font-semibold shadow-sm transition-all flex items-center gap-2 neo-shadow">
+                            <Smartphone size={16} />
+                            Download APK
+                        </a>
+                        <button onClick={() => setIsReportModalOpen(true)} className="px-4 py-2 rounded-lg bg-primary hover:bg-primary-hover text-white text-sm font-semibold shadow-sm transition-all flex items-center gap-2 neo-shadow">
+                            <Activity size={16} />
+                            Report
                         </button>
                     </div>
                 </div>
