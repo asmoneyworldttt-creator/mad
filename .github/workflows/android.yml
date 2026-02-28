@@ -38,7 +38,9 @@ jobs:
       
     - name: Build debug APK
       working-directory: ./android
-      run: ./gradlew assembleDebug
+      run: |
+        echo "org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m" >> gradle.properties
+        ./gradlew assembleDebug
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
