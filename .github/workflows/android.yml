@@ -5,6 +5,9 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -42,8 +45,25 @@ jobs:
         echo "org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m" >> gradle.properties
         ./gradlew assembleDebug
 
-    - name: Upload APK
+    - name: Prepare APK file
+      run: |
+        mv android/app/build/outputs/apk/debug/app-debug.apk MedPro-Android-APK.apk
+        zip MedPro-Android-APK.zip MedPro-Android-APK.apk
+
+    - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
         name: MedPro-Android-APK
-        path: android/app/build/outputs/apk/debug/app-debug.apk
+        path: MedPro-Android-APK.zip
+
+    - name: Create or Update Release
+      uses: ncipollo/release-action@v1
+      with:
+        tag: "latest"
+        name: "Latest Build"
+        body: "Automated build of the MedPro Android APK."
+        allowUpdates: true
+        replacesArtifacts: true
+        makeLatest: true
+        artifacts: "MedPro-Android-APK.zip"
+        token: ${{ secrets.GITHUB_TOKEN }}
