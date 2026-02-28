@@ -64,11 +64,11 @@ const ToothGeometry = ({ type, position, rotation, scale, i, isSelected, onClick
             castShadow
             receiveShadow
         >
-            {/* We use specific geometries based on tooth type: incisor vs molar */}
-            {type === 'incisor' && <boxGeometry args={[0.5, 1.2, 0.4]} />}
-            {type === 'canine' && <cylinderGeometry args={[0.2, 0.3, 1.4, 16]} />}
-            {type === 'premolar' && <cylinderGeometry args={[0.3, 0.35, 1.1, 16]} />}
-            {type === 'molar' && <boxGeometry args={[0.6, 0.9, 0.6]} />}
+            {/* We use specific geometries with soft scaling and radius rather than hard blocks */}
+            {type === 'incisor' && <sphereGeometry args={[0.3, 32, 16]} />}
+            {type === 'canine' && <sphereGeometry args={[0.35, 32, 16]} />}
+            {type === 'premolar' && <sphereGeometry args={[0.4, 32, 16]} />}
+            {type === 'molar' && <boxGeometry args={[0.6, 0.6, 0.6, 16, 16, 16]} />}
 
             <meshPhysicalMaterial {...materialProps} />
         </mesh>
@@ -114,7 +114,12 @@ export function RealisticDentition({ selectedTooth, onSelectTooth }: { selectedT
                     type={type}
                     position={[x, archY, z]}
                     rotation={[rotationX, rotationY, rotationZ]}
-                    scale={type === 'molar' ? 1.2 : 0.9}
+                    scale={
+                        type === 'molar' ? [1.2, 1.5, 1.2] :
+                            type === 'premolar' ? [1.0, 1.6, 0.9] :
+                                type === 'canine' ? [0.8, 2.0, 0.8] :
+                                    [1.2, 2.0, 0.4] // incisor
+                    }
                     isSelected={selectedTooth === toothId}
                     onClick={onSelectTooth}
                     onHover={() => { }}
