@@ -1,8 +1,8 @@
 import { motion } from 'framer-motion';
-import { ChevronRight, Clock, Activity, FileText, Smartphone, Download } from 'lucide-react';
+import { ChevronRight, Clock, Activity, FileText, Smartphone } from 'lucide-react';
 import { useState } from 'react';
 import { Modal } from '../../components/Modal';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 const data = [
     { name: 'Mon', revenue: 4000 },
