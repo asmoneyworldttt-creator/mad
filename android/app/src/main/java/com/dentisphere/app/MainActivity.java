@@ -1,4 +1,4 @@
-package com.cityclinic.medpro;
+package com.dentisphere.app;
 
 import com.getcapacitor.BridgeActivity;
 
