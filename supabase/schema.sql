@@ -57,8 +57,17 @@ ALTER TABLE public.appointments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pending_appointments ENABLE ROW LEVEL SECURITY;
 
 -- Anonymous users can read metadata (if needed) but let's allow all for demo purposes:
+DROP POLICY IF EXISTS "Allow anon read/write access" ON public.patients;
 CREATE POLICY "Allow anon read/write access" ON public.patients FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow anon read/write access" ON public.patient_history;
 CREATE POLICY "Allow anon read/write access" ON public.patient_history FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow anon read/write access" ON public.treatments_master;
 CREATE POLICY "Allow anon read/write access" ON public.treatments_master FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow anon read/write access" ON public.appointments;
 CREATE POLICY "Allow anon read/write access" ON public.appointments FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow anon read/write access" ON public.pending_appointments;
 CREATE POLICY "Allow anon read/write access" ON public.pending_appointments FOR ALL USING (true) WITH CHECK (true);

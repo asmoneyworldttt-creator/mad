@@ -6,20 +6,35 @@ import * as THREE from 'three';
 // In a true medical application, this is replaced by the 32 scanned GLTF meshes.
 // For this high-end demo, we procedurally generate arch-aligned shapes that resemble realistic teeth.
 
-const ToothGeometry = ({ type, position, rotation, scale, i, isSelected, onClick, onHover, onUnhover }: any) => {
+const ToothGeometry = ({ type, position, rotation, scale, i, isSelected, condition, onClick, onHover, onUnhover }: any) => {
     const meshRef = useRef<THREE.Mesh>(null);
     const [hovered, setHover] = useState(false);
 
     // We use realistic subsurface-like shading for enamel
     const materialProps = useMemo(() => {
+        let conditionColor = '#f8fcff'; // Healthy/Default
+        if (condition) {
+            const cond = condition.toLowerCase();
+            if (['decayed', 'fractured', 'abscess', 'active problem'].includes(cond)) conditionColor = '#e74c3c'; // Red
+            else if (['filled', 'treated'].includes(cond)) conditionColor = '#3498db'; // Blue
+            else if (['missing'].includes(cond)) conditionColor = '#95a5a6'; // Grey
+            else if (['sensitive', 'watch', 'monitor'].includes(cond)) conditionColor = '#f1c40f'; // Yellow
+            else if (['implant', 'crown placed', 'bridge abutment', 'crown'].includes(cond)) conditionColor = '#2ecc71'; // Green
+            else if (['rct done'].includes(cond)) conditionColor = '#e67e22'; // Orange
+        }
+
+        const baseColor = isSelected ? '#135bec' : (hovered ? '#4cf0ff' : conditionColor);
+
         return {
-            color: isSelected ? '#135bec' : (hovered ? '#4cf0ff' : '#f8fcff'),
-            roughness: 0.2,
+            color: baseColor,
+            roughness: condition === 'missing' ? 1 : 0.2, // Missing looks duller
             metalness: 0.1,
             emissive: isSelected ? '#135bec' : '#000000',
             emissiveIntensity: isSelected ? 0.2 : 0,
+            transparent: true,
+            opacity: condition === 'missing' ? 0.2 : 1 // Hide missing teeth slightly
         };
-    }, [isSelected, hovered]);
+    }, [isSelected, hovered, condition]);
 
     // Procedural subtle animation for interactive feel
     useFrame((state) => {
@@ -69,7 +84,7 @@ const ToothGeometry = ({ type, position, rotation, scale, i, isSelected, onClick
     );
 };
 
-export function RealisticDentition({ selectedTooth, onSelectTooth }: { selectedTooth: number | null, onSelectTooth: (num: number) => void }) {
+export function RealisticDentition({ selectedTooth, onSelectTooth, toothChartData = {} }: { selectedTooth: number | null, onSelectTooth: (num: number) => void, toothChartData?: any }) {
 
     // Generate the upper and lower arch (32 teeth) positioned procedurally in a U-shape
     const renderArch = (isUpper: boolean) => {
@@ -77,12 +92,12 @@ export function RealisticDentition({ selectedTooth, onSelectTooth }: { selectedT
         const radius = 3.5; // Radius of the dental arch
         const archY = isUpper ? 0.6 : -0.6; // Y separation between upper and lower
 
-        // Tooth IDs for upper arch: 1-16. Lower arch: 32-17 (right to left)
-        // To simplify procedural mapping, we'll map 1-16 on top, 17-32 on bottom
+        const upperIds = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
+        const lowerIds = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
+        const idMap = isUpper ? upperIds : lowerIds;
 
         for (let i = 0; i < 16; i++) {
             // Calculate angle along the U-shape (semi-circle)
-            // We map i to an angle. i=0 -> right back, i=7,8 -> front center, i=15 -> left back
             const angle = Math.PI - (i * Math.PI) / 15;
 
             const x = Math.cos(angle) * (radius - (i === 7 || i === 8 ? 0.5 : 0)); // Slightly flatten front
@@ -99,7 +114,9 @@ export function RealisticDentition({ selectedTooth, onSelectTooth }: { selectedT
             const rotationX = isUpper ? 0.1 : -0.1; // Flare out slightly
             const rotationZ = (i - 7.5) * (isUpper ? -0.05 : 0.05);
 
-            const toothId = isUpper ? 16 - i : 17 + i;
+            const toothId = idMap[i];
+            const toothInfo = toothChartData[toothId];
+            const tCondition = toothInfo ? toothInfo.condition : null;
 
             teeth.push(
                 <ToothGeometry
@@ -115,6 +132,7 @@ export function RealisticDentition({ selectedTooth, onSelectTooth }: { selectedT
                                     [1.2, 2.0, 0.4] // incisor
                     }
                     isSelected={selectedTooth === toothId}
+                    condition={tCondition}
                     onClick={onSelectTooth}
                     onHover={() => { }}
                     onUnhover={() => { }}

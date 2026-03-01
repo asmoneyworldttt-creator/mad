@@ -1,0 +1,449 @@
+{
+  "PT-202X0": {
+    "tooth_chart": {
+      "21": {
+        "condition": "Crown placed",
+        "surfaces": [],
+        "note": "PFM Crown"
+      },
+      "36": {
+        "condition": "Decayed",
+        "surfaces": [
+          "O"
+        ],
+        "note": "Deep caries"
+      },
+      "46": {
+        "condition": "Missing",
+        "surfaces": [],
+        "note": "Extracted long back"
+      }
+    }
+  },
+  "PT-202X1": {
+    "tooth_chart": {
+      "21": {
+        "condition": "Crown placed",
+        "surfaces": [],
+        "note": "PFM Crown"
+      }
+    }
+  },
+  "PT-202X2": {
+    "tooth_chart": {
+      "11": {
+        "condition": "Filled",
+        "surfaces": [],
+        "note": "Composite done"
+      },
+      "36": {
+        "condition": "Decayed",
+        "surfaces": [
+          "O"
+        ],
+        "note": "Deep caries"
+      }
+    }
+  },
+  "PT-202X3": {
+    "tooth_chart": {
+      "11": {
+        "condition": "Filled",
+        "surfaces": [],
+        "note": "Composite done"
+      },
+      "21": {
+        "condition": "Crown placed",
+        "surfaces": [],
+        "note": "PFM Crown"
+      },
+      "36": {
+        "condition": "Decayed",
+        "surfaces": [
+          "O"
+        ],
+        "note": "Deep caries"
+      }
+    }
+  },
+  "PT-202X4": {
+    "tooth_chart": {
+      "11": {
+        "condition": "Filled",
+        "surfaces": [],
+        "note": "Composite done"
+      },
+      "21": {
+        "condition": "Crown placed",
+        "surfaces": [],
+        "note": "PFM Crown"
+      }
+    }
+  },
+  "PT-202X5": {
+    "tooth_chart": {
+      "21": {
+        "condition": "Crown placed",
+        "surfaces": [],
+        "note": "PFM Crown"
+      },
+      "46": {
+        "condition": "Missing",
+        "surfaces": [],
+        "note": "Extracted long back"
+      }
+    }
+  },
+  "PT-202X6": {
+    "tooth_chart": {
+      "11": {
+        "condition": "Filled",
+        "surfaces": [],
+        "note": "Composite done"
+      }
+    }
+  },
+  "PT-202X7": {
+    "tooth_chart": {
+      "11": {
+        "condition": "Filled",
+        "surfaces": [],
+        "note": "Composite done"
+      },
+      "36": {
+        "condition": "Decayed",
+        "surfaces": [
+          "O"
+        ],
+        "note": "Deep caries"
+      }
+    }
+  },
+  "PT-202X8": {
+    "tooth_chart": {
+      "36": {
+        "condition": "Decayed",
+        "surfaces": [
+          "O"
+        ],
+        "note": "Deep caries"
+      }
+    }
+  },
+  "PT-202X9": {
+    "tooth_chart": {}
+  },
+  "PT-202X10": {
+    "tooth_chart": {
+      "11": {
+        "condition": "Filled",
+        "surfaces": [],
+        "note": "Composite done"
+      }
+    }
+  },
+  "PT-202X11": {
+    "tooth_chart": {
+      "21": {
+        "condition": "Crown placed",
+        "surfaces": [],
+        "note": "PFM Crown"
+      },
+      "46": {
+        "condition": "Missing",
+        "surfaces": [],
+        "note": "Extracted long back"
+      }
+    }
+  },
+  "PT-202X12": {
+    "tooth_chart": {
+      "21": {
+        "condition": "Crown placed",
+        "surfaces": [],
+        "note": "PFM Crown"
+      },
+      "36": {
+        "condition": "Decayed",
+        "surfaces": [
+          "O"
+        ],
+        "note": "Deep caries"
+      }
+    }
+  },
+  "PT-202X13": {
+    "tooth_chart": {
+      "36": {
+        "condition": "Decayed",
+        "surfaces": [
+          "O"
+        ],
+        "note": "Deep caries"
+      },
+      "46": {
+        "condition": "Missing",
+        "surfaces": [],
+        "note": "Extracted long back"
+      }
+    }
+  },
+  "PT-202X14": {
+    "tooth_chart": {
+      "36": {
+        "condition": "Decayed",
+        "surfaces": [
+          "O"
+        ],
+        "note": "Deep caries"
+      },
+      "46": {
+        "condition": "Missing",
+        "surfaces": [],
+        "note": "Extracted long back"
+      }
+    }
+  },
+  "PT-202X15": {
+    "tooth_chart": {
+      "11": {
+        "condition": "Filled",
+        "surfaces": [],
+        "note": "Composite done"
+      },
+      "21": {
+        "condition": "Crown placed",
+        "surfaces": [],
+        "note": "PFM Crown"
+      },
+      "36": {
+        "condition": "Decayed",
+        "surfaces": [
+          "O"
+        ],
+        "note": "Deep caries"
+      },
+      "46": {
+        "condition": "Missing",
+        "surfaces": [],
+        "note": "Extracted long back"
+      }
+    }
+  },
+  "PT-202X16": {
+    "tooth_chart": {
+      "21": {
+        "condition": "Crown placed",
+        "surfaces": [],
+        "note": "PFM Crown"
+      },
+      "36": {
+        "condition": "Decayed",
+        "surfaces": [
+          "O"
+        ],
+        "note": "Deep caries"
+      }
+    }
+  },
+  "PT-202X17": {
+    "tooth_chart": {
+      "11": {
+        "condition": "Filled",
+        "surfaces": [],
+        "note": "Composite done"
+      },
+      "21": {
+        "condition": "Crown placed",
+        "surfaces": [],
+        "note": "PFM Crown"
+      },
+      "46": {
+        "condition": "Missing",
+        "surfaces": [],
+        "note": "Extracted long back"
+      }
+    }
+  },
+  "PT-202X18": {
+    "tooth_chart": {
+      "11": {
+        "condition": "Filled",
+        "surfaces": [],
+        "note": "Composite done"
+      },
+      "36": {
+        "condition": "Decayed",
+        "surfaces": [
+          "O"
+        ],
+        "note": "Deep caries"
+      },
+      "46": {
+        "condition": "Missing",
+        "surfaces": [],
+        "note": "Extracted long back"
+      }
+    }
+  },
+  "PT-202X19": {
+    "tooth_chart": {
+      "11": {
+        "condition": "Filled",
+        "surfaces": [],
+        "note": "Composite done"
+      },
+      "21": {
+        "condition": "Crown placed",
+        "surfaces": [],
+        "note": "PFM Crown"
+      },
+      "36": {
+        "condition": "Decayed",
+        "surfaces": [
+          "O"
+        ],
+        "note": "Deep caries"
+      }
+    }
+  },
+  "PT-202X20": {
+    "tooth_chart": {
+      "36": {
+        "condition": "Decayed",
+        "surfaces": [
+          "O"
+        ],
+        "note": "Deep caries"
+      },
+      "46": {
+        "condition": "Missing",
+        "surfaces": [],
+        "note": "Extracted long back"
+      }
+    }
+  },
+  "PT-202X21": {
+    "tooth_chart": {
+      "11": {
+        "condition": "Filled",
+        "surfaces": [],
+        "note": "Composite done"
+      },
+      "36": {
+        "condition": "Decayed",
+        "surfaces": [
+          "O"
+        ],
+        "note": "Deep caries"
+      }
+    }
+  },
+  "PT-202X22": {
+    "tooth_chart": {
+      "11": {
+        "condition": "Filled",
+        "surfaces": [],
+        "note": "Composite done"
+      },
+      "36": {
+        "condition": "Decayed",
+        "surfaces": [
+          "O"
+        ],
+        "note": "Deep caries"
+      },
+      "46": {
+        "condition": "Missing",
+        "surfaces": [],
+        "note": "Extracted long back"
+      }
+    }
+  },
+  "PT-202X23": {
+    "tooth_chart": {
+      "11": {
+        "condition": "Filled",
+        "surfaces": [],
+        "note": "Composite done"
+      },
+      "36": {
+        "condition": "Decayed",
+        "surfaces": [
+          "O"
+        ],
+        "note": "Deep caries"
+      }
+    }
+  },
+  "PT-202X24": {
+    "tooth_chart": {}
+  },
+  "PT-202X25": {
+    "tooth_chart": {
+      "21": {
+        "condition": "Crown placed",
+        "surfaces": [],
+        "note": "PFM Crown"
+      },
+      "46": {
+        "condition": "Missing",
+        "surfaces": [],
+        "note": "Extracted long back"
+      }
+    }
+  },
+  "PT-202X26": {
+    "tooth_chart": {
+      "21": {
+        "condition": "Crown placed",
+        "surfaces": [],
+        "note": "PFM Crown"
+      },
+      "36": {
+        "condition": "Decayed",
+        "surfaces": [
+          "O"
+        ],
+        "note": "Deep caries"
+      }
+    }
+  },
+  "PT-202X27": {
+    "tooth_chart": {
+      "11": {
+        "condition": "Filled",
+        "surfaces": [],
+        "note": "Composite done"
+      }
+    }
+  },
+  "PT-202X28": {
+    "tooth_chart": {
+      "21": {
+        "condition": "Crown placed",
+        "surfaces": [],
+        "note": "PFM Crown"
+      },
+      "46": {
+        "condition": "Missing",
+        "surfaces": [],
+        "note": "Extracted long back"
+      }
+    }
+  },
+  "PT-202X29": {
+    "tooth_chart": {
+      "11": {
+        "condition": "Filled",
+        "surfaces": [],
+        "note": "Composite done"
+      },
+      "21": {
+        "condition": "Crown placed",
+        "surfaces": [],
+        "note": "PFM Crown"
+      }
+    }
+  }
+}

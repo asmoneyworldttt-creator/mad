@@ -8,17 +8,21 @@ const supabase = createClient(
 );
 
 async function checkTables() {
-    const { data: { session } } = await supabase.auth.getSession();
-    console.log("Checking tables via REST API");
-    // Since we don't know the exact schema, we might not have a generic RPC to execute SQL.
-    // Let's try to query an existing table like "patients"
-    const tables = ['patients', 'visits', 'treatments', 'earnings', 'roles', 'staff'];
+    console.log("Checking tables...");
+    const tables = ['patients', 'appointments', 'patient_history', 'bills', 'staff', 'earnings_transactions', 'staff_members', 'payroll_transactions'];
     for (const table of tables) {
-        const { data, error } = await supabase.from(table).select('*').limit(1);
-        if (error) {
-            console.log(`Table ${table} error:`, error.message);
-        } else {
-            console.log(`Table ${table} exists, columns:`, Object.keys(data[0] || {}).join(', '));
+        try {
+            const { data, error } = await supabase.from(table).select('*').limit(1);
+            if (error) {
+                console.log(`Table ${table} error: ${error.message}`);
+            } else {
+                console.log(`Table ${table} exists! Count: ${data?.length || 0}`);
+                if (data && data.length > 0) {
+                    console.log(`Table ${table} sample columns: ${Object.keys(data[0]).join(', ')}`);
+                }
+            }
+        } catch (e) {
+            console.log(`Table ${table} failed completely`);
         }
     }
 }

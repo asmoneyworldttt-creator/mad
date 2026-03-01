@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.cityclinic.medpro',
-  appName: 'MedPro',
+  appId: 'com.dentisphere.app',
+  appName: 'DentiSphere',
   webDir: 'dist'
 };
 

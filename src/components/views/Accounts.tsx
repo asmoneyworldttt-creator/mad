@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 import { Modal } from '../../components/Modal';
 import { useToast } from '../../components/Toast';
+import { supabase } from '../../supabase';
 
 export function Accounts() {
     const [activeTab, setActiveTab] = useState<'income' | 'expenses'>('income');
@@ -9,27 +10,55 @@ export function Accounts() {
     const [isIncomeModalOpen, setIsIncomeModalOpen] = useState(false);
     const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
 
-    // Mock Data
-    const [incomes] = useState([
-        { id: 1, date: '01-03-2026', category: 'Hospital Visits', remark: 'Routine Checkup', amount: 1500, received: 1500 },
-        { id: 2, date: '28-02-2026', category: 'Treatment', remark: 'RCT', amount: 8000, received: 5000 },
-    ]);
+    const [incomes, setIncomes] = useState<any[]>([]);
+    const [expenses, setExpenses] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
-    const [expenses] = useState([
-        { id: 1, date: '01-03-2026', category: 'Staff Salary', remark: 'March Salary', amount: 45000 },
-        { id: 2, date: '25-02-2026', category: 'Material Purchase', remark: 'Composite Syringes', amount: 12000 },
-    ]);
+    const [form, setForm] = useState({
+        category: 'Hospital Visits',
+        date: new Date().toISOString().split('T')[0],
+        remark: '',
+        amount: 0,
+        received: 0
+    });
 
-    const handleAddIncome = (e: React.FormEvent) => {
-        e.preventDefault();
-        showToast('Income added successfully!', 'success');
-        setIsIncomeModalOpen(false);
+    useEffect(() => {
+        fetchAccounts();
+    }, [activeTab]);
+
+    const fetchAccounts = async () => {
+        setIsLoading(true);
+        const { data } = await supabase
+            .from('accounts')
+            .select('*')
+            .eq('type', activeTab === 'income' ? 'income' : 'expense')
+            .order('date', { ascending: false });
+
+        if (activeTab === 'income') setIncomes(data || []);
+        else setExpenses(data || []);
+        setIsLoading(false);
     };
 
-    const handleAddExpense = (e: React.FormEvent) => {
+    const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        showToast('Expense added successfully!', 'success');
-        setIsExpenseModalOpen(false);
+        const { error } = await supabase.from('accounts').insert({
+            type: activeTab === 'income' ? 'income' : 'expense',
+            category: form.category,
+            date: form.date,
+            remark: form.remark,
+            amount: form.amount,
+            received_amount: activeTab === 'income' ? form.received : form.amount
+        });
+
+        if (error) {
+            showToast('Error saving record', 'error');
+        } else {
+            showToast(`${activeTab === 'income' ? 'Income' : 'Expense'} added successfully!`, 'success');
+            setIsIncomeModalOpen(false);
+            setIsExpenseModalOpen(false);
+            setForm({ category: 'Hospital Visits', date: new Date().toISOString().split('T')[0], remark: '', amount: 0, received: 0 });
+            fetchAccounts();
+        }
     };
 
     return (
@@ -72,7 +101,12 @@ export function Accounts() {
                 </div>
 
                 <div className="overflow-x-auto">
-                    {activeTab === 'income' ? (
+                    {isLoading ? (
+                        <div className="p-12 text-center">
+                            <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
+                            <p className="text-slate-500 font-medium">Synchronizing Financial Records...</p>
+                        </div>
+                    ) : activeTab === 'income' ? (
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500 font-bold">
@@ -85,10 +119,10 @@ export function Accounts() {
                             <tbody className="divide-y divide-slate-100">
                                 {incomes.map((item) => (
                                     <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
-                                        <td className="p-4 font-bold text-sm text-text-dark">{item.date}</td>
+                                        <td className="p-4 font-bold text-sm text-text-dark">{new Date(item.date).toLocaleDateString()}</td>
                                         <td className="p-4 text-sm font-medium text-slate-600">{item.category}</td>
                                         <td className="p-4 text-sm font-bold text-text-dark">₹{item.amount.toLocaleString()}</td>
-                                        <td className="p-4 text-sm font-bold text-success">₹{item.received.toLocaleString()}</td>
+                                        <td className="p-4 text-sm font-bold text-success">₹{item.received_amount?.toLocaleString() || '0'}</td>
                                     </tr>
                                 ))}
                                 {incomes.length === 0 && (
@@ -110,7 +144,7 @@ export function Accounts() {
                             <tbody className="divide-y divide-slate-100">
                                 {expenses.map((item) => (
                                     <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
-                                        <td className="p-4 font-bold text-sm text-text-dark">{item.date}</td>
+                                        <td className="p-4 font-bold text-sm text-text-dark">{new Date(item.date).toLocaleDateString()}</td>
                                         <td className="p-4 text-sm font-medium text-slate-600">{item.category}</td>
                                         <td className="p-4 text-sm font-bold text-alert">₹{item.amount.toLocaleString()}</td>
                                     </tr>
@@ -126,13 +160,16 @@ export function Accounts() {
                 </div>
             </div>
 
-            {/* Income Modal */}
             <Modal isOpen={isIncomeModalOpen} onClose={() => setIsIncomeModalOpen(false)} title="Income Details" maxWidth="max-w-xl">
-                <form onSubmit={handleAddIncome} className="space-y-4">
+                <form onSubmit={handleSave} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="text-xs font-bold text-slate-500 mb-1 block">Category</label>
-                            <select className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all outline-none">
+                            <select
+                                value={form.category}
+                                onChange={e => setForm({ ...form, category: e.target.value })}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all outline-none"
+                            >
                                 <option>Hospital Visits</option>
                                 <option>Treatment Fee</option>
                                 <option>Other Income</option>
@@ -140,19 +177,42 @@ export function Accounts() {
                         </div>
                         <div>
                             <label className="text-xs font-bold text-slate-500 mb-1 block">Date <span className="text-alert">*</span></label>
-                            <input type="date" required className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all outline-none" defaultValue={new Date().toISOString().split('T')[0]} />
+                            <input
+                                type="date"
+                                required
+                                value={form.date}
+                                onChange={e => setForm({ ...form, date: e.target.value })}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all outline-none"
+                            />
                         </div>
                         <div className="col-span-2">
                             <label className="text-xs font-bold text-slate-500 mb-1 block">Remark <span className="text-alert">*</span></label>
-                            <textarea required rows={2} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all outline-none"></textarea>
+                            <textarea
+                                required
+                                rows={2}
+                                value={form.remark}
+                                onChange={e => setForm({ ...form, remark: e.target.value })}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all outline-none"
+                            ></textarea>
                         </div>
                         <div>
                             <label className="text-xs font-bold text-slate-500 mb-1 block">Due Amount <span className="text-alert">*</span></label>
-                            <input type="number" required className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all outline-none" />
+                            <input
+                                type="number"
+                                required
+                                value={form.amount}
+                                onChange={e => setForm({ ...form, amount: parseFloat(e.target.value) || 0 })}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all outline-none"
+                            />
                         </div>
                         <div>
                             <label className="text-xs font-bold text-slate-500 mb-1 block">Received Amount</label>
-                            <input type="number" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all outline-none" />
+                            <input
+                                type="number"
+                                value={form.received}
+                                onChange={e => setForm({ ...form, received: parseFloat(e.target.value) || 0 })}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all outline-none"
+                            />
                         </div>
                     </div>
                     <div className="flex justify-center mt-6 pt-4 border-t border-slate-100">
@@ -163,13 +223,16 @@ export function Accounts() {
                 </form>
             </Modal>
 
-            {/* Expense Modal */}
             <Modal isOpen={isExpenseModalOpen} onClose={() => setIsExpenseModalOpen(false)} title="Expenses Details" maxWidth="max-w-xl">
-                <form onSubmit={handleAddExpense} className="space-y-4">
+                <form onSubmit={handleSave} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="text-xs font-bold text-slate-500 mb-1 block">Category</label>
-                            <select className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all outline-none">
+                            <select
+                                value={form.category}
+                                onChange={e => setForm({ ...form, category: e.target.value })}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all outline-none"
+                            >
                                 <option>Staff Salary</option>
                                 <option>Equipment Purchase</option>
                                 <option>Clinic Rent</option>
@@ -179,15 +242,33 @@ export function Accounts() {
                         </div>
                         <div>
                             <label className="text-xs font-bold text-slate-500 mb-1 block">Date <span className="text-alert">*</span></label>
-                            <input type="date" required className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all outline-none" defaultValue={new Date().toISOString().split('T')[0]} />
+                            <input
+                                type="date"
+                                required
+                                value={form.date}
+                                onChange={e => setForm({ ...form, date: e.target.value })}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all outline-none"
+                            />
                         </div>
                         <div className="col-span-2">
                             <label className="text-xs font-bold text-slate-500 mb-1 block">Remark <span className="text-alert">*</span></label>
-                            <textarea required rows={2} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all outline-none"></textarea>
+                            <textarea
+                                required
+                                rows={2}
+                                value={form.remark}
+                                onChange={e => setForm({ ...form, remark: e.target.value })}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all outline-none"
+                            ></textarea>
                         </div>
                         <div>
                             <label className="text-xs font-bold text-slate-500 mb-1 block">Amount <span className="text-alert">*</span></label>
-                            <input type="number" required className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all outline-none" />
+                            <input
+                                type="number"
+                                required
+                                value={form.amount}
+                                onChange={e => setForm({ ...form, amount: parseFloat(e.target.value) || 0 })}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all outline-none"
+                            />
                         </div>
                         <div>
                             <label className="text-xs font-bold text-slate-500 mb-1 block">Clinic</label>

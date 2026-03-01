@@ -1,6 +1,6 @@
 import {
     LayoutDashboard, Calendar, Users,
-    Activity, Settings, HeartPulse, FileText, DollarSign, FlaskConical,
+    Activity, Settings, FileText, DollarSign, FlaskConical,
     WalletCards, PackageSearch, FileBarChart
 } from 'lucide-react';
 
@@ -27,12 +27,12 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: { active
             )}
             <div className={`w-64 border-r border-slate-200 bg-surface h-screen fixed left-0 top-0 flex flex-col shadow-sm z-50 transition-transform duration-300 ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
                 <div className="p-6 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center shadow-premium shadow-primary/30">
-                        <HeartPulse size={24} />
+                    <div className="w-12 h-12 rounded-xl bg-white overflow-hidden flex items-center justify-center shadow-lg border border-slate-100">
+                        <img src="/logo.png" alt="DentiSphere Logo" className="w-full h-full object-contain p-1" />
                     </div>
                     <div>
-                        <h1 className="font-display font-bold text-xl text-text-dark">MedPro</h1>
-                        <p className="text-[10px] uppercase tracking-widest text-primary font-bold">Premium</p>
+                        <h1 className="font-display font-bold text-xl text-text-dark leading-tight">DentiSphere</h1>
+                        <p className="text-[10px] uppercase tracking-widest text-primary font-bold">Premium Clinic</p>
                     </div>
                 </div>
 

@@ -88,7 +88,7 @@ export function Patients() {
         const link = document.createElement('a');
         const url = URL.createObjectURL(blob);
         link.setAttribute('href', url);
-        link.setAttribute('download', 'medpro_patients.csv');
+        link.setAttribute('download', 'dentisphere_patients.csv');
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
@@ -109,6 +109,12 @@ export function Patients() {
                         className="px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors flex-1 md:flex-none"
                     >
                         <Download size={16} /> Export CSV
+                    </button>
+                    <button
+                        onClick={() => { showToast('Search patient to update...', 'success'); document.getElementById('global-search-input')?.focus(); }}
+                        className="px-4 py-2 border border-primary/20 bg-primary/5 hover:bg-primary/10 text-primary rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors flex-1 md:flex-none"
+                    >
+                        <Activity size={16} /> Update Profile
                     </button>
                     <button
                         onClick={() => { setIsAddPatientOpen(true); setNewlyRegisteredId(null); setNewPatient({ firstName: '', lastName: '', age: '', gender: 'Male', bloodGroup: '', phone: '', address: '', whatsappNumber: '' }); }}
@@ -136,29 +142,33 @@ export function Patients() {
                             <Filter size={16} /> Filters
                         </button>
                         {isFilterOpen && (
-                            <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl border border-slate-200 shadow-xl z-20 max-h-64 overflow-y-auto">
-                                <div className="p-2">
-                                    <p className="px-2 py-1 text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Filter by Treatment</p>
-                                    <button onClick={() => setTreatmentFilter('')} className={`w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-slate-50 ${treatmentFilter === '' ? 'bg-primary/5 text-primary font-bold' : 'text-slate-600'}`}>All Treatments</button>
-                                    <div className="max-h-40 overflow-y-auto custom-scrollbar">
-                                        {treatmentsMaster.map(t => (
-                                            <button key={t.id} onClick={() => setTreatmentFilter(t.name)} className={`w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-slate-50 ${treatmentFilter === t.name ? 'bg-primary/5 text-primary font-bold' : 'text-slate-600'}`}>
-                                                {t.name}
-                                            </button>
-                                        ))}
+                            <div className="absolute right-0 top-full mt-2 w-full md:w-[600px] bg-white rounded-[2rem] border border-slate-200 shadow-2xl z-50 p-8 animate-in zoom-in-95 duration-300">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Select Treatment Type</p>
+                                        <div className="max-h-60 overflow-y-auto custom-scrollbar pr-2 space-y-1">
+                                            <button onClick={() => setTreatmentFilter('')} className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${treatmentFilter === '' ? 'bg-primary text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'}`}>All Treatments</button>
+                                            {treatmentsMaster.map(t => (
+                                                <button key={t.id} onClick={() => setTreatmentFilter(t.name)} className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${treatmentFilter === t.name ? 'bg-primary text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'}`}>
+                                                    {t.name}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
-                                    <div className="border-t border-slate-100 mt-2 pt-2">
-                                        <p className="px-2 py-1 text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Time Duration</p>
-                                        <select className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-sm text-slate-600 outline-none">
-                                            <option>All Time</option>
-                                            <option>Today</option>
-                                            <option>Yesterday</option>
-                                            <option>This Week</option>
-                                            <option>This Month</option>
-                                            <option>Custom Date Range</option>
-                                        </select>
+                                    <div className="flex flex-col">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Time Duration</p>
+                                        <div className="space-y-3">
+                                            {['All Time', 'Today', 'Yesterday', 'This Week', 'This Month'].map(time => (
+                                                <button key={time} className="w-full text-left px-4 py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 transition-all flex justify-between items-center group">
+                                                    {time}
+                                                    <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <div className="mt-auto pt-6 border-t border-slate-100">
+                                            <button onClick={() => setIsFilterOpen(false)} className="w-full bg-primary hover:bg-primary-hover text-white py-3 rounded-2xl font-bold shadow-premium shadow-primary/20 transition-all active:scale-95 uppercase tracking-widest text-xs">Apply Selection</button>
+                                        </div>
                                     </div>
-                                    <button onClick={() => setIsFilterOpen(false)} className="w-full mt-3 bg-primary hover:bg-primary-hover text-white flex items-center justify-center rounded-lg font-bold text-xs py-2 shadow-sm">Apply Filters</button>
                                 </div>
                             </div>
                         )}

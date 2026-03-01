@@ -1,16 +1,25 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Plus, Save, IndianRupee, ArrowLeft, FlaskConical, SearchX } from 'lucide-react';
 import { useToast } from '../../components/Toast';
+import { supabase } from '../../supabase';
 
 export function LabWork() {
     const { showToast } = useToast();
     const [view, setView] = useState<'list' | 'add'>('list');
 
-    // MOCK DATA for listing
-    const [orders, setOrders] = useState([
-        { id: 'ORD-101', date: '2026-03-01', patient: 'Michael Chen', vendor: 'DentalTech Labs', status: 'Sent', amount: 4500 },
-        { id: 'ORD-102', date: '2026-02-28', patient: 'Emma Watson', vendor: 'Ceramic Pro', status: 'Trial Received', amount: 8200 },
-    ]);
+    const [orders, setOrders] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        fetchLabOrders();
+    }, []);
+
+    const fetchLabOrders = async () => {
+        setIsLoading(true);
+        const { data } = await supabase.from('lab_orders').select('*, patients!patient_id(name)').order('date', { ascending: false });
+        if (data) setOrders(data);
+        setIsLoading(false);
+    };
 
     // ADD FORM STATE
     const [formData, setFormData] = useState({
@@ -44,19 +53,51 @@ export function LabWork() {
         });
     };
 
-    const handleSaveOrder = () => {
+    const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [selectedPatient, setSelectedPatient] = useState<any>(null);
+
+    useEffect(() => {
+        if (formData.patientSearch.length > 2) {
+            const searchPatients = async () => {
+                const { data } = await supabase
+                    .from('patients')
+                    .select('*')
+                    .or(`name.ilike.%${formData.patientSearch}%,phone.ilike.%${formData.patientSearch}%`)
+                    .limit(5);
+                setSearchResults(data || []);
+            };
+            searchPatients();
+        } else {
+            setSearchResults([]);
+        }
+    }, [formData.patientSearch]);
+
+    const handleSelectPatient = (p: any) => {
+        setSelectedPatient(p);
+        setFormData({ ...formData, patientSearch: p.name });
+        setSearchResults([]);
+    };
+
+    const handleSaveOrder = async () => {
         const totalAmount = (formData.financial.qty * formData.financial.rate) + formData.financial.tax - formData.financial.discount;
-        const newOrder = {
-            id: `ORD-${Math.floor(Math.random() * 1000) + 200}`,
-            date: formData.orderDate,
-            patient: formData.patientSearch || 'Walk-in Patient',
-            vendor: formData.vendor || 'Unassigned Lab',
-            status: formData.financial.status,
-            amount: totalAmount
-        };
-        setOrders([newOrder, ...orders]);
-        showToast('Lab Order created successfully!', 'success');
-        setView('list');
+
+        const { error } = await supabase.from('lab_orders').insert({
+            patient_id: selectedPatient?.id,
+            test_name: formData.prosthesis.join(', ') || 'General Lab Work',
+            lab_name: formData.vendor,
+            status: 'Pending',
+            cost: totalAmount,
+            date: formData.orderDate
+        });
+
+        if (error) {
+            showToast('Error saving lab order', 'error');
+        } else {
+            showToast('Lab Order created successfully!', 'success');
+            setView('list');
+            setSelectedPatient(null);
+            fetchLabOrders();
+        }
     };
 
     // Tooth Map config
@@ -118,6 +159,25 @@ export function LabWork() {
                             <div className="relative">
                                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                                 <input type="text" placeholder="Search Patient by name or phone..." value={formData.patientSearch} onChange={e => setFormData({ ...formData, patientSearch: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 pl-9 pr-4 text-sm focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all font-medium" />
+                                {searchResults.length > 0 && (
+                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
+                                        {searchResults.map(p => (
+                                            <button
+                                                key={p.id}
+                                                onClick={() => handleSelectPatient(p)}
+                                                className="w-full text-left px-4 py-3 hover:bg-slate-50 flex items-center gap-3 transition-colors border-b border-slate-50 last:border-0"
+                                            >
+                                                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
+                                                    {p.name.charAt(0)}
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-sm text-slate-700">{p.name}</p>
+                                                    <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">{p.phone} • {p.id}</p>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -350,14 +410,21 @@ export function LabWork() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {orders.map((o, idx) => (
-                                <tr key={idx} className="hover:bg-slate-50/80 transition-colors group">
+                            {isLoading ? (
+                                <tr>
+                                    <td colSpan={6} className="p-12 text-center">
+                                        <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
+                                        <p className="text-slate-500 font-medium">Fetching Laboratory Status...</p>
+                                    </td>
+                                </tr>
+                            ) : orders.map((o, idx) => (
+                                <tr key={o.id || idx} className="hover:bg-slate-50/80 transition-colors group">
                                     <td className="p-4">
-                                        <p className="font-bold text-text-dark text-sm">{o.id}</p>
+                                        <p className="font-bold text-text-dark text-sm">{o.id.slice(0, 8)}...</p>
                                         <p className="text-xs font-medium text-slate-500">{o.date}</p>
                                     </td>
-                                    <td className="p-4 font-bold text-sm text-slate-700">{o.patient}</td>
-                                    <td className="p-4 text-sm font-medium text-slate-600">{o.vendor}</td>
+                                    <td className="p-4 font-bold text-sm text-slate-700">{o.patients?.name || 'Manual Entry'}</td>
+                                    <td className="p-4 text-sm font-medium text-slate-600">{o.lab_name}</td>
                                     <td className="p-4 text-center">
                                         <div className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${o.status === 'Sent' ? 'bg-amber-100 text-amber-700' :
                                             o.status === 'Trial Received' ? 'bg-blue-100 text-blue-700' :
@@ -368,7 +435,7 @@ export function LabWork() {
                                         </div>
                                     </td>
                                     <td className="p-4 text-right">
-                                        <p className="text-sm font-bold text-text-dark">₹{o.amount.toLocaleString('en-IN')}</p>
+                                        <p className="text-sm font-bold text-text-dark">₹{o.cost?.toLocaleString('en-IN')}</p>
                                     </td>
                                     <td className="p-4 text-right">
                                         <button className="text-xs font-bold text-primary hover:text-primary-hover px-3 py-1.5 rounded bg-primary/5 hover:bg-primary/10 transition-colors">

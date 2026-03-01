@@ -13,18 +13,30 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 'max-w-md' 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className={`bg-white rounded-2xl shadow-xl w-full ${maxWidth} overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-4 duration-300`}>
-                <div className="flex justify-between items-center p-6 border-b border-slate-100">
-                    <h3 className="font-display font-bold text-xl text-text-dark">{title}</h3>
-                    <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-full transition-colors">
-                        <X size={20} />
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-[2px] animate-in fade-in duration-300">
+            <div className={`bg-white rounded-[2rem] shadow-2xl w-full ${maxWidth} overflow-hidden flex flex-col max-h-[95vh] animate-in zoom-in-95 duration-300 border border-white/20 shadow-primary/10`}>
+                <div className="flex justify-between items-center p-8 pb-4">
+                    <h3 className="font-display font-bold text-2xl text-text-dark tracking-tight">{title}</h3>
+                    <button onClick={onClose} className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-full transition-all active:scale-90">
+                        <X size={24} />
                     </button>
                 </div>
-                <div className="p-6 overflow-y-auto">
+                <div className="p-8 pt-2 overflow-y-auto custom-scrollbar">
                     {children}
                 </div>
             </div>
+            <style>{`
+                .custom-scrollbar::-webkit-scrollbar {
+                  width: 6px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-track {
+                  background: transparent;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb {
+                  background-color: #E2E8F0;
+                  border-radius: 20px;
+                }
+            `}</style>
         </div>
     );
 }

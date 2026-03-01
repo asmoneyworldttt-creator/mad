@@ -1,10 +1,12 @@
--- Update existing patients table with new mandatory fields
 ALTER TABLE public.patients 
 ADD COLUMN IF NOT EXISTS last_name TEXT,
 ADD COLUMN IF NOT EXISTS address TEXT,
-ADD COLUMN IF NOT EXISTS whatsapp_number TEXT;
+ADD COLUMN IF NOT EXISTS whatsapp_number TEXT,
+ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+
 
 -- Create staff roles and permissions table
+
 CREATE TABLE IF NOT EXISTS public.staff (
     id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     user_id TEXT UNIQUE, -- can be linked to supabase auth later
@@ -72,9 +74,25 @@ ALTER TABLE public.bills ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.case_notes ENABLE ROW LEVEL SECURITY;
 
 -- Demo mode permissive policies
+DROP POLICY IF EXISTS "Allow anon read/write access" ON public.staff;
 CREATE POLICY "Allow anon read/write access" ON public.staff FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow anon read/write access" ON public.branches;
 CREATE POLICY "Allow anon read/write access" ON public.branches FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow anon read/write access" ON public.prescriptions;
 CREATE POLICY "Allow anon read/write access" ON public.prescriptions FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow anon read/write access" ON public.patient_files;
 CREATE POLICY "Allow anon read/write access" ON public.patient_files FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow anon read/write access" ON public.bills;
 CREATE POLICY "Allow anon read/write access" ON public.bills FOR ALL USING (true) WITH CHECK (true);
+
+
+-- Fix appointments table for automated ID generation
+ALTER TABLE public.appointments ALTER COLUMN id SET DEFAULT gen_random_uuid()::text;
+ALTER TABLE public.appointments ALTER COLUMN date TYPE DATE USING date::DATE;
+
+DROP POLICY IF EXISTS "Allow anon read/write access" ON public.case_notes;
 CREATE POLICY "Allow anon read/write access" ON public.case_notes FOR ALL USING (true) WITH CHECK (true);

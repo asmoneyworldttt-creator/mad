@@ -1,9 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Plus, Save, IndianRupee, Calendar } from 'lucide-react';
 import { useToast } from '../../components/Toast';
+import { supabase } from '../../supabase';
 
 export function QuickBills() {
     const { showToast } = useToast();
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [selectedPatient, setSelectedPatient] = useState<any>(null);
+
     const [patientInfo, setPatientInfo] = useState({ id: '', name: '', phone: '' });
     const [treatmentInfo, setTreatmentInfo] = useState({
         complaint: '',
@@ -24,10 +29,81 @@ export function QuickBills() {
         followUpTime: ''
     });
 
-    const handleSave = () => {
-        showToast('Bill saved successfully!', 'success');
+    useEffect(() => {
+        if (searchQuery.length > 2) {
+            const searchPatients = async () => {
+                const { data } = await supabase
+                    .from('patients')
+                    .select('*')
+                    .or(`name.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%`)
+                    .limit(5);
+                setSearchResults(data || []);
+            };
+            searchPatients();
+        } else {
+            setSearchResults([]);
+        }
+    }, [searchQuery]);
+
+    const handleSelectPatient = (p: any) => {
+        setSelectedPatient(p);
+        setPatientInfo({ id: p.id, name: p.name, phone: p.phone });
+        setSearchQuery('');
+        setSearchResults([]);
+    };
+
+    const handleSave = async () => {
+        if (!selectedPatient && !patientInfo.name) {
+            showToast('Please select or enter patient info.', 'error');
+            return;
+        }
+
+        const patientId = selectedPatient?.id || `PT-${Math.floor(Math.random() * 100000)}`;
+        const date = new Date().toISOString().split('T')[0];
+
+        // 1. Save Bill
+        const { error: billError } = await supabase.from('bills').insert({
+            id: `BIL-${Math.floor(Math.random() * 100000)}`,
+            patient_id: patientId,
+            amount: billingInfo.total,
+            status: 'paid',
+            date: date
+        });
+
+        // 2. Save Treatment History
+        const { error: historyError } = await supabase.from('patient_history').insert({
+            id: `HST-${Math.floor(Math.random() * 100000)}`,
+            patient_id: patientId,
+            date: date,
+            treatment: treatmentInfo.treatmentDone || 'General Consultation',
+            category: 'General',
+            cost: billingInfo.total,
+            notes: treatmentInfo.observationNotes
+        });
+
+        // 3. Save Follow-up Appointment if needed
         if (followUpInfo.followUpDate) {
-            showToast('Follow-up appointment booked for ' + followUpInfo.followUpDate, 'success');
+            await supabase.from('appointments').insert({
+                id: `APT-${Math.floor(Math.random() * 100000)}`,
+                name: patientInfo.name,
+                time: followUpInfo.followUpTime || '10:00 AM',
+                type: 'Follow-up',
+                status: 'Confirmed',
+                date: followUpInfo.followUpDate
+            });
+            showToast('Follow-up appointment booked!', 'success');
+        }
+
+        if (billError || historyError) {
+            showToast('Error saving bill record.', 'error');
+        } else {
+            showToast('Quick Bill & History saved successfully!', 'success');
+            // Reset form
+            setTreatmentInfo({ complaint: '', treatmentDone: '', observationNotes: '', medicine: '' });
+            setBillingInfo({ fees: 0, discount: 0, total: 0 });
+            setFollowUpInfo({ remarks: '', advice: '', referTo: '', followUpDate: '', followUpTime: '' });
+            setSelectedPatient(null);
+            setPatientInfo({ id: '', name: '', phone: '' });
         }
     };
 
@@ -79,8 +155,47 @@ export function QuickBills() {
                         <div className="space-y-4">
                             <div className="relative">
                                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                <input type="text" placeholder="Search mobile or name..." className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 pl-9 pr-4 text-sm focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all" />
+                                <input
+                                    type="text"
+                                    placeholder="Search mobile or name..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full bg-white border border-slate-200 rounded-lg py-2.5 pl-9 pr-4 text-sm focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all shadow-sm"
+                                />
+                                {searchResults.length > 0 && (
+                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
+                                        {searchResults.map(p => (
+                                            <button
+                                                key={p.id}
+                                                onClick={() => handleSelectPatient(p)}
+                                                className="w-full text-left px-4 py-3 hover:bg-slate-50 flex items-center gap-3 transition-colors border-b border-slate-50 last:border-0"
+                                            >
+                                                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
+                                                    {p.name.charAt(0)}
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-sm text-slate-700">{p.name}</p>
+                                                    <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">{p.phone} • {p.id}</p>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
+                            {selectedPatient && (
+                                <div className="p-3 bg-primary/5 border border-primary/20 rounded-xl flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold">
+                                            {selectedPatient.name.charAt(0)}
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-sm text-primary">{selectedPatient.name}</p>
+                                            <p className="text-xs text-slate-500">{selectedPatient.phone}</p>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => setSelectedPatient(null)} className="text-xs font-bold text-slate-400 hover:text-red-500">Change</button>
+                                </div>
+                            )}
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="text-xs font-bold text-slate-500 mb-1 block">Patient Name</label>

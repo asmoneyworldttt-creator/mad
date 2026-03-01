@@ -1,19 +1,30 @@
 import { Bell, Search, UserPlus, Menu } from 'lucide-react';
 import { useToast } from './Toast';
 import { useState } from 'react';
+import { supabase } from '../supabase';
+import { PatientProfileModal } from './views/PatientProfileModal';
 
 export function Header({ toggleMenu }: { toggleMenu: () => void }) {
     const { showToast } = useToast();
 
     const [searchQuery, setSearchQuery] = useState('');
 
-    const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const [selectedPatient, setSelectedPatient] = useState<any>(null);
+
+    const handleSearch = async (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' && searchQuery.trim()) {
-            showToast(`Searching global records for Patient ID: ${searchQuery}`, 'success');
-            // Mock opening clinical dashboard
-            setTimeout(() => {
-                showToast(`Opened Clinical Dashboard for ${searchQuery}`, 'success');
-            }, 1000);
+            const { data } = await supabase
+                .from('patients')
+                .select('*, patient_history(*)')
+                .or(`name.ilike.%${searchQuery}%,id.eq.${searchQuery},phone.eq.${searchQuery}`)
+                .limit(1);
+
+            if (data && data.length > 0) {
+                setSelectedPatient(data[0]);
+                showToast(`Found Patient: ${data[0].name}`, 'success');
+            } else {
+                showToast('No patient found with that ID or Name', 'error');
+            }
             setSearchQuery('');
         }
     };
@@ -65,6 +76,7 @@ export function Header({ toggleMenu }: { toggleMenu: () => void }) {
                     <span className="hidden sm:inline">New Patient</span>
                 </button>
             </div>
+            <PatientProfileModal isOpen={!!selectedPatient} onClose={() => setSelectedPatient(null)} patient={selectedPatient} />
         </div>
     );
 }

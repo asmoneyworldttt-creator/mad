@@ -16,6 +16,7 @@ import { LabWork } from './components/views/LabWork';
 import { Accounts } from './components/views/Accounts';
 import { Inventory } from './components/views/Inventory';
 import { Reports } from './components/views/Reports';
+import { GlobalAIAssistant } from './components/ai/GlobalAIAssistant';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -72,10 +73,10 @@ function App() {
         {isMobileApp && (
           <div className="h-16 px-4 flex items-center justify-between border-b border-slate-200 bg-white shadow-sm z-30 sticky top-0">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-primary-hover shadow-premium flex items-center justify-center">
-                <span className="text-white font-display font-bold text-lg">M</span>
+              <div className="w-10 h-10 rounded-xl bg-white overflow-hidden flex items-center justify-center shadow-lg border border-slate-100">
+                <img src="/logo.png" alt="DentiSphere Logo" className="w-full h-full object-contain p-1" />
               </div>
-              <h1 className="font-display font-bold text-xl text-text-dark tracking-tight">MedPro<span className="text-xs ml-1 text-primary bg-primary/10 px-1.5 py-0.5 rounded font-bold align-top">APP</span></h1>
+              <h1 className="font-display font-bold text-xl text-text-dark tracking-tight">DentiSphere<span className="text-xs ml-1 text-primary bg-primary/10 px-1.5 py-0.5 rounded font-bold align-top">APP</span></h1>
             </div>
             <div className="w-8 h-8 rounded-full border border-slate-200 shadow-sm flex items-center justify-center text-slate-500 font-bold text-xs bg-slate-50">Dr</div>
           </div>
@@ -89,6 +90,7 @@ function App() {
       </div>
 
       {isMobileApp && <MobileBottomNav activeTab={activeTab} setActiveTab={setActiveTab} />}
+      <GlobalAIAssistant activeTab={activeTab} />
 
       <style>{`
         .pt-safe-top {

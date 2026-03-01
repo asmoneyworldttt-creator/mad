@@ -1,22 +1,91 @@
 import { FileText, Download, Share2, Plus, Search } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useToast } from '../Toast';
-import { mockPatients } from '../../data/mockData';
+import { supabase } from '../../supabase';
 import { Modal } from '../../components/Modal';
 
 export function Prescriptions() {
     const { showToast } = useToast();
     const [isPrescModalOpen, setIsPrescModalOpen] = useState(false);
+    const [prescriptions, setPrescriptions] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
-    // Get latest visits from mock data
-    const latestPrescriptions = mockPatients.map(p => ({
-        patient: p.name,
-        date: p.history[0]?.date || 'N/A',
-        treatment: p.history[0]?.treatment || 'Consultation',
-        status: p.history[0] ? 'Sent via WhatsApp' : 'Draft',
-        id: `Rx-${p.history[0]?.id.split('-')[1] || '000'}`,
-        meds: p.history[0] ? (p.history[0].id.length % 3) + 1 : 0
-    })).slice(0, 8); // Just show top 8 for UI
+    const [newPresc, setNewPresc] = useState({
+        patientName: '',
+        medicineNotes: ''
+    });
+
+    useEffect(() => {
+        fetchPrescriptions();
+    }, []);
+
+    const fetchPrescriptions = async () => {
+        setIsLoading(true);
+        const { data, error } = await supabase
+            .from('prescriptions')
+            .select('*, patients(name)')
+            .order('created_at', { ascending: false });
+        if (error) {
+            showToast('Error fetching prescriptions', 'error');
+            console.error(error);
+        } else if (data) {
+            setPrescriptions(data);
+        }
+        setIsLoading(false);
+    };
+
+    const handleSavePrescription = async (sendWhatsApp = false) => {
+        if (!newPresc.patientName) return showToast('Patient name is required', 'error');
+
+        // First, try to find the patient by name or create a new one
+        let patientId = null;
+        const { data: existingPatients, error: patientSearchError } = await supabase
+            .from('patients')
+            .select('id')
+            .ilike('name', newPresc.patientName);
+
+        if (patientSearchError) {
+            showToast('Error searching for patient', 'error');
+            console.error(patientSearchError);
+            return;
+        }
+
+        if (existingPatients && existingPatients.length > 0) {
+            patientId = existingPatients[0].id;
+        } else {
+            const { data: newPatient, error: newPatientError } = await supabase
+                .from('patients')
+                .insert({ name: newPresc.patientName })
+                .select('id');
+            if (newPatientError) {
+                showToast('Error creating new patient', 'error');
+                console.error(newPatientError);
+                return;
+            }
+            patientId = newPatient[0].id;
+        }
+
+        if (!patientId) {
+            showToast('Could not determine patient ID', 'error');
+            return;
+        }
+
+        const { error } = await supabase.from('prescriptions').insert({
+            patient_id: patientId,
+            medication_data: { notes: newPresc.medicineNotes },
+            created_at: new Date().toISOString()
+        });
+
+        if (error) {
+            showToast('Error saving prescription', 'error');
+            console.error(error);
+        } else {
+            showToast(sendWhatsApp ? 'Prescription sent via WhatsApp!' : 'Prescription saved to EMR.', 'success');
+            setIsPrescModalOpen(false);
+            setNewPresc({ patientName: '', medicineNotes: '' }); // Clear form
+            fetchPrescriptions();
+        }
+    };
 
     return (
         <>
@@ -46,28 +115,33 @@ export function Prescriptions() {
                             />
                         </div>
 
-                        {latestPrescriptions.map((rx, idx) => (
-                            <div key={idx} className="bg-surface border border-slate-200 p-5 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:shadow-premium transition-shadow cursor-pointer group">
+                        {prescriptions.map((rx, idx) => (
+                            <div key={rx.id || idx} className="bg-surface border border-slate-200 p-5 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:shadow-premium transition-shadow cursor-pointer group mb-4">
                                 <div className="flex gap-4">
                                     <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                                        <FileText size={24} />
+                                        <FileText size={20} />
                                     </div>
                                     <div>
-                                        <p className="font-bold text-text-dark group-hover:text-primary transition-colors text-lg">{rx.patient}</p>
-                                        <p className="text-sm font-medium text-slate-500">{rx.treatment} • {rx.meds} Medications prescribing</p>
+                                        <p className="font-bold text-text-dark group-hover:text-primary transition-colors text-lg">{rx.patients?.name || 'Manual Entry'}</p>
+                                        <p className="text-sm font-medium text-slate-500">Prescription created on {new Date(rx.created_at).toLocaleDateString()}</p>
                                     </div>
                                 </div>
 
                                 <div className="flex flex-col md:items-end gap-2 w-full md:w-auto">
-                                    <p className="text-xs font-bold text-slate-400 font-mono tracking-widest">{rx.id} • {rx.date}</p>
+                                    <p className="text-xs font-bold text-slate-400 font-mono tracking-widest">{rx.id.slice(0, 8)}...</p>
                                     <div className="flex items-center gap-2 text-xs font-bold">
-                                        <span className="bg-success/10 text-success px-2 py-1 rounded-md border border-success/20">{rx.status}</span>
+                                        <span className="bg-success/10 text-success px-2 py-1 rounded-md border border-success/20">Active</span>
                                         <button onClick={(e) => { e.stopPropagation(); showToast('Downloading PDF...'); }} className="p-1.5 border border-slate-200 rounded-md hover:bg-slate-50 text-slate-500"><Download size={14} /></button>
                                         <button onClick={(e) => { e.stopPropagation(); showToast('Link copied / WhatsApp prompt opened'); }} className="p-1.5 border border-slate-200 rounded-md hover:bg-slate-50 text-slate-500"><Share2 size={14} /></button>
                                     </div>
                                 </div>
                             </div>
                         ))}
+                        {prescriptions.length === 0 && !isLoading && (
+                            <div className="p-10 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 text-slate-400">
+                                No prescriptions found. Click "New Prescription" to start.
+                            </div>
+                        )}
                     </div>
 
                     {/* Rx Widget */}
@@ -106,17 +180,11 @@ export function Prescriptions() {
 
             <Modal isOpen={isPrescModalOpen} onClose={() => setIsPrescModalOpen(false)} title="Write New Prescription">
                 <div className="space-y-4">
-                    <input type="text" placeholder="Search Patient..." className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-600 mb-2" />
-                    <textarea placeholder="e.g. Paracetamol 500mg, twice a day after meals" className="w-full h-32 bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm text-slate-600" />
+                    <input type="text" placeholder="Patient Name..." value={newPresc.patientName} onChange={e => setNewPresc({ ...newPresc, patientName: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-600 mb-2" />
+                    <textarea placeholder="e.g. Paracetamol 500mg, twice a day after meals" value={newPresc.medicineNotes} onChange={e => setNewPresc({ ...newPresc, medicineNotes: e.target.value })} className="w-full h-32 bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm text-slate-600" />
                     <div className="flex gap-2 mt-4">
-                        <button onClick={() => {
-                            showToast('Prescription saved to records.', 'success');
-                            setIsPrescModalOpen(false);
-                        }} className="flex-1 py-2 bg-text-dark text-white rounded-lg text-sm font-bold">Save to EMR</button>
-                        <button onClick={() => {
-                            showToast('Prescription sent via WhatsApp to patient.', 'success');
-                            setIsPrescModalOpen(false);
-                        }} className="flex-1 py-2 bg-success text-white rounded-lg text-sm font-bold">Save & Send WhatsApp</button>
+                        <button onClick={() => handleSavePrescription(false)} className="flex-1 py-2 bg-text-dark text-white rounded-lg text-sm font-bold shadow-md">Save to EMR</button>
+                        <button onClick={() => handleSavePrescription(true)} className="flex-1 py-2 bg-success text-white rounded-lg text-sm font-bold shadow-md">Save & Send WhatsApp</button>
                     </div>
                 </div>
             </Modal>
