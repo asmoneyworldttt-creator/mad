@@ -160,6 +160,41 @@ export function Dashboard({ setActiveTab }: { setActiveTab?: (t: string) => void
     const [pFilter, setPFilter] = useState('Weekly');
     const [fFilter, setFFilter] = useState('Weekly');
 
+    const [prescForm, setPrescForm] = useState<any>({ name: '', id: null, notes: '' });
+    const [searchResults, setSearchResults] = useState<any[]>([]);
+
+    const searchPatients = async (query: string) => {
+        if (query.length < 2) {
+            setSearchResults([]);
+            return;
+        }
+        const { data } = await supabase.from('patients').select('*').or(`name.ilike.%${query}%,phone.ilike.%${query}%`).limit(5);
+        setSearchResults(data || []);
+    };
+
+    const handleSavePresc = async (whatsapp: boolean) => {
+        if (!prescForm.name) return showToast('Patient name required', 'error');
+
+        let pId = prescForm.id;
+        if (!pId) {
+            const { data } = await supabase.from('patients').insert({ name: prescForm.name }).select('id');
+            if (data) pId = data[0].id;
+        }
+
+        const { error } = await supabase.from('prescriptions').insert({
+            patient_id: pId,
+            medication_data: { notes: prescForm.notes }
+        });
+
+        if (error) {
+            showToast('Error saving prescription', 'error');
+        } else {
+            showToast(whatsapp ? 'Sent via WhatsApp' : 'Saved to EMR', 'success');
+            setIsPrescModalOpen(false);
+            setPrescForm({ name: '', id: null, notes: '' });
+        }
+    };
+
     useEffect(() => {
         fetchStats();
     }, []);
@@ -245,28 +280,32 @@ export function Dashboard({ setActiveTab }: { setActiveTab?: (t: string) => void
         const { count: totalApts } = await supabase.from('appointments').select('*', { count: 'exact', head: true });
         const { count: missedCount } = await supabase.from('appointments').select('*', { count: 'exact', head: true }).eq('status', 'Missed');
         const { count: totalVisits } = await supabase.from('patient_history').select('*', { count: 'exact', head: true });
-        let newPatients = 0;
-        try {
-            const { count } = await supabase.from('patients').select('*', { count: 'exact', head: true }).gte('created_at', startOfMonth);
-            newPatients = count || 0;
-        } catch (e) {
-            const { count } = await supabase.from('patients').select('*', { count: 'exact', head: true });
-            newPatients = Math.floor((count || 0) * 0.2); // Fallback estimate
-        }
+
+        // New Patients this month
+        const { count: newPatCount } = await supabase.from('patients').select('*', { count: 'exact', head: true }).gte('created_at', startOfMonth);
+
+        // Revenue from Bills
         const { data: billsData } = await supabase.from('bills').select('amount');
         const totalCollected = (billsData || []).reduce((acc: number, curr: any) => acc + (curr.amount || 0), 0);
+
+        // Lab Orders Pending
+        const { count: pendingLabCount } = await supabase.from('lab_orders').select('*', { count: 'exact', head: true }).not('status', 'eq', 'Delivered to Patient');
+
+        // Expenses from Accounts table
+        const { data: expensesData } = await supabase.from('accounts').select('amount').eq('type', 'expense');
+        const totalExpenses = (expensesData || []).reduce((acc: number, curr: any) => acc + (curr.amount || 0), 0);
 
         setStats({
             todayAppointments: todayCount || 0,
             totalAppointments: totalApts || 0,
             missedAppointments: missedCount || 0,
             totalVisits: totalVisits || 0,
-            newPatients: newPatients || 0,
+            newPatients: newPatCount || 0,
             paymentCollection: totalCollected,
             totalRevenue: totalCollected,
             profFee: Math.floor(totalCollected * 0.6),
-            expenses: 45000,
-            pendingReports: 7
+            expenses: totalExpenses || 45000,
+            pendingReports: pendingLabCount || 0
         });
     };
 
@@ -439,17 +478,43 @@ export function Dashboard({ setActiveTab }: { setActiveTab?: (t: string) => void
 
             <Modal isOpen={isPrescModalOpen} onClose={() => setIsPrescModalOpen(false)} title="Write New Prescription">
                 <div className="space-y-4">
-                    <input type="text" placeholder="Search Patient..." className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-600 mb-2" />
-                    <textarea placeholder="e.g. Paracetamol 500mg, twice a day after meals" className="w-full h-32 bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm text-slate-600" />
+                    <div className="relative">
+                        <input
+                            type="text"
+                            placeholder="Type Patient Name..."
+                            value={prescForm.name}
+                            onChange={e => {
+                                setPrescForm({ ...prescForm, name: e.target.value });
+                                searchPatients(e.target.value);
+                            }}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-600 mb-2 font-bold"
+                        />
+                        {searchResults.length > 0 && (
+                            <div className="absolute top-full left-0 right-0 bg-white border border-slate-200 rounded-lg shadow-xl z-50 overflow-hidden">
+                                {searchResults.map(p => (
+                                    <button
+                                        key={p.id}
+                                        onClick={() => {
+                                            setPrescForm({ name: p.name, id: p.id });
+                                            setSearchResults([]);
+                                        }}
+                                        className="w-full text-left px-4 py-2 hover:bg-slate-50 text-sm font-medium border-b border-slate-50 last:border-0"
+                                    >
+                                        {p.name} <span className="text-[10px] text-slate-400 uppercase tracking-widest ml-2">{p.phone}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                    <textarea
+                        placeholder="e.g. Tab. Paracetamol 500mg (1-0-1) for 3 days"
+                        value={prescForm.notes}
+                        onChange={e => setPrescForm({ ...prescForm, notes: e.target.value })}
+                        className="w-full h-32 bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm text-slate-600 font-medium"
+                    />
                     <div className="flex gap-2 mt-4">
-                        <button onClick={() => {
-                            showToast('Prescription saved to records.', 'success');
-                            setIsPrescModalOpen(false);
-                        }} className="flex-1 py-2 bg-text-dark text-white rounded-lg text-sm font-bold">Save to EMR</button>
-                        <button onClick={() => {
-                            showToast('Prescription sent via WhatsApp to patient.', 'success');
-                            setIsPrescModalOpen(false);
-                        }} className="flex-1 py-2 bg-success text-white rounded-lg text-sm font-bold">Save & Send WhatsApp</button>
+                        <button onClick={() => handleSavePresc(false)} className="flex-1 py-2 bg-text-dark text-white rounded-lg text-sm font-bold shadow-md active:scale-95 transition-transform">Save to EMR</button>
+                        <button onClick={() => handleSavePresc(true)} className="flex-1 py-2 bg-success text-white rounded-lg text-sm font-bold shadow-md active:scale-95 transition-transform">Save & Send WhatsApp</button>
                     </div>
                 </div>
             </Modal>

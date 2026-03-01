@@ -23,7 +23,13 @@ export function Reports() {
         let query;
 
         // Route logic based on report title
-        if (title.includes('Payment') || title.includes('Billing') || title.includes('Income') || title.includes('Cash')) {
+        if (title.includes('Expenses') || title.includes('Audit')) {
+            setReportType('financial');
+            query = supabase.from('accounts').select('*').eq('type', 'expense').gte('date', fromDate).lte('date', toDate);
+        } else if (title.includes('Lab') || title.includes('Workflow')) {
+            setReportType('appointment'); // Reuse appointment structure for status display
+            query = supabase.from('lab_orders').select('*, patients(name)').gte('date', fromDate).lte('date', toDate);
+        } else if (title.includes('Payment') || title.includes('Billing') || title.includes('Income') || title.includes('Cash')) {
             setReportType('financial');
             query = supabase.from('bills').select('*, patients(name)').gte('date', fromDate).lte('date', toDate);
         } else if (title.includes('Patient') || title.includes('Birthday')) {
