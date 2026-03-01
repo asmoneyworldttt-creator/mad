@@ -33,12 +33,12 @@ export function EMR() {
     const handleSearch = async (e: any) => {
         const query = e.target.value;
         setSearchQuery(query);
-        if (query.length > 2) {
+        if (query.length > 1) {
             const { data } = await supabase
                 .from('patients')
                 .select('*')
-                .ilike('name', `%${query}%`)
-                .limit(5);
+                .or(`name.ilike.%${query}%,id.ilike.%${query}%,phone.ilike.%${query}%`)
+                .limit(8);
             setSearchResults(data || []);
         } else {
             setSearchResults([]);
@@ -139,7 +139,7 @@ export function EMR() {
                         type="text"
                         value={searchQuery}
                         onChange={handleSearch}
-                        placeholder="Search patient by name or ID to load EMR..."
+                        placeholder="Search by name, ID (e.g. 202X0) or phone...🔍"
                         className="w-full pl-9 pr-4 py-3 rounded-xl bg-white/80 border border-slate-200 focus:ring-2 focus:ring-primary outline-none shadow-sm"
                     />
                     {searchResults.length > 0 && (
