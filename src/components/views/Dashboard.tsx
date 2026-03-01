@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Clock, Activity, FileText, Smartphone } from 'lucide-react';
+import { ChevronRight, Clock, Activity, FileText, Smartphone } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Modal } from '../../components/Modal';
 import { supabase } from '../../supabase';
@@ -26,28 +26,26 @@ const financialDataDefault = [
     { name: 'Sun', fees: 8000, total: 12000 },
 ];
 
-function StatCard({ title, value, change, trend, delay, onClick, icon }: any) {
+function StatCard({ title, value, change, trend, delay, onClick }: any) {
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay, duration: 0.4 }}
             onClick={onClick}
-            className={`frosted-card pulse-border rounded-[28px] p-5 relative overflow-hidden group hover:scale-[1.02] transition-transform ${onClick ? 'cursor-pointer' : ''}`}
+            className={`glass neo-shadow p-5 rounded-xl relative overflow-hidden group hover:scale-[1.02] transition-transform ${onClick ? 'cursor-pointer hover:border-primary/50 border border-transparent' : ''}`}
         >
-            <div className="absolute top-0 right-0 p-3 opacity-80 text-2xl emoji-shadow">{icon || '✨'}</div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-4">{title}</p>
-            <div className="flex flex-col">
-                <span className="text-3xl font-trap font-black text-slate-800 mb-1">{value}</span>
-                <span className={`text-[9px] font-bold flex items-center gap-1 ${trend === 'up' ? 'text-emerald-500' : 'text-rose-500'}`}>
-                    {trend === 'up' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>}
-                    {change}
+            <div className="absolute -right-6 -top-6 w-24 h-24 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/20 transition-colors" />
+            <p className="text-xs text-slate-500 font-medium mb-3">{title}</p>
+            <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-bold">{value}</span>
+                <span className={`text-[10px] font-bold ${trend === 'up' ? 'text-green-600' : 'text-red-500'}`}>
+                    {trend === 'up' ? '+' : '-'}{change}
                 </span>
             </div>
         </motion.div>
     );
 }
-
 
 function LiveQueue() {
     const [queue, setQueue] = useState<any[]>([]);
@@ -63,16 +61,13 @@ function LiveQueue() {
                 .limit(5);
 
             if (data) {
-                const formattedQueue = data.map((apt: any) => {
-                    const initials = apt.name.split(' ').map((n: string) => n[0]).join('').toUpperCase();
-                    return {
-                        name: apt.name,
-                        initials,
-                        time: apt.time,
-                        status: apt.status === 'Completed' ? 'Checked-In' : apt.status === 'Missed' ? 'Cancelled' : 'Confirmed',
-                        condition: apt.type
-                    };
-                });
+                const formattedQueue = data.map((apt: any) => ({
+                    name: apt.name,
+                    time: apt.time,
+                    status: apt.status === 'Completed' ? 'Checked-In' : apt.status === 'Missed' ? 'Cancelled' : 'Confirmed',
+                    avatar: `https://ui-avatars.com/api/?name=${apt.name}&background=random`,
+                    condition: apt.type
+                }));
                 setQueue(formattedQueue);
             }
         };
@@ -80,37 +75,32 @@ function LiveQueue() {
     }, []);
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-4">
-                    <div className="w-3 h-3 rounded-full bg-rose-500 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.6)]"></div>
-                    <h3 className="font-trap font-black text-2xl tracking-tight">Patient Stream</h3>
-                </div>
-                <button className="bg-white/40 border border-white/60 px-4 py-2 rounded-xl text-[10px] font-black tracking-widest text-[#135bec] hover:bg-white transition-all">
-                    EXPAND QUEUE
+        <div className="glass neo-shadow rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-6">
+                <h3 className="font-display font-bold text-lg text-text-dark flex items-center gap-2">
+                    <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                    Live Queue
+                </h3>
+                <button className="text-primary text-sm font-bold hover:text-primary-hover flex items-center gap-1">
+                    Manage Queue <ChevronRight size={16} />
                 </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3">
                 {queue.length > 0 ? queue.map((p, i) => (
-                    <div key={i} className="floating-layer rounded-[32px] p-5 flex items-center justify-between group cursor-pointer hover:scale-[1.01] transition-all">
-                        <div className="flex items-center gap-5">
-                            <div className="w-14 h-14 rounded-[20px] bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center text-blue-600 font-trap font-black text-lg border border-blue-200/50">
-                                {p.initials}
-                            </div>
+                    <div key={i} className={`flex items-center justify-between p-4 rounded-xl border-l-4 transition-colors glass ${p.status === 'Engaged' ? 'border-orange-400 bg-orange-50/10 shadow-sm' : p.status === 'Checked-In' ? 'border-green-500 bg-green-50/10' : 'border-slate-300'}`}>
+                        <div className="flex items-center gap-4">
+                            <img src={p.avatar} className="w-10 h-10 rounded-full object-cover shadow-sm bg-slate-200" alt={p.name} />
                             <div>
-                                <h4 className="font-bold text-lg text-slate-800">{p.name}</h4>
-                                <div className="flex items-center gap-3 mt-1">
-                                    <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
-                                        <Clock size={12} /> {p.time}
-                                    </span>
-                                    <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
-                                        <Activity size={12} /> {p.condition}
-                                    </span>
-                                </div>
+                                <p className="font-bold text-sm text-text-dark">{p.name}</p>
+                                <p className="text-xs text-slate-500 font-medium">{p.condition} • {p.time}</p>
                             </div>
                         </div>
-                        <div className={`${p.status === 'Checked-In' ? 'pill-checked' : 'bg-slate-100 text-slate-400'} px-5 py-2 rounded-2xl text-[10px] font-black shadow-sm uppercase tracking-wider`}>
+
+                        <div className={`px-3 py-1 rounded-full text-[10px] uppercase font-bold tracking-tighter ${p.status === 'Engaged' ? 'bg-orange-100 text-orange-600' :
+                            p.status === 'Checked-In' ? 'bg-green-100 text-green-600' :
+                                'bg-slate-100 text-slate-500'
+                            }`}>
                             {p.status}
                         </div>
                     </div>
@@ -121,7 +111,6 @@ function LiveQueue() {
         </div>
     );
 }
-
 
 function ChartContainer({ title, subtitle, children, filter, onFilterChange }: any) {
     return (
@@ -328,55 +317,48 @@ export function Dashboard({ setActiveTab }: { setActiveTab?: (t: string) => void
     };
 
     return (
-        <div className="animate-slide-up space-y-8 pb-20">
-            <div className="mesh-bg"></div>
-
-            <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
-                <div className="flex items-center gap-5">
+        <div className="animate-slide-up space-y-8">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 glass neo-shadow p-6 rounded-2xl mx-1 mt-1">
+                <div className="flex items-center gap-4">
                     <div className="relative">
-                        <div className="absolute -inset-1 bg-gradient-to-tr from-blue-500 to-pink-500 rounded-2xl blur-sm opacity-30"></div>
-                        <img alt="Dr. Ramesh" className="relative w-16 h-16 rounded-2xl border-2 border-white shadow-xl object-cover" src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=150" />
-                        <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 border-2 border-white rounded-full flex items-center justify-center">
-                            <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                        <div className="w-12 h-12 rounded-full border-2 border-primary/20 p-0.5">
+                            <img src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=150" className="w-full h-full rounded-full object-cover" alt="Dr Profile" />
                         </div>
+                        <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
                     </div>
                     <div>
-                        <div className="flex items-center gap-3 mb-1">
-                            <p className="text-[10px] uppercase tracking-widest text-slate-400 font-black">Welcome Back</p>
-                            <div className="h-px w-8 bg-slate-200"></div>
-                        </div>
-                        <h2 className="text-2xl font-trap font-black text-slate-800 tracking-tight">Dr. K. Ramesh</h2>
+                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Welcome back</p>
+                        <h2 className="text-xl font-display font-bold text-text-dark tracking-tight">Dr. K. Ramesh</h2>
                     </div>
                 </div>
-                <div className="flex items-center gap-4">
-                    <div className="hidden md:flex items-center gap-3 bg-white/40 backdrop-blur-md p-2 rounded-2xl border border-white/50 shadow-sm mr-2">
-                        <span className="material-symbols-outlined text-slate-400 text-sm">light_mode</span>
-                        <div className="theme-switch flex items-center justify-start cursor-pointer">
-                            <div className="theme-switch-thumb transition-all duration-300"></div>
-                        </div>
-                        <span className="material-symbols-outlined text-slate-300 text-sm">dark_mode</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <a href="https://github.com/asmoneyworldttt-creator/mad/releases/latest/download/DentiSphere-Android-APK.apk" target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-[#135bec] text-white px-6 py-3 rounded-2xl font-bold text-xs shadow-xl shadow-blue-200 hover:scale-105 transition-transform active:scale-95">
-                            <Smartphone size={18} />
-                            APK DOWNLOAD
-                        </a>
-                        <button onClick={() => setIsReportModalOpen(true)} className="w-12 h-12 bg-white rounded-2xl border border-slate-200 flex items-center justify-center text-slate-600 shadow-sm hover:border-blue-400 transition-all active:scale-90">
-                            <FileText size={20} />
-                        </button>
-                    </div>
+                <div className="flex gap-3">
+                    <a href="https://github.com/asmoneyworldttt-creator/mad/releases/latest/download/DentiSphere-Android-APK.apk" target="_blank" rel="noreferrer" className="px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white text-sm font-semibold shadow-sm transition-all flex items-center gap-2 neo-shadow">
+                        <Smartphone size={16} />
+                        Download APK
+                    </a>
+                    <button onClick={() => { showToast('Searching for patient profile...', 'success'); document.getElementById('global-search-input')?.focus(); }} className="px-4 py-2 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 text-sm font-semibold shadow-sm transition-all flex items-center gap-2 neo-shadow">
+                        <Activity size={16} />
+                        Update Patient
+                    </button>
+                    <button onClick={() => setIsReportModalOpen(true)} className="px-4 py-2 rounded-lg bg-primary hover:bg-primary-hover text-white text-sm font-semibold shadow-sm transition-all flex items-center gap-2 neo-shadow">
+                        <Activity size={16} />
+                        Report
+                    </button>
                 </div>
-            </header>
-
-
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
-                <StatCard title="Today" value={stats.todayAppointments.toString()} change="LIVE QUEUE" trend="up" delay={0.1} onClick={() => setActiveTab && setActiveTab('appointments')} icon="🦷" />
-                <StatCard title="Visits" value={`${(stats.totalVisits / 1000).toFixed(1)}k`} change="TOTAL LOYALTY" trend="up" delay={0.15} onClick={() => setActiveTab && setActiveTab('patients')} icon="🩺" />
-                <StatCard title="Reports" value={stats.pendingReports.toString()} change="3 URGENT" trend="down" delay={0.2} icon="🔬" />
-                <StatCard title="Revenue" value={`₹${(stats.totalRevenue / 1000).toFixed(0)}k`} change="+12% VS LY" trend="up" delay={0.25} onClick={() => setActiveTab && setActiveTab('earnings')} icon="💎" />
-                <StatCard title="Feedback" value="4.9" change="EXCELLENT" trend="up" delay={0.3} icon="✨" />
             </div>
 
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <StatCard title="Today's Appointments" value={stats.todayAppointments.toString()} change="Real-time" trend="up" delay={0.1} onClick={() => setActiveTab && setActiveTab('appointments')} />
+                <StatCard title="Total Patient Visits" value={stats.totalVisits.toLocaleString()} change="Total" trend="up" delay={0.15} onClick={() => setActiveTab && setActiveTab('patients')} />
+                <StatCard title="Total Appointments" value={stats.totalAppointments.toLocaleString()} change="All Time" trend="up" delay={0.2} onClick={() => setActiveTab && setActiveTab('appointments')} />
+                <StatCard title="Missed Appointments" value={stats.missedAppointments.toString()} change="Follow up needed" trend="down" delay={0.25} onClick={() => setIsMissedModalOpen(true)} />
+                <StatCard title="New Patients" value={stats.newPatients.toString()} change="This Month" trend="up" delay={0.3} onClick={() => setActiveTab && setActiveTab('patients')} />
+                <StatCard title="Payment Collection" value={`₹${stats.paymentCollection.toLocaleString('en-IN')}`} change="Verified" trend="up" delay={0.35} onClick={() => setActiveTab && setActiveTab('earnings')} />
+                <StatCard title="Professional Fee" value={`₹${stats.profFee.toLocaleString('en-IN')}`} change="Calculated" trend="up" delay={0.4} onClick={() => setActiveTab && setActiveTab('earnings')} />
+                <StatCard title="Total Expenses" value={`₹${stats.expenses.toLocaleString('en-IN')}`} change="Budgeted" trend="down" delay={0.45} />
+                <StatCard title="Pending Lab Reports" value={stats.pendingReports.toString()} change="3 Urgent" trend="down" delay={0.5} />
+                <StatCard title="Total Revenue" value={`₹${stats.totalRevenue.toLocaleString('en-IN')}`} change="Gross" trend="up" delay={0.55} onClick={() => setActiveTab && setActiveTab('earnings')} />
+            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-6">
@@ -415,43 +397,33 @@ export function Dashboard({ setActiveTab }: { setActiveTab?: (t: string) => void
                         </ResponsiveContainer>
                     </ChartContainer>
                 </div>
-                <div className="space-y-8">
-                    <div className="bg-gradient-to-br from-indigo-600 to-blue-800 rounded-[36px] p-8 text-white shadow-2xl shadow-blue-200 relative overflow-hidden group">
-                        <div className="absolute -right-10 -top-10 w-48 h-48 bg-white/10 rounded-full blur-[80px]"></div>
-                        <div className="absolute -left-10 -bottom-10 w-48 h-48 bg-pink-500/20 rounded-full blur-[80px]"></div>
-                        <div className="bg-white/10 w-14 h-14 rounded-2xl flex items-center justify-center mb-8 backdrop-blur-xl border border-white/20">
-                            <span className="material-symbols-outlined text-3xl">hub</span>
+                <div className="space-y-6">
+                    <div className="bg-primary-light border border-primary/20 rounded-2xl p-6 relative overflow-hidden shadow-sm">
+                        <div className="absolute right-0 top-0 w-32 h-full bg-gradient-to-l from-primary/10 to-transparent pointer-events-none" />
+                        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-primary mb-4 shadow-sm">
+                            <Activity size={20} />
                         </div>
-                        <h3 className="font-trap font-black text-2xl mb-3 tracking-tight">AI Recall Assist</h3>
-                        <p className="text-sm text-blue-100/70 mb-8 leading-relaxed font-medium">12 high-priority patients are due for checkups. Predicted retention boost: <span className="text-white font-bold">18%</span>.</p>
-                        <button onClick={() => setIsWhatsAppModalOpen(true)} className="w-full bg-white text-indigo-700 py-4 rounded-2xl font-black text-[11px] tracking-widest hover:bg-blue-50 transition-all shadow-xl uppercase">
-                            INITIATE RECALL
+                        <h3 className="font-display font-bold text-lg text-primary-hover mb-2">Smart Recall Engine</h3>
+                        <p className="text-sm font-medium text-primary/80 mb-6">You have 12 patients due for their 6-month checkup this week.</p>
+                        <button onClick={() => setIsWhatsAppModalOpen(true)} className="w-full py-3 bg-primary hover:bg-primary-hover text-white text-sm font-bold rounded-xl shadow-premium transition-all transform hover:scale-[1.02] active:scale-[0.98]">
+                            Send WhatsApp Reminders
                         </button>
                     </div>
 
-                    <div className="bg-white/40 backdrop-blur-md rounded-[32px] p-6 border border-white/60">
-                        <h3 className="font-trap font-black text-xs uppercase tracking-widest mb-6 text-slate-400">Core Tools</h3>
-                        <div className="grid grid-cols-2 gap-4">
-                            <button onClick={() => setIsSlotModalOpen(true)} className="frosted-card rounded-2xl p-5 flex flex-col items-center gap-3 hover:scale-105 transition-all group active:scale-95">
-                                <span className="text-2xl group-hover:scale-110 transition-transform emoji-shadow">📅</span>
-                                <span className="text-[10px] font-black text-slate-600 tracking-tight uppercase">RESERVE SLOT</span>
+                    <div className="bg-surface border border-slate-200 rounded-2xl p-6 shadow-sm">
+                        <h3 className="font-display font-bold text-lg text-text-dark mb-4">Quick Actions</h3>
+                        <div className="grid grid-cols-2 gap-3">
+                            <button onClick={() => setIsSlotModalOpen(true)} className="p-4 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors flex flex-col items-center gap-2">
+                                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600"><Clock size={16} /></div>
+                                <span className="text-xs font-bold text-slate-600">Block Slot</span>
                             </button>
-                            <button onClick={() => setIsPrescModalOpen(true)} className="frosted-card rounded-2xl p-5 flex flex-col items-center gap-3 hover:scale-105 transition-all group active:scale-95">
-                                <span className="text-2xl group-hover:scale-110 transition-transform emoji-shadow">📝</span>
-                                <span className="text-[10px] font-black text-slate-600 tracking-tight uppercase">NEW PRESC.</span>
-                            </button>
-                            <button onClick={() => showToast('AI Analysis coming soon', 'success')} className="frosted-card rounded-2xl p-5 flex flex-col items-center gap-3 hover:scale-105 transition-all group active:scale-95">
-                                <span className="text-2xl group-hover:scale-110 transition-transform emoji-shadow">🦷</span>
-                                <span className="text-[10px] font-black text-slate-600 tracking-tight uppercase">X-RAY AI</span>
-                            </button>
-                            <button onClick={() => showToast('Lab Sync starting...', 'success')} className="frosted-card rounded-2xl p-5 flex flex-col items-center gap-3 hover:scale-105 transition-all group active:scale-95">
-                                <span className="text-2xl group-hover:scale-110 transition-transform emoji-shadow">🧪</span>
-                                <span className="text-[10px] font-black text-slate-600 tracking-tight uppercase">LAB SYNC</span>
+                            <button onClick={() => setIsPrescModalOpen(true)} className="p-4 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors flex flex-col items-center gap-2">
+                                <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600"><FileText size={16} /></div>
+                                <span className="text-xs font-bold text-slate-600">Write Presc.</span>
                             </button>
                         </div>
                     </div>
                 </div>
-
             </div>
 
             {/* Modals */}
