@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Search } from 'lucide-react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Environment, ContactShadows } from '@react-three/drei';
+import { OrbitControls, Environment } from '@react-three/drei';
 import { RealisticDentition } from './Dentition3D';
 
 export function EMR() {
@@ -157,7 +157,6 @@ export function EMR() {
                                             selectedTooth={selectedTooth}
                                             onSelectTooth={(num) => setSelectedTooth(num === selectedTooth ? null : num)}
                                         />
-                                        <ContactShadows position={[0, -2.5, 0]} opacity={0.4} scale={20} blur={2.5} far={10} />
                                     </group>
 
                                     <OrbitControls

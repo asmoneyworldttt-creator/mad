@@ -14,14 +14,8 @@ const ToothGeometry = ({ type, position, rotation, scale, i, isSelected, onClick
     const materialProps = useMemo(() => {
         return {
             color: isSelected ? '#135bec' : (hovered ? '#4cf0ff' : '#f8fcff'),
-            roughness: 0.15,
-            metalness: 0.0,
-            clearcoat: 1.0,
-            clearcoatRoughness: 0.1,
-            transmission: 0.4, // Glassy/enamel translucency
-            thickness: 1.5,
-            ior: 1.5,
-            envMapIntensity: 2.5,
+            roughness: 0.2,
+            metalness: 0.1,
             emissive: isSelected ? '#135bec' : '#000000',
             emissiveIntensity: isSelected ? 0.2 : 0,
         };
@@ -70,7 +64,7 @@ const ToothGeometry = ({ type, position, rotation, scale, i, isSelected, onClick
             {type === 'premolar' && <sphereGeometry args={[0.4, 32, 16]} />}
             {type === 'molar' && <boxGeometry args={[0.6, 0.6, 0.6, 16, 16, 16]} />}
 
-            <meshPhysicalMaterial {...materialProps} />
+            <meshStandardMaterial {...materialProps} />
         </mesh>
     );
 };

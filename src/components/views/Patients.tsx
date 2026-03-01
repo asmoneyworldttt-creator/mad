@@ -4,6 +4,7 @@ import { useToast } from '../Toast';
 import { supabase } from '../../supabase';
 import { treatmentsMaster } from '../../data/mockData';
 import { Modal } from '../../components/Modal';
+import { PatientProfileModal } from './PatientProfileModal';
 
 export function Patients() {
     const { showToast } = useToast();
@@ -303,53 +304,7 @@ export function Patients() {
                 )}
             </Modal>
 
-            <Modal isOpen={!!selectedPatient} onClose={() => setSelectedPatient(null)} title="Patient Profile & Case History" maxWidth="max-w-2xl">
-                {selectedPatient && (
-                    <div className="space-y-6">
-                        <div className="flex justify-between items-start pb-4 border-b border-slate-100">
-                            <div className="flex gap-4 items-center">
-                                <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-2xl font-display shadow-sm">
-                                    {selectedPatient.name?.charAt(0) || 'U'}
-                                </div>
-                                <div>
-                                    <h3 className="font-display font-bold text-2xl text-text-dark">{selectedPatient.name} {selectedPatient.last_name}</h3>
-                                    <p className="text-sm font-medium text-slate-500">ID: {selectedPatient.id} • {selectedPatient.gender}, {selectedPatient.age}y • Blood: {selectedPatient.blood_group}</p>
-                                    <p className="text-sm font-medium text-slate-500 mt-1">Phone: {selectedPatient.phone} • WA: {selectedPatient.whatsapp_number}</p>
-                                </div>
-                            </div>
-                            <div className="text-right flex space-x-2">
-                                <button className="text-xs text-primary font-bold bg-primary/10 px-3 py-2 rounded-lg hover:bg-primary/20 transition-colors">
-                                    Edit Profile
-                                </button>
-                                <button className="text-xs text-white font-bold bg-primary px-3 py-2 rounded-lg hover:bg-primary-hover shadow-premium transition-transform active:scale-95">
-                                    Book Slots
-                                </button>
-                            </div>
-                        </div>
-
-                        <div>
-                            <h4 className="font-bold text-text-dark mb-4 border-b border-slate-100 pb-2">Treatment History ({selectedPatient.patient_history?.length || 0} Visits)</h4>
-                            <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
-                                {selectedPatient.patient_history && selectedPatient.patient_history.length > 0 ? selectedPatient.patient_history.map((visit: any, i: number) => (
-                                    <div key={i} className="p-4 bg-slate-50 border border-slate-200 rounded-xl relative">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div>
-                                                <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded-full inline-block mb-1">{visit.date}</span>
-                                                <h5 className="font-bold text-text-dark text-sm">{visit.treatment}</h5>
-                                            </div>
-                                            <span className="font-bold text-text-dark text-sm">₹{visit.cost}</span>
-                                        </div>
-                                        <p className="text-xs text-slate-500">{visit.notes}</p>
-                                        {visit.tooth && <p className="text-xs text-slate-400 mt-1">Tooth: {visit.tooth}</p>}
-                                    </div>
-                                )) : (
-                                    <p className="text-sm text-slate-500 italic">No previous history available.</p>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </Modal>
+            <PatientProfileModal isOpen={!!selectedPatient} onClose={() => setSelectedPatient(null)} patient={selectedPatient} />
         </div>
     );
 }

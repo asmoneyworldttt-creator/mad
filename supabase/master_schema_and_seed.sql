@@ -161,3 +161,135 @@ INSERT INTO public.treatments_master (treatment_id, treatment_name, category, fi
 
 -- Note: In a complete migration, we would include all INSERT INTO patients and patient_history statements here
 -- as requested in Section 4. Due to length, we implement this as a UI-level mock state mechanism if DB empty.
+
+-- SECTION 7 - NEW FEATURE TABLES (LAB WORK, QUICK BILLS, TREATMENT PLANS)
+
+-- 7.1 Lab Orders Schema
+CREATE TABLE IF NOT EXISTS public.lab_orders (
+    order_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    order_date DATE NOT NULL,
+    order_time TIME,
+    patient_id TEXT, -- Can link to patients table if available, else stores name
+    patient_name TEXT NOT NULL,
+    doctor_name TEXT,
+    vendor_name TEXT,
+    selected_teeth JSONB DEFAULT '[]'::jsonb, -- Stores array of tooth numbers
+    pre_op_requirements JSONB DEFAULT '[]'::jsonb,
+    prosthesis_type JSONB DEFAULT '[]'::jsonb,
+    surface_cluster VARCHAR(100),
+    pontic_type VARCHAR(100),
+    shade_incisal VARCHAR(50),
+    shade_middle VARCHAR(50),
+    shade_gingival VARCHAR(50),
+    metal_trial_date DATE,
+    bisque_trial_date DATE,
+    final_delivery_date DATE,
+    instructions_notes TEXT,
+    quantity INT DEFAULT 1,
+    unit_rate DECIMAL(10,2) DEFAULT 0,
+    tax_amount DECIMAL(10,2) DEFAULT 0,
+    discount_amount DECIMAL(10,2) DEFAULT 0,
+    total_amount DECIMAL(10,2) DEFAULT 0,
+    order_status VARCHAR(50) DEFAULT 'Handover to Lab',
+    warranty_details TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 7.2 Quick Bills Tracking
+CREATE TABLE IF NOT EXISTS public.quick_bills (
+    bill_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    bill_date DATE NOT NULL,
+    clinic_location TEXT,
+    doctor_name TEXT,
+    patient_name TEXT NOT NULL,
+    patient_mobile VARCHAR(20),
+    chief_complaint TEXT,
+    observations TEXT,
+    treatment_details TEXT,
+    prescribed_medicines TEXT,
+    gross_amount DECIMAL(10,2) DEFAULT 0,
+    discount_amount DECIMAL(10,2) DEFAULT 0,
+    net_payable DECIMAL(10,2) DEFAULT 0,
+    followup_remarks TEXT,
+    followup_referral TEXT,
+    followup_date DATE,
+    followup_time TIME,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 7.3 Treatment Plans Schema
+CREATE TABLE IF NOT EXISTS public.treatment_plans (
+    plan_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    patient_id TEXT, -- Links to Patient DB
+    patient_name TEXT,
+    diagnosis TEXT,
+    primary_complaint TEXT,
+    proposed_treatment TEXT,
+    observation_notes TEXT,
+    special_instructions TEXT,
+    draft_status VARCHAR(50) DEFAULT 'Draft',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- SECTION 8 - ACCOUNTS AND INVENTORY MANAGEMENT
+
+-- 8.1 Accounts (Income and Expenses)
+CREATE TABLE IF NOT EXISTS public.accounts_ledger (
+    ledger_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    transaction_date DATE NOT NULL,
+    transaction_type VARCHAR(20) NOT NULL CHECK (transaction_type IN ('INCOME', 'EXPENSE')),
+    category VARCHAR(100) NOT NULL,
+    remark TEXT,
+    clinic_location TEXT DEFAULT 'Default Clinic',
+    total_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    received_due_amount DECIMAL(10,2) DEFAULT 0, -- Received (for income) or Due (for expenses)
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 8.2 Inventory (Products)
+CREATE TABLE IF NOT EXISTS public.inventory_products (
+    product_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    product_name VARCHAR(255) NOT NULL,
+    manufacturer VARCHAR(255),
+    category VARCHAR(100),
+    product_type VARCHAR(100),
+    measure_unit VARCHAR(50),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 8.3 Inventory Transactions (Stock In / Stock Out)
+CREATE TABLE IF NOT EXISTS public.inventory_transactions (
+    transaction_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    transaction_date DATE NOT NULL,
+    transaction_type VARCHAR(20) NOT NULL CHECK (transaction_type IN ('STOCK_IN', 'STOCK_OUT')),
+    clinic_location TEXT DEFAULT 'Default Clinic',
+    product_id UUID REFERENCES public.inventory_products(product_id),
+    product_name TEXT NOT NULL,
+    quantity INT NOT NULL DEFAULT 0,
+    unit_rate DECIMAL(10,2) DEFAULT 0,
+    amount DECIMAL(10,2) DEFAULT 0,
+    tax DECIMAL(10,2) DEFAULT 0,
+    discount DECIMAL(10,2) DEFAULT 0,
+    other_charges DECIMAL(10,2) DEFAULT 0,
+    grand_total DECIMAL(10,2) NOT NULL DEFAULT 0,
+    remarks TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 8.4 Inventory Purchase Orders
+CREATE TABLE IF NOT EXISTS public.inventory_purchase_orders (
+    order_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    order_date DATE NOT NULL,
+    clinic_location TEXT DEFAULT 'Default Clinic',
+    vendor_name VARCHAR(255) NOT NULL,
+    product_name VARCHAR(255) NOT NULL,
+    product_id UUID REFERENCES public.inventory_products(product_id),
+    amount DECIMAL(10,2) DEFAULT 0,
+    additional_charges DECIMAL(10,2) DEFAULT 0,
+    grand_total DECIMAL(10,2) NOT NULL DEFAULT 0,
+    balance DECIMAL(10,2) DEFAULT 0,
+    order_status VARCHAR(50) DEFAULT 'Pending',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- End of File.

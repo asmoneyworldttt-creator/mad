@@ -1,6 +1,7 @@
 import {
     LayoutDashboard, Calendar, Users,
-    Activity, Settings, HeartPulse, FileText, DollarSign
+    Activity, Settings, HeartPulse, FileText, DollarSign, FlaskConical,
+    WalletCards, PackageSearch, FileBarChart
 } from 'lucide-react';
 
 export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: { activeTab: string, setActiveTab: (t: string) => void, isOpen: boolean, setIsOpen: (o: boolean) => void }) {
@@ -8,9 +9,14 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: { active
         { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
         { id: 'appointments', icon: Calendar, label: 'Appointments' },
         { id: 'patients', icon: Users, label: 'Patients' },
+        { id: 'quickbills', icon: FileText, label: 'Quick Bills' },
         { id: 'emr', icon: Activity, label: 'EMR & Vitals' },
+        { id: 'labwork', icon: FlaskConical, label: 'Lab Work' },
         { id: 'prescriptions', icon: FileText, label: 'Prescriptions' },
         { id: 'earnings', icon: DollarSign, label: 'Earnings' },
+        { id: 'accounts', icon: WalletCards, label: 'Accounts' },
+        { id: 'inventory', icon: PackageSearch, label: 'Inventory' },
+        { id: 'reports', icon: FileBarChart, label: 'Reports' },
         { id: 'settings', icon: Settings, label: 'Settings' }
     ];
 

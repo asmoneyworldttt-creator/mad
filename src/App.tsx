@@ -11,6 +11,11 @@ import { Settings } from './components/views/Settings';
 import { Profile } from './components/views/Profile';
 import { Earnings } from './components/views/Earnings';
 import { MobileBottomNav } from './components/MobileBottomNav';
+import { QuickBills } from './components/views/QuickBills';
+import { LabWork } from './components/views/LabWork';
+import { Accounts } from './components/views/Accounts';
+import { Inventory } from './components/views/Inventory';
+import { Reports } from './components/views/Reports';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -20,7 +25,7 @@ function App() {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard />;
+        return <Dashboard setActiveTab={setActiveTab} />;
       case 'appointments':
         return <Appointments />;
       case 'patients':
@@ -35,8 +40,18 @@ function App() {
         return <Settings />;
       case 'profile':
         return <Profile />;
+      case 'quickbills':
+        return <QuickBills />;
+      case 'labwork':
+        return <LabWork />;
+      case 'accounts':
+        return <Accounts />;
+      case 'inventory':
+        return <Inventory />;
+      case 'reports':
+        return <Reports />;
       default:
-        return <Dashboard />;
+        return <Dashboard setActiveTab={setActiveTab} />;
     }
   };
 

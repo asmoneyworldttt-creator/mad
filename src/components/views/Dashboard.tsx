@@ -2,25 +2,36 @@ import { motion } from 'framer-motion';
 import { ChevronRight, Clock, Activity, FileText, Smartphone } from 'lucide-react';
 import { useState } from 'react';
 import { Modal } from '../../components/Modal';
-import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer, BarChart, Bar, CartesianGrid, Legend } from 'recharts';
 
-const data = [
-    { name: 'Mon', revenue: 4000 },
-    { name: 'Tue', revenue: 3000 },
-    { name: 'Wed', revenue: 2000 },
-    { name: 'Thu', revenue: 2780 },
-    { name: 'Fri', revenue: 1890 },
-    { name: 'Sat', revenue: 2390 },
-    { name: 'Sun', revenue: 3490 },
+const patientData = [
+    { name: 'Mon', visits: 40, new: 5 },
+    { name: 'Tue', visits: 30, new: 3 },
+    { name: 'Wed', visits: 45, new: 8 },
+    { name: 'Thu', visits: 50, new: 7 },
+    { name: 'Fri', visits: 35, new: 4 },
+    { name: 'Sat', visits: 60, new: 12 },
+    { name: 'Sun', visits: 25, new: 2 },
 ];
 
-function StatCard({ title, value, change, trend, delay }: any) {
+const financialData = [
+    { name: 'Mon', fees: 15000, total: 20000 },
+    { name: 'Tue', fees: 12000, total: 18000 },
+    { name: 'Wed', fees: 18000, total: 22000 },
+    { name: 'Thu', fees: 20000, total: 25000 },
+    { name: 'Fri', fees: 14000, total: 17000 },
+    { name: 'Sat', fees: 25000, total: 32000 },
+    { name: 'Sun', fees: 8000, total: 12000 },
+];
+
+function StatCard({ title, value, change, trend, delay, onClick }: any) {
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay, duration: 0.4 }}
-            className="glass neo-shadow p-5 rounded-xl relative overflow-hidden group hover:scale-[1.02] transition-transform"
+            onClick={onClick}
+            className={`glass neo-shadow p-5 rounded-xl relative overflow-hidden group hover:scale-[1.02] transition-transform ${onClick ? 'cursor-pointer hover:border-primary/50 border border-transparent' : ''}`}
         >
             <div className="absolute -right-6 -top-6 w-24 h-24 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/20 transition-colors" />
             <p className="text-xs text-slate-500 font-medium mb-3">{title}</p>
@@ -77,51 +88,83 @@ function LiveQueue() {
     );
 }
 
-function RevenueChart() {
+function ChartContainer({ title, subtitle, children }: any) {
+    const [filter, setFilter] = useState('Weekly');
     return (
         <div className="glass neo-shadow rounded-2xl p-5 h-full flex flex-col">
             <div className="flex items-center justify-between mb-6">
                 <div>
-                    <h3 className="font-display font-bold text-lg text-text-dark">Revenue Analytics</h3>
-                    <p className="text-xs text-slate-500">Weekly Performance</p>
+                    <h3 className="font-display font-bold text-lg text-text-dark">{title}</h3>
+                    <p className="text-xs text-slate-500">{subtitle}</p>
                 </div>
-                <div className="flex items-center gap-1 text-green-600 bg-green-50 px-2 py-1 rounded">
-                    <span className="text-xs font-bold">+12%</span>
-                </div>
+                <select value={filter} onChange={(e) => setFilter(e.target.value)} className="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs font-bold text-slate-600">
+                    <option>Daily</option>
+                    <option>Weekly</option>
+                    <option>Monthly</option>
+                    <option>Yearly</option>
+                </select>
             </div>
             <div className="w-full mt-2 h-64 min-h-[250px] relative">
                 <div className="absolute inset-0">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={data} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                            <defs>
-                                <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor="#135bec" stopOpacity={0.2} />
-                                    <stop offset="100%" stopColor="#135bec" stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 'bold' }} dy={10} />
-                            <Tooltip
-                                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 15px -3px rgba(0, 0, 0, 0.1)' }}
-                                cursor={{ stroke: '#135bec', strokeWidth: 1, strokeDasharray: '4 4' }}
-                            />
-                            <Area type="monotone" dataKey="revenue" stroke="#135bec" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
-                        </AreaChart>
-                    </ResponsiveContainer>
+                    {children}
                 </div>
             </div>
         </div>
     );
 }
 
+function PatientAnalyticsChart() {
+    return (
+        <ChartContainer title="Patient Analytics" subtitle="New Patients vs Visits">
+            <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={patientData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                    <defs>
+                        <linearGradient id="colorVisits" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#135bec" stopOpacity={0.2} />
+                            <stop offset="100%" stopColor="#135bec" stopOpacity={0} />
+                        </linearGradient>
+                        <linearGradient id="colorNew" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#10b981" stopOpacity={0.2} />
+                            <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+                        </linearGradient>
+                    </defs>
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 'bold' }} dy={10} />
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 15px -3px rgba(0, 0, 0, 0.1)' }} />
+                    <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 'bold' }} />
+                    <Area type="monotone" dataKey="visits" name="Patient Visits" stroke="#135bec" strokeWidth={3} fillOpacity={1} fill="url(#colorVisits)" />
+                    <Area type="monotone" dataKey="new" name="New Patients" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorNew)" />
+                </AreaChart>
+            </ResponsiveContainer>
+        </ChartContainer>
+    );
+}
+
+function FinancialAnalyticsChart() {
+    return (
+        <ChartContainer title="Financial Analytics" subtitle="Professional Fees vs Total Collection">
+            <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={financialData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }} barGap={2} barSize={12}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 'bold' }} dy={10} />
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 15px -3px rgba(0, 0, 0, 0.1)' }} cursor={{ fill: '#f1f5f9' }} />
+                    <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 'bold' }} />
+                    <Bar dataKey="fees" name="Prof. Fees" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="total" name="Total Collection" fill="#135bec" radius={[4, 4, 0, 0]} />
+                </BarChart>
+            </ResponsiveContainer>
+        </ChartContainer>
+    );
+}
+
 import { useToast } from '../../components/Toast';
 
-export function Dashboard() {
+export function Dashboard({ setActiveTab }: { setActiveTab?: (t: string) => void }) {
     const { showToast } = useToast();
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
     const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
     const [isSlotModalOpen, setIsSlotModalOpen] = useState(false);
     const [isPrescModalOpen, setIsPrescModalOpen] = useState(false);
-
+    const [isMissedModalOpen, setIsMissedModalOpen] = useState(false);
     return (
         <>
             <div className="animate-slide-up space-y-8">
@@ -150,17 +193,24 @@ export function Dashboard() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <StatCard title="Today's Appointments" value="24" change="4 Added" trend="up" delay={0.1} />
-                    <StatCard title="Total Revenue" value="₹42,500" change="+12%" trend="up" delay={0.2} />
-                    <StatCard title="Pending Lab Reports" value="7" change="3 Urgent" trend="down" delay={0.3} />
-                    <StatCard title="New Patients" value="5" change="Consistent" trend="up" delay={0.4} />
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    <StatCard title="Today's Appointments" value="24" change="4 Added" trend="up" delay={0.1} onClick={() => setActiveTab && setActiveTab('appointments')} />
+                    <StatCard title="Total Patient Visits" value="1,240" change="Steady" trend="up" delay={0.15} onClick={() => setActiveTab && setActiveTab('patients')} />
+                    <StatCard title="Total Appointments" value="1,580" change="+45" trend="up" delay={0.2} onClick={() => setActiveTab && setActiveTab('appointments')} />
+                    <StatCard title="Missed Appointments" value="32" change="-2 This Week" trend="down" delay={0.25} onClick={() => setIsMissedModalOpen(true)} />
+                    <StatCard title="New Patients" value="85" change="+12 This Month" trend="up" delay={0.3} onClick={() => setActiveTab && setActiveTab('patients')} />
+                    <StatCard title="Payment Collection" value="₹2,45,000" change="+8%" trend="up" delay={0.35} onClick={() => setActiveTab && setActiveTab('earnings')} />
+                    <StatCard title="Professional Fee" value="₹1,20,000" change="+15%" trend="up" delay={0.4} onClick={() => setActiveTab && setActiveTab('earnings')} />
+                    <StatCard title="Total Expenses" value="₹45,000" change="-5%" trend="down" delay={0.45} />
+                    <StatCard title="Pending Lab Reports" value="7" change="3 Urgent" trend="down" delay={0.5} />
+                    <StatCard title="Total Revenue" value="₹4,10,000" change="+12%" trend="up" delay={0.55} onClick={() => setActiveTab && setActiveTab('earnings')} />
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2 space-y-6">
                         <LiveQueue />
-                        <RevenueChart />
+                        <PatientAnalyticsChart />
+                        <FinancialAnalyticsChart />
                     </div>
                     <div className="space-y-6">
                         <div className="bg-primary-light border border-primary/20 rounded-2xl p-6 relative overflow-hidden shadow-sm">
@@ -265,6 +315,25 @@ export function Dashboard() {
                 </div>
             </Modal>
 
+            <Modal isOpen={isMissedModalOpen} onClose={() => setIsMissedModalOpen(false)} title="Missed Appointments History">
+                <div className="space-y-4">
+                    <p className="text-sm text-slate-500 mb-4">A record of patients who did not show up for their appointments.</p>
+                    <div className="space-y-3">
+                        {[
+                            { date: '12 Oct, 2026', name: 'John Doe', reason: 'No notice', phone: '+91 9876543210' },
+                            { date: '11 Oct, 2026', name: 'Jane Smith', reason: 'Rescheduled late', phone: '+91 9123456780' }
+                        ].map((item, idx) => (
+                            <div key={idx} className="p-4 border border-slate-200 rounded-xl bg-slate-50 flex justify-between items-center">
+                                <div>
+                                    <p className="font-bold text-sm text-text-dark">{item.name}</p>
+                                    <p className="text-xs text-slate-500">{item.phone} • {item.reason}</p>
+                                </div>
+                                <div className="text-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded-full">{item.date}</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </Modal>
         </>
     );
 }

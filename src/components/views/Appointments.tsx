@@ -1,6 +1,15 @@
-
+import { useState } from 'react';
+import { Modal } from '../../components/Modal';
+import { useToast } from '../../components/Toast';
 
 export function Appointments() {
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const { showToast } = useToast();
+
+    const handleSaveAppointment = () => {
+        showToast('Appointment added successfully!', 'success');
+        setIsAddModalOpen(false);
+    };
     return (
         <div className="bg-background-soft font-sans text-slate-900 min-h-screen pb-32 animated-gradient-bg relative">
             <div className="max-w-md mx-auto relative min-h-screen overflow-hidden">
@@ -15,7 +24,10 @@ export function Appointments() {
                                 Smart <span className="text-transparent bg-clip-text bg-gradient-to-r from-medical-teal to-medical-blue">Schedule</span>
                             </h1>
                         </div>
-                        <button className="w-12 h-12 rounded-full glass-morphism flex items-center justify-center text-medical-blue shadow-lg hover:scale-105 transition-transform duration-300">
+                        <button
+                            onClick={() => setIsAddModalOpen(true)}
+                            className="w-12 h-12 rounded-full glass-morphism flex items-center justify-center text-medical-blue shadow-lg hover:scale-105 transition-transform duration-300"
+                        >
                             <span className="material-symbols-outlined font-bold">add</span>
                         </button>
                     </div>
@@ -160,6 +172,38 @@ export function Appointments() {
 
                 <div className="h-20"></div>
             </div>
+
+            <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="Schedule New Appointment">
+                <div className="space-y-4">
+                    <div>
+                        <label className="text-xs font-bold text-slate-500 mb-1 block">Patient Name</label>
+                        <input type="text" className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none" placeholder="Search or type name..." />
+                    </div>
+                    <div>
+                        <label className="text-xs font-bold text-slate-500 mb-1 block">Date & Time</label>
+                        <div className="flex gap-4">
+                            <input type="date" className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-primary outline-none" />
+                            <input type="time" className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-primary outline-none" />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="text-xs font-bold text-slate-500 mb-1 block">Provider</label>
+                        <select className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-primary outline-none">
+                            <option>Dr. Sarah Jenkins (Cardiology)</option>
+                            <option>Dr. Marcus Wright (Neurology)</option>
+                            <option>Dr. Elena Rossi (Dermatology)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="text-xs font-bold text-slate-500 mb-1 block">Purpose of Visit</label>
+                        <textarea rows={3} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none" placeholder="e.g. Routine Checkup..."></textarea>
+                    </div>
+                    <div className="pt-4 flex gap-3">
+                        <button onClick={() => setIsAddModalOpen(false)} className="flex-1 py-2.5 rounded-lg border border-slate-200 text-slate-600 font-bold hover:bg-slate-50">Cancel</button>
+                        <button onClick={handleSaveAppointment} className="flex-1 py-2.5 rounded-lg bg-primary text-white font-bold hover:bg-primary-hover shadow-sm">Save Appointment</button>
+                    </div>
+                </div>
+            </Modal>
 
             <style>{`
                 .glass-morphism {
