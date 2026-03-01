@@ -47,22 +47,22 @@ jobs:
 
     - name: Prepare APK file
       run: |
-        mv android/app/build/outputs/apk/debug/app-debug.apk MedPro-Android-APK.apk
+        mv android/app/build/outputs/apk/debug/app-debug.apk DentiSphere-Android-APK.apk
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: MedPro-Android-APK
-        path: MedPro-Android-APK.apk
+        name: DentiSphere-Android-APK
+        path: DentiSphere-Android-APK.apk
 
     - name: Create or Update Release
       uses: ncipollo/release-action@v1
       with:
         tag: "latest"
-        name: "Latest Build"
-        body: "Automated build of the MedPro Android APK."
+        name: "DentiSphere - Latest Build"
+        body: "Automated build of the DentiSphere Android APK. Install this on any Android device."
         allowUpdates: true
         replacesArtifacts: true
         makeLatest: true
-        artifacts: "MedPro-Android-APK.apk"
+        artifacts: "DentiSphere-Android-APK.apk"
         token: ${{ secrets.GITHUB_TOKEN }}

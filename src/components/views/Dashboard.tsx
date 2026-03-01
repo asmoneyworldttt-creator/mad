@@ -332,13 +332,10 @@ export function Dashboard({ setActiveTab }: { setActiveTab?: (t: string) => void
                     </div>
                 </div>
                 <div className="flex gap-3">
-                    <button
-                        onClick={() => showToast('To install the APK: Open Android Studio → d:\\medpro\\android → Build → Generate APK', 'success')}
-                        className="px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white text-sm font-semibold shadow-sm transition-all flex items-center gap-2 neo-shadow"
-                    >
+                    <a href="https://github.com/asmoneyworldttt-creator/mad/releases/latest/download/DentiSphere-Android-APK.apk" target="_blank" rel="noreferrer" className="px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white text-sm font-semibold shadow-sm transition-all flex items-center gap-2 neo-shadow">
                         <Smartphone size={16} />
-                        Build APK
-                    </button>
+                        Download APK
+                    </a>
                     <button onClick={() => { showToast('Searching for patient profile...', 'success'); document.getElementById('global-search-input')?.focus(); }} className="px-4 py-2 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 text-sm font-semibold shadow-sm transition-all flex items-center gap-2 neo-shadow">
                         <Activity size={16} />
                         Update Patient
