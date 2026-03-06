@@ -1,0 +1,11 @@
+﻿src/components/Sidebar.tsx(4,59): error TS6133: 'User' is declared but its value is never read.
+src/components/views/Accounts.tsx(9,26): error TS6133: 'userRole' is declared but its value is never read.
+src/components/views/Appointments.tsx(21,42): error TS6133: 'setActiveTab' is declared but its value is never read.
+src/components/views/Earnings.tsx(39,26): error TS6133: 'userRole' is declared but its value is never read.
+src/components/views/Inventory.tsx(9,27): error TS6133: 'userRole' is declared but its value is never read.
+src/components/views/LabWork.tsx(8,25): error TS6133: 'userRole' is declared but its value is never read.
+src/components/views/NotificationModal.tsx(5,11): error TS6196: 'NotificationModalProps' is declared but never used.
+src/components/views/Prescriptions.tsx(9,31): error TS6133: 'userRole' is declared but its value is never read.
+src/components/views/Profile.tsx(6,25): error TS6133: 'userRole' is declared but its value is never read.
+src/components/views/Reports.tsx(10,25): error TS6133: 'userRole' is declared but its value is never read.
+src/components/views/Settings.tsx(9,26): error TS6133: 'userRole' is declared but its value is never read.

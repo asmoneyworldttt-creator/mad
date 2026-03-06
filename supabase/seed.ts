@@ -74,6 +74,17 @@ async function seed() {
         if (error) console.error(`Error inserting pending appt ${a.id}:`, error.message);
     }
 
+    console.log('Seeding Staff...');
+    const staffMembers = [
+        { name: 'Dr. Sarah Jenkins', role: 'Medical Director', email: 'sarah.j@medpro.com', mobile: '+91 98765 43210', qualifications: 'BDS, MDS (Oral Surgery)', degree: 'Master of Dental Surgery', grad_year: 2012, license_number: 'DCI/TN/12345' },
+        { name: 'Dr. Rajesh Kumar', role: 'Associate Dentist', email: 'rajesh.k@medpro.com', mobile: '+91 98765 43211', qualifications: 'BDS', degree: 'Bachelor of Dental Surgery', grad_year: 2018, license_number: 'DCI/TN/54321' },
+        { name: 'Priya Mani', role: 'Clinical Assistant', email: 'priya.m@medpro.com', mobile: '+91 98765 43212', qualifications: 'Diploma in Nursing', degree: 'Nursing Assistant', grad_year: 2020, license_number: 'RNA/2020/001' }
+    ];
+    for (const s of staffMembers) {
+        const { error } = await supabase.from('staff').upsert(s, { onConflict: 'email' });
+        if (error) console.error(`Error inserting staff ${s.name}:`, error.message);
+    }
+
     console.log('Seeding Complete! 🎉');
 }
 

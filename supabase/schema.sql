@@ -71,3 +71,22 @@ CREATE POLICY "Allow anon read/write access" ON public.appointments FOR ALL USIN
 
 DROP POLICY IF EXISTS "Allow anon read/write access" ON public.pending_appointments;
 CREATE POLICY "Allow anon read/write access" ON public.pending_appointments FOR ALL USING (true) WITH CHECK (true);
+
+-- staff table
+CREATE TABLE IF NOT EXISTS public.staff (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    role TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    mobile TEXT,
+    qualifications TEXT,
+    degree TEXT,
+    grad_year INTEGER,
+    license_number TEXT,
+    permissions JSONB DEFAULT '{"dashboard": true, "appointments": true, "emr": true, "billing": false, "settings": false, "inventory": false}'::jsonb,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE public.staff ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow anon read/write access" ON public.staff;
+CREATE POLICY "Allow anon read/write access" ON public.staff FOR ALL USING (true) WITH CHECK (true);

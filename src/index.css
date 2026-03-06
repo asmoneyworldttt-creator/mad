@@ -2,29 +2,181 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: 'Bricolage';
+  src: url('/fonts/BricolageGrotesque-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Bricolage';
+  src: url('/fonts/BricolageGrotesque-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Outfit';
+  src: url('/fonts/Outfit-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Outfit';
+  src: url('/fonts/Outfit-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 @layer base {
+  :root {
+    /* Dentora Deep Midnight Blue Backgrounds */
+    --bg-deep: #060b14;
+    --surface-bg: rgba(10, 16, 30, 0.7);
+
+    /* Dentora Branding Accents */
+    --accent-cyan: #00F0FF;
+    --accent-glow: #00d6e6;
+    --accent-mint: #84E5D4;
+
+    /* Base UI */
+    --glass-white: rgba(255, 255, 255, 0.03);
+    --glass-border: rgba(0, 240, 255, 0.1);
+    --glow-cyan: rgba(0, 240, 255, 0.2);
+    --text-main: #F0F9FF;
+    --text-muted: #94A3B8;
+  }
+
+  .light-theme {
+    --bg-deep: #F1F5F9;
+    --surface-bg: rgba(255, 255, 255, 0.8);
+    --accent-cyan: #0A84FF;
+    --accent-glow: #006ee6;
+    --accent-mint: #34C759;
+    --glass-white: rgba(255, 255, 255, 0.95);
+    --glass-border: rgba(0, 0, 0, 0.08);
+    --glow-cyan: rgba(10, 132, 255, 0.15);
+    --text-main: #0F172A;
+    --text-muted: #64748B;
+  }
+
   body {
-    background-color: theme('colors.background');
-    color: theme('colors.text.main');
+    background-color: var(--bg-deep);
+    color: var(--text-main);
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color 0.4s cubic-bezier(0.25, 0.1, 0.25, 1), color 0.4s ease;
+    background-image: radial-gradient(circle at top right, rgba(0, 240, 255, 0.03), transparent 40%),
+      radial-gradient(circle at bottom left, rgba(132, 229, 212, 0.02), transparent 40%);
+  }
+}
+
+.circuit-bg {
+  background-image:
+    radial-gradient(circle at 2px 2px, rgba(0, 240, 255, 0.06) 1px, transparent 0);
+  background-size: 32px 32px;
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+}
+
+.circuit-lines {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.08;
+  background-image: url("data:image/svg+xml,%3Csvg width='120' height='120' viewBox='0 0 120 120' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 20 L100 20 L100 100 L20 100 Z' fill='none' stroke='%2300F0FF' stroke-width='0.3'/%3E%3Cpath d='M20 20 L40 40 M100 20 L80 40 M100 100 L80 80 M20 100 L40 80' fill='none' stroke='%2300F0FF' stroke-width='0.3'/%3E%3Ccircle cx='40' cy='40' r='1' fill='%2300F0FF'/%3E%3Ccircle cx='80' cy='40' r='1' fill='%2300F0FF'/%3E%3Ccircle cx='80' cy='80' r='1' fill='%2300F0FF'/%3E%3Ccircle cx='40' cy='80' r='1' fill='%2300F0FF'/%3E%3C/svg%3E");
+}
+
+.glass-morphism {
+  background: var(--surface-bg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.2);
+  transition: all 0.4s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.light-theme .glass-morphism {
+  background: rgba(255, 255, 255, 0.85) !important;
+  border: 1px solid rgba(0, 0, 0, 0.05) !important;
+  backdrop-filter: blur(20px) !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05) !important;
+}
+
+.light-theme .sidebar-active {
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+  border-right: 3px solid #1d4ed8 !important;
+}
+
+.light-theme .shadow-neon,
+.light-theme .cyan-glow {
+  box-shadow: none !important;
+}
+
+.light-theme .circuit-bg,
+.light-theme .circuit-lines {
+  display: none !important;
+}
+
+.pulsing-dot {
+  animation: cyan-pulse 2s infinite;
+}
+
+.light-theme .pulsing-dot {
+  animation: none !important;
+  background-color: #22c55e !important;
+}
+
+.light-theme .glass,
+.light-theme .glass-panel {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  backdrop-filter: none !important;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1) !important;
+}
+
+@keyframes cyan-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.5);
+    opacity: 0.4;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
   }
 }
 
 @layer components {
   .glass {
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: rgba(24, 24, 27, 0.4);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
   }
 
   .glass-panel {
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(19, 91, 236, 0.1);
+    background: rgba(9, 9, 11, 0.6);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(59, 130, 246, 0.15);
   }
 
   .neo-shadow {
-    box-shadow: 0 8px 32px 0 rgba(19, 91, 236, 0.08);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4), inset 0 1px 1px 0 rgba(255, 255, 255, 0.05);
   }
 
   .tooth-3d {

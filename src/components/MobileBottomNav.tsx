@@ -1,47 +1,47 @@
-import { Activity, Calendar, Users, Home, Settings } from 'lucide-react';
+import { Activity, Calendar, Users, Home, Menu, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export function MobileBottomNav({ activeTab, setActiveTab }: { activeTab: string, setActiveTab: (t: string) => void }) {
-    const tabs = [
-        { id: 'dashboard', icon: Home, label: 'Home' },
-        { id: 'appointments', icon: Calendar, label: 'Schedule' },
-        { id: 'emr', icon: Activity, label: 'EMR' },
-        { id: 'patients', icon: Users, label: 'Patients' },
-        { id: 'settings', icon: Settings, label: 'More' }
-    ];
-
+export function MobileBottomNav({ activeTab, setActiveTab, toggleMore }: { activeTab: string, setActiveTab: (t: string) => void, toggleMore: () => void }) {
     return (
-        <div className="fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-xl border-t border-slate-200 pb-safe z-50 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)]">
-            <div className="flex justify-around items-center px-2 py-3">
-                {tabs.map(t => {
-                    const isActive = activeTab === t.id;
-                    const Icon = t.icon;
-                    return (
-                        <button
-                            key={t.id}
-                            onClick={() => setActiveTab(t.id)}
-                            className={`flex flex-col items-center justify-center w-16 gap-1 transition-colors relative ${isActive ? 'text-primary drop-shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                        >
-                            <div className="relative z-10">
-                                <Icon size={isActive ? 24 : 22} className={`transition-transform duration-300 ${isActive ? 'scale-110 mb-0.5' : ''}`} />
-                            </div>
-                            <span className={`text-[10px] uppercase font-bold tracking-wider transition-all duration-300 ${isActive ? 'opacity-100' : 'opacity-70 font-medium'}`}>{t.label}</span>
+        <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-sm bg-surface-bg/80 backdrop-blur-3xl rounded-[28px] px-6 py-3.5 border border-primary/20 shadow-[0_8px_32px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.05)] z-50 transition-all duration-500 ease-fluid">
+            <div className="flex items-center justify-between relative">
+                <button
+                    onClick={() => setActiveTab('dashboard')}
+                    className={`flex flex-col items-center gap-1.5 transition-all duration-300 ease-fluid ${activeTab === 'dashboard' ? 'text-primary scale-110' : 'text-text-muted hover:text-white'}`}>
+                    <Home size={22} className={activeTab === 'dashboard' ? 'drop-shadow-[0_0_8px_rgba(0,240,255,0.8)]' : ''} />
+                    <span className="font-sans text-[10px] tracking-wide">Home</span>
+                </button>
+                <button
+                    onClick={() => setActiveTab('patients')}
+                    className={`flex flex-col items-center gap-1.5 transition-all duration-300 ease-fluid ${activeTab === 'patients' ? 'text-primary scale-110' : 'text-text-muted hover:text-white'}`}>
+                    <Users size={22} className={activeTab === 'patients' ? 'drop-shadow-[0_0_8px_rgba(0,240,255,0.8)]' : ''} />
+                    <span className="font-sans text-[10px] tracking-wide">Patients</span>
+                </button>
 
-                            <AnimatePresence>
-                                {isActive && (
-                                    <motion.div
-                                        layoutId="mobileNavIndicator"
-                                        className="absolute -top-3 left-1/2 -translate-x-1/2 w-10 h-1 rounded-full bg-primary"
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        exit={{ opacity: 0 }}
-                                    />
-                                )}
-                            </AnimatePresence>
-                        </button>
-                    );
-                })}
+                {/* Central Action Button */}
+                <div className="relative -top-8 mx-2">
+                    <button
+                        onClick={() => setActiveTab('appointments')}
+                        className="w-16 h-16 rounded-full bg-primary text-background-deep flex items-center justify-center shadow-neon hover:shadow-[0_0_30px_rgba(0,240,255,0.6)] active:scale-90 hover:scale-105 transition-all duration-300 ease-fluid border border-white/20 relative overflow-hidden group">
+                        <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+                        <Plus size={32} className="relative z-10 group-hover:rotate-90 transition-transform duration-500" />
+                    </button>
+                </div>
+
+                <button
+                    onClick={() => setActiveTab('prescriptions')}
+                    className={`flex flex-col items-center gap-1.5 transition-all duration-300 ease-fluid ${activeTab === 'prescriptions' ? 'text-primary scale-110' : 'text-text-muted hover:text-white'}`}>
+                    <Activity size={22} className={activeTab === 'prescriptions' ? 'drop-shadow-[0_0_8px_rgba(0,240,255,0.8)]' : ''} />
+                    <span className="font-sans text-[10px] tracking-wide">Scripts</span>
+                </button>
+                <button
+                    onClick={() => toggleMore()}
+                    className={`flex flex-col items-center gap-1.5 text-text-muted hover:text-white transition-all duration-300 ease-fluid active:scale-95`}>
+                    <Menu size={22} />
+                    <span className="font-sans text-[10px] tracking-wide">More</span>
+                </button>
             </div>
-        </div>
+        </nav>
     );
 }
+
