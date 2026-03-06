@@ -133,5 +133,13 @@ export function useGlobalChat() {
         }
     }, [OPENROUTER_API_KEY]);
 
-    return { messages, isTyping, error, sendMessage };
+    const clearChat = useCallback(() => {
+        setMessages([
+            { role: 'assistant', content: '👋 **Dentora AI Core** online. Diagnostics and operations active. How can I assist your practice today?', timestamp: new Date() }
+        ]);
+        historyRef.current = [];
+        setError(null);
+    }, []);
+
+    return { messages, isTyping, error, sendMessage, clearChat };
 }
