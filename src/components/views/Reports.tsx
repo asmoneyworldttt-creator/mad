@@ -40,7 +40,7 @@ export function Reports({ userRole, theme, setActiveTab }: { userRole: UserRole;
             query = supabase.from('accounts').select('*').gte('date', fromDate).lte('date', toDate);
         } else if (title.includes('Lab')) {
             setReportType('appointment');
-            query = supabase.from('lab_orders').select('*, patients!patient_id(name)').gte('date', fromDate).lte('date', toDate);
+            query = supabase.from('lab_orders').select('*, patients!patient_id(name)').gte('order_date', fromDate).lte('order_date', toDate);
         } else if (title.includes('Acquisition') || title.includes('Directory')) {
             setReportType('patient');
             query = supabase.from('patients').select('*').gte('created_at', fromDate).lte('created_at', toDate);
@@ -212,7 +212,7 @@ export function Reports({ userRole, theme, setActiveTab }: { userRole: UserRole;
                     <div className="p-6 border-t animate-slide-up" style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)' }}>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
                             <div>
-                                <label className="text-[10px] font-extrabold text-slate-400 mb-2 block">Reporting Start Date</label>
+                                <label className="text-xs font-bold text-slate-500 mb-2 block">Reporting Start Date</label>
                                 <input
                                     type="date"
                                     value={fromDate}
@@ -222,7 +222,7 @@ export function Reports({ userRole, theme, setActiveTab }: { userRole: UserRole;
                                 />
                             </div>
                             <div>
-                                <label className="text-[10px] font-extrabold text-slate-400 mb-2 block">Reporting End Date</label>
+                                <label className="text-xs font-bold text-slate-500 mb-2 block">Reporting End Date</label>
                                 <input
                                     type="date"
                                     value={toDate}
@@ -251,8 +251,8 @@ export function Reports({ userRole, theme, setActiveTab }: { userRole: UserRole;
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                     <div>
                         <div className="flex items-center gap-2 mb-2">
-                            <span className="text-[10px] font-extrabold text-primary bg-primary/10 px-3 py-1 rounded-full  tracking-[0.2em]">Live Insights</span>
-                            <span className="text-[10px] font-extrabold text-slate-400  tracking-[0.2em]">{fromDate} → {toDate}</span>
+                            <span className="text-xs font-bold text-primary bg-primary/10 px-3 py-1 rounded-full">Reporting Active</span>
+                            <span className="text-xs font-bold text-slate-400">{fromDate} to {toDate}</span>
                         </div>
                         <h2 className="text-4xl font-sans font-bold text-text-dark tracking-tight">{reportTitle}</h2>
                     </div>
@@ -315,11 +315,11 @@ export function Reports({ userRole, theme, setActiveTab }: { userRole: UserRole;
                             <div className="overflow-x-auto border rounded-3xl custom-scrollbar" style={{ borderColor: 'var(--border-color)' }}>
                                 <table className="w-full text-left border-collapse">
                                     <thead>
-                                        <tr className="border-b text-[10px] tracking-[0.2em] text-slate-400 font-extrabold" style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)' }}>
-                                            <th className="px-8 py-5">Temporal Entry</th>
-                                            <th className="px-8 py-5">Object Identification</th>
-                                            <th className="px-8 py-5">Primary Value</th>
-                                            <th className="px-8 py-5 text-center">Status Trace</th>
+                                        <tr className="border-b text-xs text-slate-400 font-bold" style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)' }}>
+                                            <th className="px-8 py-5">Date</th>
+                                            <th className="px-8 py-5">Details</th>
+                                            <th className="px-8 py-5">Amount</th>
+                                            <th className="px-8 py-5 text-center">Status</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y" style={{ borderColor: 'var(--border-color)' }}>
@@ -339,7 +339,7 @@ export function Reports({ userRole, theme, setActiveTab }: { userRole: UserRole;
                                             </tr>
                                         ))}
                                         {reportData.length === 0 && (
-                                            <tr><td colSpan={4} className="text-center py-32 text-slate-300 font-bold italic font-sans text-xl">No cryptographic records found for this period.</td></tr>
+                                            <tr><td colSpan={4} className="text-center py-32 text-slate-300 font-bold italic font-sans text-xl">No records found for this period.</td></tr>
                                         )}
                                     </tbody>
                                 </table>
@@ -355,9 +355,9 @@ export function Reports({ userRole, theme, setActiveTab }: { userRole: UserRole;
     return (
         <div className="animate-slide-up space-y-10 max-w-6xl mx-auto py-4">
             <div className="text-center space-y-3">
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary/10 rounded-full border border-primary/20 text-[10px] font-extrabold text-primary  tracking-[0.2em]">Clinic Intelligence Unit</div>
-                <h2 className="text-5xl font-sans font-bold text-text-dark tracking-tight">Analytical Reporting</h2>
-                <p className="text-slate-500 font-medium text-lg max-w-2xl mx-auto">Generate, visualize, and export clinical, financial, and operational datasets with deep-dive granularity.</p>
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary/10 rounded-full border border-primary/20 text-xs font-bold text-primary">Clinic Reports</div>
+                <h2 className="text-5xl font-sans font-bold text-text-dark tracking-tight">Analytical Reports</h2>
+                <p className="text-slate-500 font-medium text-lg max-w-2xl mx-auto">Generate and export detailed clinical and financial reports for your clinic.</p>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">

@@ -124,15 +124,15 @@ export function Inventory({ userRole, theme }: { userRole: UserRole; theme?: 'li
         const isTransaction = view === 'add_transaction';
         return (
             <div className="animate-slide-up space-y-4 pb-10">
-                <div className="flex items-center gap-4">
-                    <button onClick={() => setView('list')} className={`p-2.5 border rounded-xl transition-all shadow-lg hover:scale-105 active:scale-95`} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }}>
-                        <ChevronLeft size={20} />
+                <div className="flex items-center gap-6">
+                    <button onClick={() => setView('list')} className={`p-4 border rounded-2xl transition-all shadow-premium hover:scale-105 active:scale-95`} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }}>
+                        <ChevronLeft size={24} />
                     </button>
                     <div>
-                        <h2 className="text-xl font-bold tracking-tight" style={{ color: 'var(--text-dark)' }}>
-                            {isTransaction ? 'Log Movement' : 'New Procurement'}
+                        <h2 className="text-2xl md:text-3xl font-bold tracking-tight" style={{ color: 'var(--text-dark)' }}>
+                            {isTransaction ? 'Logistic Update' : 'New Supply Order'}
                         </h2>
-                        <p className="text-[10px] font-bold" style={{ color: 'var(--text-muted)' }}>{isTransaction ? 'Inward/outward movement' : 'AI-assisted ordering system'}</p>
+                        <p className="text-base font-medium mt-1" style={{ color: 'var(--text-muted)' }}>{isTransaction ? 'Log incoming materials or clinical consumption' : 'Procure new materials for the clinic'}</p>
                     </div>
                 </div>
 
@@ -141,7 +141,7 @@ export function Inventory({ userRole, theme }: { userRole: UserRole; theme?: 'li
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-4">
                                 <div>
-                                    <label className="text-[9px] font-black text-slate-400 mb-1.5 block uppercase tracking-widest">Item Selection</label>
+                                    <label className="text-xs font-bold text-slate-500 mb-1.5 block">Item Selection</label>
                                     <CustomSelect
                                         options={[
                                             ...stock.map(s => ({ value: s.id, label: s.product_name })),
@@ -158,7 +158,7 @@ export function Inventory({ userRole, theme }: { userRole: UserRole; theme?: 'li
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="text-[9px] font-black text-slate-400 mb-1.5 block uppercase tracking-widest">Quantity</label>
+                                         <label className="text-xs font-bold text-slate-500 mb-1.5 block">Quantity</label>
                                         <input
                                             type="number"
                                             placeholder="0"
@@ -166,7 +166,7 @@ export function Inventory({ userRole, theme }: { userRole: UserRole; theme?: 'li
                                         />
                                     </div>
                                     <div>
-                                        <label className="text-[9px] font-black text-slate-400 mb-1.5 block uppercase tracking-widest">Velocity / Context</label>
+                                         <label className="text-xs font-bold text-slate-500 mb-1.5 block">Status / Action</label>
                                         <CustomSelect
                                             options={isTransaction ? [
                                                 { value: 'in', label: 'Restock (In)' },
@@ -186,9 +186,9 @@ export function Inventory({ userRole, theme }: { userRole: UserRole; theme?: 'li
 
                             <div className="space-y-4">
                                 <div>
-                                    <label className="text-[9px] font-black text-slate-400 mb-1.5 block uppercase tracking-widest">Log Date</label>
+                                     <label className="text-xs font-bold text-slate-500 mb-1.5 block">Date</label>
                                     <div className="relative">
-                                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                                         <input
                                             type="date"
                                             defaultValue={new Date().toISOString().split('T')[0]}
@@ -197,9 +197,9 @@ export function Inventory({ userRole, theme }: { userRole: UserRole; theme?: 'li
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="text-[9px] font-black text-slate-400 mb-1.5 block uppercase tracking-widest">{isTransaction ? 'Flux Remarks' : 'Entity'}</label>
+                                     <label className="text-xs font-bold text-slate-500 mb-1.5 block">{isTransaction ? 'Notes' : 'Supplier Name'}</label>
                                     <div className="relative">
-                                        {isTransaction ? <FileText className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} /> : <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />}
+                                        {isTransaction ? <FileText className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} /> : <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />}
                                         <input
                                             type="text"
                                             placeholder={isTransaction ? "Reason..." : "Supplier..."}
@@ -210,12 +210,12 @@ export function Inventory({ userRole, theme }: { userRole: UserRole; theme?: 'li
                             </div>
                         </div>
 
-                        <div className="flex gap-3 justify-end">
-                            <button type="button" onClick={() => setView('list')} className={`px-6 py-2.5 rounded-xl border text-[11px] font-bold transition-all active:scale-95 ${theme === 'dark' ? 'border-white/10 text-slate-400 hover:bg-white/5' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>Dismiss</button>
-                            <button type="submit" className="px-8 py-2.5 rounded-xl bg-primary text-white text-[11px] font-bold hover:bg-primary-hover shadow-lg shadow-primary/20 transition-all active:scale-95">
-                                {isTransaction ? 'Commit Flux' : 'Deploy Order'}
-                            </button>
-                        </div>
+                         <div className="flex gap-3 justify-end">
+                             <button type="button" onClick={() => setView('list')} className={`px-6 py-2.5 rounded-xl border text-xs font-bold transition-all active:scale-95 ${theme === 'dark' ? 'border-white/10 text-slate-400 hover:bg-white/5' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>Cancel</button>
+                             <button type="submit" className="px-8 py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-hover shadow-lg shadow-primary/20 transition-all active:scale-95">
+                                 {isTransaction ? 'Save Record' : 'Place Order'}
+                             </button>
+                         </div>
                     </form>
                 </div>
             </div>
@@ -227,65 +227,61 @@ export function Inventory({ userRole, theme }: { userRole: UserRole; theme?: 'li
             <div className={`p-6 rounded-2xl border shadow-xl transition-all relative overflow-hidden`} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
                 <div className="absolute top-0 right-0 p-6 opacity-5 pointer-events-none transition-transform group-hover:rotate-12 duration-700"><Archive size={80} /></div>
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
-                    <div>
-                        <h2 className="text-xl font-bold tracking-tight" style={{ color: 'var(--text-dark)' }}>Supply Chain</h2>
-                        <p className="text-[10px] font-bold" style={{ color: 'var(--text-muted)' }}>Monitoring stock levels and procurement cycles.</p>
-                    </div>
-                    <div className="flex gap-3 w-full md:w-auto">
-                        {activeTab === 'transactions' && (
-                            <button
-                                onClick={() => setView('add_transaction')}
-                                className="bg-primary hover:scale-105 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-primary/20 w-full md:w-auto"
-                            >
-                                <Plus size={16} /> Add Movement
-                            </button>
-                        )}
-                        {activeTab === 'orders' && (
-                            <button
-                                onClick={() => setView('add_order')}
-                                className="bg-primary hover:scale-105 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-primary/20 w-full md:w-auto"
-                            >
-                                <Plus size={16} /> Smart Order
-                            </button>
-                        )}
+                     <div>
+                         <h2 className="text-2xl md:text-3xl font-bold tracking-tight" style={{ color: 'var(--text-dark)' }}>Supply Management</h2>
+                         <p className="text-base font-medium mt-1" style={{ color: 'var(--text-muted)' }}>Real-time inventory levels and logistics history</p>
+                     </div>
+                    <div className="flex gap-4 w-full md:w-auto">
+                         {activeTab === 'transactions' && (
+                             <button onClick={() => setView('add_transaction')}
+                                 className="bg-primary hover:scale-[1.02] text-white px-8 py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-3 transition-all active:scale-95 shadow-premium w-full md:w-auto">
+                                 <Plus size={22} /> Record Transaction
+                             </button>
+                         )}
+                         {activeTab === 'orders' && (
+                             <button onClick={() => setView('add_order')}
+                                 className="bg-primary hover:scale-[1.02] text-white px-8 py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-3 transition-all active:scale-95 shadow-premium w-full md:w-auto">
+                                 <Plus size={22} /> Create Purchase Order
+                             </button>
+                         )}
                     </div>
                 </div>
             </div>
 
-            <div className={`flex p-1 rounded-2xl shadow-lg w-max border overflow-x-auto max-w-full`} style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)' }}>
-                <button
-                    onClick={() => setActiveTab('stock')}
-                    className={`flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'stock' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-400 hover:text-primary hover:bg-primary/5'
-                        }`}
-                >
-                    <Archive size={14} /> Vault
-                </button>
-                <button
-                    onClick={() => setActiveTab('transactions')}
-                    className={`flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'transactions' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-400 hover:text-primary hover:bg-primary/5'
-                        }`}
-                >
-                    <ArrowRightLeft size={14} /> Flux
-                </button>
-                <button
-                    onClick={() => setActiveTab('orders')}
-                    className={`flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'orders' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-400 hover:text-primary hover:bg-primary/5'
-                        }`}
-                >
-                    <ShoppingCart size={14} /> Chain
-                </button>
-            </div>
+             <div className={`flex p-1.5 rounded-2xl shadow-lg w-max border overflow-x-auto max-w-full`} style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)' }}>
+                 <button
+                     onClick={() => setActiveTab('stock')}
+                     className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeTab === 'stock' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-400 hover:text-primary hover:bg-primary/5'
+                         }`}
+                 >
+                     <Archive size={16} /> Current Stock
+                 </button>
+                 <button
+                     onClick={() => setActiveTab('transactions')}
+                     className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeTab === 'transactions' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-400 hover:text-primary hover:bg-primary/5'
+                         }`}
+                 >
+                     <ArrowRightLeft size={16} /> History
+                 </button>
+                 <button
+                     onClick={() => setActiveTab('orders')}
+                     className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeTab === 'orders' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-400 hover:text-primary hover:bg-primary/5'
+                         }`}
+                 >
+                     <ShoppingCart size={16} /> Orders
+                 </button>
+             </div>
 
             <div className={`rounded-2xl border overflow-hidden shadow-xl transition-all`} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className={`text-[9px] font-black uppercase tracking-widest border-b`} style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)', color: 'var(--text-muted)' }}>
-                                <th className="px-5 py-3">Item Identity</th>
-                                <th className="px-5 py-3">Metadata</th>
-                                <th className="px-5 py-3">Volume</th>
-                                <th className="px-5 py-3 text-right">Logic</th>
-                            </tr>
+                             <tr className={`text-xs font-bold border-b`} style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)', color: 'var(--text-muted)' }}>
+                                 <th className="px-5 py-3">Item Name</th>
+                                 <th className="px-5 py-3">Last Update</th>
+                                 <th className="px-5 py-3">Available</th>
+                                 <th className="px-5 py-3 text-right">Status</th>
+                             </tr>
                         </thead>
                         <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-50'}`}>
                             {isLoading ? (
@@ -299,19 +295,19 @@ export function Inventory({ userRole, theme }: { userRole: UserRole; theme?: 'li
                                     <tr key={item.id} className="group transition-colors hover:bg-slate-50/50" style={{ background: 'var(--card-bg)' }}>
                                         <td className="px-5 py-3.5">
                                             <p className="font-bold text-xs" style={{ color: 'var(--text-main)' }}>{item.product_name}</p>
-                                            <p className="text-[8px] text-slate-400 font-bold mt-0.5 tracking-widest uppercase">SKU: {item.product_id || 'PROD-' + item.id}</p>
+                                            <p className="text-[8px] text-slate-400 font-bold mt-0.5">SKU: {item.product_id || 'PROD-' + item.id}</p>
                                         </td>
                                         <td className="px-5 py-3.5">
-                                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Update: {new Date(item.updated_at || item.created_at).toLocaleDateString()}</p>
+                                            <p className="text-xs text-slate-500 font-bold">Update: {new Date(item.updated_at || item.created_at).toLocaleDateString()}</p>
                                         </td>
                                         <td className="px-5 py-3.5">
                                             <div className="flex items-center gap-2">
-                                                <span className={`text-base font-black ${item.quantity <= (item.min_quantity || 10) ? 'text-rose-500' : 'text-slate-700'}`} style={{ color: item.quantity <= (item.min_quantity || 10) ? '#f43f5e' : 'var(--text-main)' }}>{item.quantity}</span>
-                                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Units</span>
+                                                <span className={`text-lg font-bold ${item.quantity <= (item.min_quantity || 10) ? 'text-rose-500' : 'text-slate-700'}`} style={{ color: item.quantity <= (item.min_quantity || 10) ? '#f43f5e' : 'var(--text-main)' }}>{item.quantity}</span>
+                                                <span className="text-[10px] font-bold text-slate-400">Units</span>
                                             </div>
                                         </td>
                                         <td className="px-5 py-3.5 text-right">
-                                            <span className={`px-3 py-1 rounded-lg text-[8px] font-black border uppercase tracking-widest ${item.quantity <= (item.min_quantity || 10) ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
+                                            <span className={`px-3 py-1 rounded-lg text-xs font-bold border ${item.quantity <= (item.min_quantity || 10) ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
                                                 {item.quantity <= (item.min_quantity || 10) ? 'Critical' : 'Optimal'}
                                             </span>
                                         </td>
@@ -334,17 +330,17 @@ export function Inventory({ userRole, theme }: { userRole: UserRole; theme?: 'li
                                     <tr key={t.id} className="group transition-colors hover:bg-slate-50/50" style={{ background: 'var(--card-bg)' }}>
                                         <td className="px-5 py-3.5">
                                             <p className="font-bold text-xs" style={{ color: 'var(--text-main)' }}>{t.inventory_stock?.product_name || 'Legacy Product'}</p>
-                                            <p className="text-[8px] text-slate-400 font-bold mt-0.5 uppercase tracking-widest">{t.date}</p>
+                                            <p className="text-[10px] text-slate-400 font-bold mt-0.5">{t.transaction_date || t.date}</p>
                                         </td>
                                         <td className="px-5 py-3.5">
-                                            <p className="text-[10px] text-slate-500 font-bold italic">"{t.remarks || 'Supply flux'}"</p>
+                                            <p className="text-xs text-slate-500 font-bold italic">"{t.remarks || 'Stock update'}"</p>
                                         </td>
                                         <td className="px-5 py-3.5">
-                                            <p className={`font-black text-xs ${t.type === 'in' ? 'text-emerald-500' : 'text-rose-500'}`}>{t.type === 'in' ? '+' : '-'}{t.quantity}</p>
+                                            <p className={`font-bold text-sm ${t.transaction_type === 'STOCK_IN' || t.type === 'in' ? 'text-emerald-500' : 'text-rose-500'}`}>{t.transaction_type === 'STOCK_IN' || t.type === 'in' ? '+' : '-'}{t.quantity}</p>
                                         </td>
                                         <td className="px-5 py-3.5 text-right">
-                                            <span className={`px-3 py-1 rounded-lg text-[8px] font-black border uppercase tracking-widest ${t.type === 'in' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-500 border-slate-100'}`}>
-                                                {t.type === 'in' ? 'Restock' : 'Usage'}
+                                            <span className={`px-3 py-1 rounded-lg text-xs font-bold border ${t.transaction_type === 'STOCK_IN' || t.type === 'in' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-500 border-slate-100'}`}>
+                                                {t.transaction_type === 'STOCK_IN' || t.type === 'in' ? 'Added' : 'Removed'}
                                             </span>
                                         </td>
                                     </tr>
@@ -364,22 +360,22 @@ export function Inventory({ userRole, theme }: { userRole: UserRole; theme?: 'li
                             ) : (
                                 orders.length > 0 ? orders.map((o) => (
                                     <tr key={o.id} className="group transition-colors hover:bg-slate-50/50" style={{ background: 'var(--card-bg)' }}>
-                                        <td className="px-8 py-6">
-                                            <p className="font-bold text-sm" style={{ color: 'var(--text-main)' }}>{o.type || 'Custom Item'}</p>
-                                            <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-widest">ORDER #{o.id}</p>
-                                        </td>
-                                        <td className="px-8 py-6">
-                                            <p className="text-xs text-slate-500 font-bold">Patient: <span style={{ color: 'var(--text-main)' }}>{o.patients?.name || 'In-House'}</span></p>
-                                            <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-widest">{o.date}</p>
-                                        </td>
-                                        <td className="px-8 py-6">
-                                            <p className="font-bold text-sm" style={{ color: 'var(--text-muted)' }}>PO-REQ-{o.id}</p>
-                                        </td>
-                                        <td className="px-8 py-6 text-right">
-                                            <span className="px-4 py-1.5 rounded-full text-[10px] font-extrabold border bg-primary/5 text-primary border-primary/20">
-                                                {o.status || 'PROCESSING'}
-                                            </span>
-                                        </td>
+                                         <td className="px-8 py-6">
+                                             <p className="font-bold text-sm" style={{ color: 'var(--text-main)' }}>{o.product_name || o.type || 'Custom Item'}</p>
+                                             <p className="text-xs text-slate-400 font-bold mt-1">Order ID: {o.id}</p>
+                                         </td>
+                                         <td className="px-8 py-6">
+                                             <p className="text-xs text-slate-500 font-bold">Supplier: <span style={{ color: 'var(--text-main)' }}>{o.vendor_name || o.patients?.name || 'In-House'}</span></p>
+                                             <p className="text-xs text-slate-400 mt-1">{o.order_date || o.date}</p>
+                                         </td>
+                                         <td className="px-8 py-6">
+                                             <p className="font-bold text-sm" style={{ color: 'var(--text-muted)' }}>REQ-{o.id}</p>
+                                         </td>
+                                         <td className="px-8 py-6 text-right">
+                                             <span className="px-4 py-1.5 rounded-full text-xs font-bold border bg-primary/5 text-primary border-primary/20">
+                                                 {o.order_status || o.status || 'PROCESSING'}
+                                             </span>
+                                         </td>
                                     </tr>
                                 )) : !isLoading && (
                                     <tr>

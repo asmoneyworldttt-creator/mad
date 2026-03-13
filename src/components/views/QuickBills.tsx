@@ -151,22 +151,22 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
         const statusColor: any = { paid: 'text-emerald-600 bg-emerald-50 border-emerald-200', unpaid: 'text-rose-500 bg-rose-50 border-rose-200', partial: 'text-amber-500 bg-amber-50 border-amber-200' };
         return (
             <div className="animate-slide-up space-y-6">
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
                     <div>
-                        <h2 className="text-xl font-bold tracking-tight" style={{ color: 'var(--text-dark)' }}>Revenue</h2>
-                        <p className="text-[10px] font-bold mt-0.5" style={{ color: 'var(--text-muted)' }}>Transaction history</p>
+                        <h2 className="text-2xl md:text-3xl font-bold tracking-tight" style={{ color: 'var(--text-dark)' }}>Financial Records</h2>
+                        <p className="text-sm font-medium mt-1" style={{ color: 'var(--text-muted)' }}>Consolidated ledger of all clinical transactions</p>
                     </div>
-                    <button onClick={() => setView('form')} className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl font-bold text-xs shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all">
-                        <Plus size={14} /> New Bill
+                    <button onClick={() => setView('form')} className="flex items-center gap-3 px-8 py-3.5 bg-primary text-white rounded-2xl font-bold text-sm shadow-premium hover:scale-[1.03] active:scale-95 transition-all">
+                        <Plus size={20} /> Generate Invoice
                     </button>
                 </div>
-                <div className="rounded-2xl border overflow-hidden shadow-xl" style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)', boxShadow: '0 4px 20px var(--glass-shadow)' }}>
+                <div className="rounded-[2rem] border overflow-hidden shadow-premium" style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
-                            <thead className="text-[9px] font-extrabold uppercase tracking-wider border-b" style={{ background: 'var(--card-bg-alt)', color: 'var(--text-muted)', borderColor: 'var(--border-color)' }}>
+                            <thead className="text-sm font-bold border-b" style={{ background: 'var(--card-bg-alt)', color: 'var(--text-muted)', borderColor: 'var(--border-color)' }}>
                                 <tr>
-                                    {['Invoice #', 'Patient', 'Treatment', 'Amount', 'Method', 'Status', 'Date', ''].map(h => (
-                                        <th key={h} className="px-4 py-3 whitespace-nowrap">{h}</th>
+                                    {['Transaction ID', 'Patient Detail', 'Assigned Treatment', 'Settled Amount', 'Payment Method', 'Lifecycle Status', 'Date', ''].map(h => (
+                                        <th key={h} className="px-6 py-5 whitespace-nowrap uppercase tracking-wider">{h}</th>
                                     ))}
                                 </tr>
                             </thead>
@@ -176,23 +176,23 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
                                         <SkeletonList rows={6} />
                                     </td></tr>
                                 ) : bills.map(b => (
-                                    <tr key={b.id} className="transition-all hover:bg-black/5 dark:hover:bg-white/5">
-                                        <td className="px-4 py-3 font-bold text-primary text-[11px]">{b.invoice_number || b.id?.slice(0, 10)}</td>
-                                        <td className="px-4 py-3 font-bold text-[11px]" style={{ color: 'var(--text-main)' }}>{b.patients?.name || '—'}</td>
-                                        <td className="px-4 py-3 text-[11px] max-w-[140px] truncate" style={{ color: 'var(--text-muted)' }}>{b.treatment_name || '—'}</td>
-                                        <td className="px-4 py-3 font-bold text-[11px]" style={{ color: 'var(--text-main)' }}>{INR(b.amount || 0)}</td>
-                                        <td className="px-4 py-3 text-[10px] font-bold" style={{ color: 'var(--text-muted)' }}>{b.payment_method || '—'}</td>
-                                        <td className="px-4 py-3">
-                                            <span className={`px-3 py-1 rounded-full text-[9px] font-extrabold uppercase border ${b.status === 'Paid' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : b.status === 'Unpaid' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 'bg-amber-500/10 text-amber-500 border-amber-500/20'}`}>
-                                                {b.status}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3 text-[10px] font-bold" style={{ color: 'var(--text-muted)' }}>{new Date(b.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</td>
-                                        <td className="px-4 py-3">
+                                    <tr key={b.id} className="transition-all hover:bg-black/5 dark:hover:bg-white/5 border-b last:border-0" style={{ borderColor: 'var(--border-color)' }}>
+                                        <td className="px-6 py-5 font-bold text-primary text-sm">{b.invoice_number || b.id?.slice(0, 10)}</td>
+                                        <td className="px-6 py-5 font-bold text-sm" style={{ color: 'var(--text-main)' }}>{b.patients?.name || '—'}</td>
+                                        <td className="px-6 py-5 text-sm max-w-[200px] truncate font-medium" style={{ color: 'var(--text-muted)' }}>{b.treatment_name || '—'}</td>
+                                        <td className="px-6 py-5 font-bold text-base" style={{ color: 'var(--text-main)' }}>{INR(b.amount || 0)}</td>
+                                        <td className="px-6 py-5 text-sm font-bold" style={{ color: 'var(--text-muted)' }}>{b.payment_method || '—'}</td>
+                                          <td className="px-6 py-5">
+                                              <span className={`px-4 py-1.5 rounded-full text-xs font-bold border shadow-sm ${b.status === 'Paid' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : b.status === 'Unpaid' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 'bg-amber-500/10 text-amber-500 border-amber-500/20'}`}>
+                                                  {b.status}
+                                              </span>
+                                          </td>
+                                         <td className="px-6 py-5 text-sm font-bold" style={{ color: 'var(--text-muted)' }}>{new Date(b.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                                        <td className="px-6 py-5">
                                             <button onClick={() => handleDownloadInvoice(b)}
-                                                className="p-1.5 rounded-lg border transition-all hover:scale-105"
+                                                className="p-2.5 rounded-xl border transition-all hover:scale-105 shadow-sm"
                                                 style={{ background: 'var(--primary-soft)', borderColor: 'var(--border-color)', color: 'var(--primary)' }}>
-                                                <Download size={12} />
+                                                <Download size={18} />
                                             </button>
                                         </td>
                                     </tr>
@@ -217,24 +217,24 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
     }
 
     // ─── BILL FORM VIEW ───
-    const inputCls = `w-full px-3 py-2 rounded-xl border font-bold text-[11px] outline-none transition-all focus:ring-4 focus:ring-primary/10`;
-    const labelCls = 'text-[9px] font-bold uppercase tracking-wider px-1.5 mb-1.5 block';
-    const cardCls = `p-4 md:p-5 rounded-2xl border shadow-lg`;
+    const inputCls = `w-full px-4 py-3.5 rounded-2xl border font-bold text-sm outline-none transition-all focus:ring-4 focus:ring-primary/10 shadow-inner`;
+    const labelCls = 'text-sm font-bold px-1.5 mb-2.5 block';
+    const cardCls = `p-6 md:p-8 rounded-[2rem] border shadow-premium`;
 
     return (
-        <div className="animate-slide-up space-y-4 pb-10">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="animate-slide-up space-y-6 pb-12">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                 <div>
-                    <h2 className={`text-xl font-bold tracking-tight`} style={{ color: 'var(--text-dark)' }}>Revenue</h2>
-                    <p className="text-[10px] font-bold mt-0.5" style={{ color: 'var(--text-muted)' }}>Clinical Invoicing</p>
+                    <h2 className={`text-2xl md:text-3xl font-bold tracking-tight`} style={{ color: 'var(--text-dark)' }}>Clinical Invoicing</h2>
+                    <p className="text-sm font-medium mt-1" style={{ color: 'var(--text-muted)' }}>Generate patient financial ledger and treatment records</p>
                 </div>
-                <div className="flex gap-2">
-                    <button onClick={() => setView('history')} className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs border transition-all hover:scale-105 active:scale-95`} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)', color: 'var(--text-muted)' }}>
-                        <List size={14} /> History
+                <div className="flex gap-3">
+                    <button onClick={() => setView('history')} className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm border transition-all hover:scale-105 active:scale-95 shadow-sm`} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)', color: 'var(--text-muted)' }}>
+                        <List size={18} /> View History
                     </button>
-                    <button onClick={handleSave} disabled={isSaving} className="flex items-center gap-2 px-6 py-2 bg-primary text-white rounded-xl font-bold text-xs shadow-lg shadow-primary/20 hover:scale-[1.03] active:scale-95 transition-all disabled:opacity-50">
-                        {isSaving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={16} />}
-                        Save & Print
+                    <button onClick={handleSave} disabled={isSaving} className="flex items-center gap-2 px-8 py-3 bg-primary text-white rounded-2xl font-bold text-sm shadow-premium shadow-primary/20 hover:scale-[1.03] active:scale-95 transition-all disabled:opacity-50">
+                        {isSaving ? <div className="w-5 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={20} />}
+                        Save & Export
                     </button>
                 </div>
             </div>
@@ -242,7 +242,7 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
                 <div className="lg:col-span-2 space-y-4">
                     {/* General Info */}
                     <div className={cardCls} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
-                        <p className="text-[9px] font-black uppercase tracking-widest px-2 mb-4" style={{ color: 'var(--text-muted)' }}>Clinic</p>
+                        <p className="text-xs font-bold text-primary flex items-center gap-2 mb-4">Clinic Information</p>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div>
                                 <label className={labelCls} style={{ color: 'var(--text-muted)' }}>Date</label>
@@ -269,12 +269,12 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
                     {/* Patient Search */}
                     <div className={cardCls} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
                         <div className="flex justify-between items-center mb-4 px-2">
-                            <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Patient</p>
-                            {selectedPatient && <button onClick={() => { setSelectedPatient(null); setPatientInfo({ id: '', name: '', phone: '', address: '' }); }} className="text-[9px] font-black uppercase text-rose-500 hover:scale-105 transition-transform flex items-center gap-1"><X size={10} /> Disconnect</button>}
+                            <p className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>Patient Information</p>
+                            {selectedPatient && <button onClick={() => { setSelectedPatient(null); setPatientInfo({ id: '', name: '', phone: '', address: '' }); }} className="text-xs font-bold text-rose-500 hover:scale-105 transition-transform flex items-center gap-1"><X size={14} /> Clear patient</button>}
                         </div>
                         <div className="relative mb-4">
                             <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
-                            <input type="text" placeholder="Lookup patient..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className={`${inputCls} pl-10`} style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }} />
+                            <input type="text" placeholder="Search patient..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className={`${inputCls} pl-10`} style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }} />
                             {searchResults.length > 0 && (
                                 <div className="absolute top-full left-0 right-0 mt-2 p-1.5 rounded-2xl shadow-xl z-[100] border backdrop-blur-xl" style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
                                     {searchResults.map(p => (
@@ -319,11 +319,11 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
                         <p className="text-[9px] font-black uppercase tracking-widest px-2 mb-4" style={{ color: 'var(--text-muted)' }}>Procedures</p>
                         <div className="space-y-4">
                             <div>
-                                <label className={labelCls} style={{ color: 'var(--text-muted)' }}>Chief Complaint</label>
+                                <label className={labelCls} style={{ color: 'var(--text-muted)' }}>Reason for visit</label>
                                 <input type="text" value={treatmentInfo.complaint} onChange={e => setTreatmentInfo({ ...treatmentInfo, complaint: e.target.value })} className={inputCls} placeholder="Clinical presentation..." style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }} />
                             </div>
                             <div>
-                                <label className={labelCls} style={{ color: 'var(--text-muted)' }}>Treatment Conducted</label>
+                                <label className={labelCls} style={{ color: 'var(--text-muted)' }}>Procedure details</label>
                                 <textarea rows={2} value={treatmentInfo.treatmentDone} onChange={e => setTreatmentInfo({ ...treatmentInfo, treatmentDone: e.target.value })} className={`${inputCls} resize-none`} placeholder="Procedure breakdown..." style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }} />
                             </div>
                         </div>

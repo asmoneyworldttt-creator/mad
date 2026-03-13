@@ -348,13 +348,24 @@
     @apply fixed inset-0 -z-10;
     background-color: var(--bg-page);
     background-image:
-      radial-gradient(at 0% 0%, var(--bg-mesh-1) 0, transparent 45%),
-      radial-gradient(at 100% 0%, var(--bg-mesh-2) 0, transparent 45%),
-      radial-gradient(at 50% 100%, var(--bg-mesh-3) 0, transparent 60%),
-      radial-gradient(at 0% 100%, var(--bg-mesh-1) 0, transparent 40%),
-      radial-gradient(at 100% 100%, var(--bg-mesh-2) 0, transparent 40%);
-    background-size: 140% 140%;
-    animation: mesh-animation 30s ease infinite alternate;
+      radial-gradient(at 0% 0%, var(--bg-mesh-1) 0, transparent 50%),
+      radial-gradient(at 100% 0%, var(--bg-mesh-2) 0, transparent 50%),
+      radial-gradient(at 50% 100%, var(--bg-mesh-3) 0, transparent 70%),
+      radial-gradient(at 0% 100%, var(--bg-mesh-1) 0, transparent 50%),
+      radial-gradient(at 100% 100%, var(--bg-mesh-2) 0, transparent 50%);
+    background-size: 200% 200%;
+    animation: mesh-animation 60s linear infinite;
+    filter: saturate(1.2);
+  }
+
+  .mesh-gradient-bg::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3%3Ffilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    opacity: 0.03;
+    pointer-events: none;
+    z-index: -11;
   }
 
   /* Corner Glow Effect */
@@ -369,22 +380,22 @@
     right: -10%;
     width: 60%;
     height: 60%;
-    background: radial-gradient(circle at top right, rgba(13, 148, 136, 0.15) 0%, rgba(19, 91, 236, 0.1) 40%, transparent 80%);
-    filter: blur(100px);
-    animation: corner-float 20s ease-in-out infinite alternate;
+    background: radial-gradient(circle at top right, rgba(13, 148, 136, 0.2) 0%, rgba(19, 91, 236, 0.15) 30%, transparent 70%);
+    filter: blur(120px);
+    animation: corner-float 15s ease-in-out infinite alternate;
   }
 
   @keyframes corner-float {
-    0% { transform: translate(0, 0) scale(1); opacity: 0.4; }
-    50% { transform: translate(-5%, 5%) scale(1.1); opacity: 0.6; }
-    100% { transform: translate(5%, -5%) scale(0.9); opacity: 0.4; }
+    0% { transform: translate(0, 0) scale(1); opacity: 0.3; }
+    50% { transform: translate(-3%, 3%) scale(1.15); opacity: 0.5; }
+    100% { transform: translate(3%, -3%) scale(0.95); opacity: 0.3; }
   }
 
   @keyframes mesh-animation {
     0% { background-position: 0% 0%; }
-    25% { background-position: 50% 50%; }
+    25% { background-position: 100% 0%; }
     50% { background-position: 100% 100%; }
-    75% { background-position: 25% 75%; }
+    75% { background-position: 0% 100%; }
     100% { background-position: 0% 0%; }
   }
 
@@ -399,12 +410,12 @@
     background: var(--card-bg-alt);
     border: 1.5px solid var(--border-color);
     color: var(--text-main);
-    border-radius: 1rem;
+    border-radius: 1.25rem;
     padding: 0.875rem 1.25rem;
-    font-size: 0.875rem;
+    font-size: 0.95rem;
     font-weight: 600;
     outline: none;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     width: 100%;
   }
 
@@ -425,13 +436,11 @@
     border-radius: 1.25rem;
     padding: 0.875rem 2rem;
     font-weight: 800;
-    font-size: 0.75rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    font-size: 0.95rem;
     border: none;
     cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 4px 16px var(--primary-glow);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 10px 25px -5px var(--primary-glow);
   }
 
   .btn-primary:hover {

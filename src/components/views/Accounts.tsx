@@ -80,10 +80,10 @@ export function Accounts({ userRole, theme }: { userRole: UserRole; theme?: 'lig
                         <ChevronLeft size={20} />
                     </button>
                     <div>
-                        <h2 className={`text-3xl font-sans font-bold tracking-tight ${theme === 'dark' ? 'text-white' : 'text-text-dark'}`}>
-                            {activeTab === 'income' ? 'Record New Income' : 'Document New Expense'}
+                        <h2 className={`text-xl md:text-2xl font-bold tracking-tight ${theme === 'dark' ? 'text-white' : 'text-text-dark'}`}>
+                            {activeTab === 'income' ? 'Record New Income' : 'Record New Expense'}
                         </h2>
-                        <p className="text-slate-500 font-medium">Capture financial data for clinic accounting.</p>
+                        <p className="text-sm text-slate-500 font-medium">Add financial records for clinic accounts</p>
                     </div>
                 </div>
 
@@ -92,7 +92,7 @@ export function Accounts({ userRole, theme }: { userRole: UserRole; theme?: 'lig
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                             <div className="space-y-6">
                                 <div>
-                                    <label className="text-xs font-bold text-slate-500 mb-2 block uppercase tracking-widest">Financial Category</label>
+                                    <label className="text-sm font-bold text-slate-500 mb-2 block">Category</label>
                                     <CustomSelect
                                         options={[
                                             { value: 'Hospital Visits', label: 'Hospital Visits' },
@@ -109,9 +109,9 @@ export function Accounts({ userRole, theme }: { userRole: UserRole; theme?: 'lig
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-xs font-bold text-slate-500 mb-2 block uppercase tracking-widest">Transaction Date</label>
+                                    <label className="text-sm font-bold text-slate-500 mb-2 block">Date</label>
                                     <div className="relative">
-                                        <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                        <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                                         <input
                                             type="date"
                                             value={form.date}
@@ -125,7 +125,7 @@ export function Accounts({ userRole, theme }: { userRole: UserRole; theme?: 'lig
                             <div className="space-y-6">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="text-xs font-bold text-slate-500 mb-2 block uppercase tracking-widest">Total Amount (₹)</label>
+                                      <label className="text-sm font-bold text-slate-500 mb-2 block">Total Amount (₹)</label>
                                         <input
                                             type="number"
                                             value={form.amount}
@@ -134,7 +134,7 @@ export function Accounts({ userRole, theme }: { userRole: UserRole; theme?: 'lig
                                         />
                                     </div>
                                     <div>
-                                        <label className="text-xs font-bold text-slate-500 mb-2 block uppercase tracking-widest">{activeTab === 'income' ? 'Received (₹)' : 'Final Value'}</label>
+                                        <label className="text-sm font-bold text-slate-500 mb-2 block">{activeTab === 'income' ? 'Received (₹)' : 'Final Value'}</label>
                                         <input
                                             type="number"
                                             value={activeTab === 'income' ? form.received : form.amount}
@@ -145,9 +145,9 @@ export function Accounts({ userRole, theme }: { userRole: UserRole; theme?: 'lig
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="text-xs font-bold text-slate-500 mb-2 block uppercase tracking-widest">Remarks / Internal Note</label>
+                                    <label className="text-sm font-bold text-slate-500 mb-2 block">Notes</label>
                                     <div className="relative">
-                                        <FileText className="absolute left-4 top-4 text-slate-400" size={18} />
+                                        <FileText className="absolute left-4 top-4 text-slate-400" size={20} />
                                         <textarea
                                             rows={3}
                                             value={form.remark}
@@ -163,7 +163,7 @@ export function Accounts({ userRole, theme }: { userRole: UserRole; theme?: 'lig
                         <div className="flex gap-4 mt-8 justify-end">
                             <button type="button" onClick={() => setView('list')} className={`px-10 py-4 rounded-2xl border font-bold transition-all active:scale-95 ${theme === 'dark' ? 'border-white/10 text-slate-400 hover:bg-white/5' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>Cancel</button>
                             <button type="submit" className="px-12 py-4 rounded-2xl bg-primary text-white font-bold hover:bg-primary-hover shadow-premium shadow-primary/20 transition-all active:scale-95">
-                                Commit to Ledger
+                                Save Record
                             </button>
                         </div>
                     </form>
@@ -176,8 +176,8 @@ export function Accounts({ userRole, theme }: { userRole: UserRole; theme?: 'lig
         <div className="animate-slide-up space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h2 className={`text-3xl font-sans font-bold tracking-tight`} style={{ color: 'var(--text-dark)' }}>Financial Accounts</h2>
-                    <p className="font-medium" style={{ color: 'var(--text-muted)' }}>Manage clinic income and expenditure streams.</p>
+                    <h2 className={`text-2xl font-bold tracking-tight`} style={{ color: 'var(--text-dark)' }}>Money Records</h2>
+                    <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Manage clinic income and expenses</p>
                 </div>
                 <button
                     onClick={() => setView('add')}
@@ -208,12 +208,12 @@ export function Accounts({ userRole, theme }: { userRole: UserRole; theme?: 'lig
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className={`text-[10px] font-extrabold uppercase tracking-widest border-b`} style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)', color: 'var(--text-muted)' }}>
-                                <th className="px-8 py-5">Accounting Period</th>
-                                <th className="px-8 py-5">Category & Remark</th>
+                            <tr className={`text-sm font-bold border-b`} style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)', color: 'var(--text-muted)' }}>
+                                <th className="px-8 py-5">Date</th>
+                                <th className="px-8 py-5">Category & Note</th>
                                 <th className="px-8 py-5">Base Amount</th>
                                 <th className="px-8 py-5 text-right flex justify-end gap-2 items-center">
-                                    Final Value <Trash2 size={12} className="opacity-0" />
+                                    Final Amount
                                 </th>
                             </tr>
                         </thead>

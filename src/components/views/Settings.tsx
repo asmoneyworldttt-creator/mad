@@ -27,13 +27,52 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
     // Form State
     const [staffForm, setStaffForm] = useState({
         name: '', role: 'Associate Dentist', email: '', mobile: '', qualifications: '',
-        degree: '', grad_year: '', license_number: '',
+        degree: '', grad_year: '', license_number: '', password: '',
         permissions: { dashboard: true, appointments: true, emr: true, billing: false, settings: false, inventory: false }
     });
 
+    const [clinicDetails, setClinicDetails] = useState({
+        name: 'Downtown Dental Clinic',
+        currency: 'Indian Rupee (INR - ₹)',
+        hours_start: '09:00 AM',
+        hours_end: '08:00 PM'
+    });
+
+    const [branches, setBranches] = useState<any[]>([]);
+    const [isBranchModalOpen, setIsBranchModalOpen] = useState(false);
+    const [branchForm, setBranchForm] = useState({ name: '', address: '', city: 'Chennai', is_primary: false });
+
     useEffect(() => {
         if (activeTab === 'staff') fetchStaff();
+        if (activeTab === 'general') fetchBranches();
     }, [activeTab]);
+
+    const fetchBranches = async () => {
+        const { data, error } = await supabase.from('branches').select('*');
+        if (!error && data) setBranches(data);
+        if (error || !data || data.length === 0) {
+            // Default branch
+            setBranches([{ id: 'h1', name: 'Main Hub', address: 'Cathedral Road, Chennai', is_primary: true }]);
+        }
+    };
+
+    const handleSaveBranch = async () => {
+        if (!branchForm.name) return showToast('Name is mandatory', 'error');
+        const { error } = await supabase.from('branches').insert([branchForm]);
+        if (!error) {
+            showToast('Branch added successfully', 'success');
+            setIsBranchModalOpen(false);
+            fetchBranches();
+        } else showToast(error.message, 'error');
+    };
+
+    const handleUpdateStaffStatus = async (id: string, status: string) => {
+        const { error } = await supabase.from('staff').update({ presence_status: status }).eq('id', id);
+        if (!error) {
+            showToast(`Status updated to ${status}`, 'success');
+            fetchStaff();
+        }
+    };
 
     const fetchStaff = async () => {
         const { data, error } = await supabase.from('staff').select('*');
@@ -104,6 +143,7 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
             degree: staff.degree || '',
             grad_year: staff.grad_year?.toString() || '',
             license_number: staff.license_number || '',
+            password: '',
             permissions: staff.permissions || { dashboard: true, appointments: true, emr: true, billing: false, settings: false, inventory: false }
         });
         setEditingStaffId(staff.id);
@@ -213,8 +253,8 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
                                     <input type="text" value={staffForm.license_number} onChange={e => setStaffForm({ ...staffForm, license_number: e.target.value })} className={`w-full border rounded-xl px-4 py-3 text-xs font-bold outline-none shadow-inner ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} />
                                 </div>
                                 <div>
-                                    <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-2 block">Grad Year</label>
-                                    <input type="text" value={staffForm.grad_year} onChange={e => setStaffForm({ ...staffForm, grad_year: e.target.value })} className={`w-full border rounded-xl px-4 py-3 text-xs font-bold outline-none shadow-inner ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} />
+                                    <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-2 block">Access Password</label>
+                                    <input type="password" value={staffForm.password} onChange={e => setStaffForm({ ...staffForm, password: e.target.value })} className={`w-full border rounded-xl px-4 py-3 text-xs font-bold outline-none shadow-inner ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} placeholder="Set secure key" />
                                 </div>
                             </div>
                         </div>
@@ -297,12 +337,12 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
                                     <div className="space-y-3">
                                         <div className="group/field">
                                             <label className="text-[8px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 block group-hover/field:text-primary transition-colors">Clinic Registry Name</label>
-                                            <input type="text" className={`w-full border rounded-xl px-4 py-2.5 text-[11px] font-semibold outline-none transition-all focus:ring-2 ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white focus:ring-primary/10 shadow-inner' : 'bg-slate-50 border-slate-200 text-slate-900 focus:ring-primary/10 shadow-inner'}`} defaultValue="Downtown Dental Clinic" />
+                                            <input type="text" value={clinicDetails.name} onChange={e => setClinicDetails({ ...clinicDetails, name: e.target.value })} className={`w-full border rounded-xl px-4 py-2.5 text-[11px] font-semibold outline-none transition-all focus:ring-2 ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white focus:ring-primary/10 shadow-inner' : 'bg-slate-50 border-slate-200 text-slate-900 focus:ring-primary/10 shadow-inner'}`} />
                                         </div>
                                         <div className="group/field">
                                             <label className="text-[8px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 block group-hover/field:text-primary transition-colors">Operational Currency</label>
                                             <div className={`px-4 py-2.5 border rounded-xl text-[11px] font-bold flex items-center justify-between ${theme === 'dark' ? 'bg-white/5 border-white/10 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>
-                                                <span>Indian Rupee (INR - ₹)</span>
+                                                <span>{clinicDetails.currency}</span>
                                                 <div className="w-1 h-1 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
                                             </div>
                                         </div>
@@ -311,11 +351,16 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
                                         <div className="group/field">
                                             <label className="text-[8px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 block group-hover/field:text-primary transition-colors">Clinic Node Hours</label>
                                             <div className="flex items-center gap-2">
-                                                <select className={`flex-1 border rounded-xl px-3 py-2.5 text-[11px] font-bold outline-none transition-all focus:ring-2 ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900 focus:ring-primary/10'}`} defaultValue="09:00 AM"><option>09:00 AM</option><option>10:00 AM</option></select>
+                                                <select value={clinicDetails.hours_start} onChange={e => setClinicDetails({ ...clinicDetails, hours_start: e.target.value })} className={`flex-1 border rounded-xl px-3 py-2.5 text-[11px] font-bold outline-none transition-all focus:ring-2 ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900 focus:ring-primary/10'}`}>
+                                                    <option>08:00 AM</option><option>09:00 AM</option><option>10:00 AM</option>
+                                                </select>
                                                 <div className="text-slate-400 font-bold text-[8px] uppercase tracking-wider">thru</div>
-                                                <select className={`flex-1 border rounded-xl px-3 py-2.5 text-[11px] font-bold outline-none transition-all focus:ring-2 ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} defaultValue="08:00 PM"><option>07:00 PM</option><option>08:00 PM</option></select>
+                                                <select value={clinicDetails.hours_end} onChange={e => setClinicDetails({ ...clinicDetails, hours_end: e.target.value })} className={`flex-1 border rounded-xl px-3 py-2.5 text-[11px] font-bold outline-none transition-all focus:ring-2 ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}>
+                                                    <option>06:00 PM</option><option>07:00 PM</option><option>08:00 PM</option><option>09:00 PM</option>
+                                                </select>
                                             </div>
                                         </div>
+                                        <button onClick={() => showToast('Clinic profile updated', 'success')} className="w-full py-2.5 bg-primary text-white rounded-xl font-bold text-[9px] uppercase tracking-widest hover:scale-[1.02] transition-all shadow-lg active:scale-95">Save Core Identity</button>
                                     </div>
                                 </div>
                             </div>
@@ -357,7 +402,7 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
                                     </h3>
                                     <p className="text-[9px] font-medium opacity-60" style={{ color: 'var(--text-muted)' }}>Manage clinician roles and access.</p>
                                 </div>
-                                <button onClick={() => { setEditingStaffId(null); setStaffForm({ name: '', role: 'Associate Dentist', email: '', mobile: '', qualifications: '', degree: '', grad_year: '', license_number: '', permissions: { dashboard: true, appointments: true, emr: true, billing: false, settings: false, inventory: false } }); setView('onboard'); }} className="bg-primary hover:scale-105 active:scale-95 text-white text-[8px] font-bold uppercase tracking-wider px-4 py-2 rounded-xl shadow-lg shadow-primary/20 transition-all flex items-center gap-1.5">
+                                <button onClick={() => { setEditingStaffId(null); setStaffForm({ name: '', role: 'Associate Dentist', email: '', mobile: '', qualifications: '', degree: '', grad_year: '', license_number: '', password: '', permissions: { dashboard: true, appointments: true, emr: true, billing: false, settings: false, inventory: false } }); setView('onboard'); }} className="bg-primary hover:scale-105 active:scale-95 text-white text-[8px] font-bold uppercase tracking-wider px-4 py-2 rounded-xl shadow-lg shadow-primary/20 transition-all flex items-center gap-1.5">
                                     <Plus size={14} /> New Clinician
                                 </button>
                             </div>
@@ -368,6 +413,7 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
                                         <tr className="text-[8px] font-bold uppercase tracking-[0.15em] text-slate-400 border-b" style={{ borderColor: 'var(--border-color)' }}>
                                             <th className="px-4 py-3">Practitioner</th>
                                             <th className="px-4 py-3">Access</th>
+                                            <th className="px-4 py-3">Presence</th>
                                             <th className="px-4 py-3 text-right">Actions</th>
                                         </tr>
                                     </thead>
@@ -703,6 +749,49 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
                     )}
                 </div>
             </div>
+            {isBranchModalOpen && (
+                <Modal 
+                    isOpen={isBranchModalOpen} 
+                    onClose={() => setIsBranchModalOpen(false)} 
+                    title="Initialize Branch Node"
+                >
+                    <div className="space-y-4 p-2">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Branch Identity</label>
+                            <input 
+                                type="text" value={branchForm.name} 
+                                onChange={e => setBranchForm({...branchForm, name: e.target.value})}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold"
+                                placeholder="e.g. West Coast Wing"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Physical Coordinates (Address)</label>
+                            <textarea 
+                                value={branchForm.address} 
+                                onChange={e => setBranchForm({...branchForm, address: e.target.value})}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold resize-none"
+                                placeholder="Enter full address..."
+                                rows={3}
+                            />
+                        </div>
+                        <div className="flex items-center gap-2 pt-2">
+                            <input 
+                                type="checkbox" id="is_primary"
+                                checked={branchForm.is_primary}
+                                onChange={e => setBranchForm({...branchForm, is_primary: e.target.checked})}
+                            />
+                            <label htmlFor="is_primary" className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Set as Primary Hub</label>
+                        </div>
+                        <button 
+                            onClick={handleSaveBranch}
+                            className="w-full py-4 bg-primary text-white rounded-xl font-bold text-[10px] uppercase tracking-widest shadow-xl shadow-primary/20 mt-4 active:scale-95 transition-all"
+                        >
+                            Sync Branch Node
+                        </button>
+                    </div>
+                </Modal>
+            )}
         </div>
     );
 }

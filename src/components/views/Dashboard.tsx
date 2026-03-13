@@ -26,39 +26,39 @@ function cn(...inputs: any[]) { return inputs.filter(Boolean).join(' '); }
 function StatCard({ title, value, sub, trend, icon: Icon, color, onClick, delay = 0 }: any) {
     return (
         <motion.div
-            initial={{ opacity: 0, y: 15 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay, duration: 0.5, ease: 'easeOut' }}
+            transition={{ delay, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             onClick={onClick}
             className={cn(
-                'p-2.5 md:p-3 rounded-xl relative overflow-hidden group transition-all duration-500',
-                onClick ? 'cursor-pointer hover:-translate-y-1 hover:shadow-lg active:scale-95' : ''
+                'p-4 md:p-5 rounded-2xl relative overflow-hidden group transition-all duration-500',
+                onClick ? 'cursor-pointer hover:-translate-y-1.5 hover:shadow-2xl active:scale-[0.98]' : ''
             )}
-            style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)', boxShadow: 'var(--glass-shadow)' }}
+            style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)', boxShadow: 'var(--glass-shadow)', backdropFilter: 'blur(20px)' }}
         >
             <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
                 style={{ background: 'linear-gradient(135deg, var(--primary-soft) 0%, transparent 100%)' }} />
-            <div className="flex justify-between items-start mb-2 relative z-10 transition-transform group-hover:translate-x-0.5 duration-500">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center transition-all group-hover:scale-105 duration-500 shadow-md"
+            <div className="flex justify-between items-start mb-3 relative z-10 transition-transform group-hover:translate-x-1 duration-500">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center transition-all group-hover:scale-110 duration-500 shadow-lg"
                     style={{ background: 'var(--card-bg-alt)', border: '1px solid var(--border-color)' }}>
-                    <Icon size={14} style={{ color }} />
+                    <Icon size={18} style={{ color }} />
                 </div>
                 {sub && (
-                    <div className={cn('flex items-center gap-1 text-[7px] font-bold px-1.5 py-0.5 rounded-lg text-white shadow-md active:scale-95 transition-all',
-                        trend === 'up' ? 'bg-emerald-500 shadow-emerald-500/10' : trend === 'down' ? 'bg-rose-500 shadow-rose-500/10' : 'bg-slate-500')}>
-                        {trend === 'up' ? <TrendingUp size={8} /> : trend === 'down' ? <TrendingDown size={8} /> : null}
+                    <div className={cn('flex items-center gap-1.5 text-sm font-bold px-3 py-1.5 rounded-full text-white shadow-lg active:scale-95 transition-all',
+                        trend === 'up' ? 'bg-emerald-500 shadow-emerald-500/20' : trend === 'down' ? 'bg-rose-500 shadow-rose-500/20' : 'bg-slate-500')}>
+                        {trend === 'up' ? <TrendingUp size={14} /> : trend === 'down' ? <TrendingDown size={14} /> : null}
                         {sub}
                     </div>
                 )}
             </div>
-            <div className="relative z-10 transition-transform group-hover:translate-x-0.5 duration-500">
-                <p className="text-[8px] font-bold mb-0.5 opacity-60 uppercase tracking-tight" style={{ color: 'var(--text-muted)' }}>{title}</p>
+            <div className="relative z-10 transition-transform group-hover:translate-x-1 duration-500">
+                <p className="text-sm font-bold mb-1.5 opacity-60" style={{ color: 'var(--text-muted)' }}>{title}</p>
                 <div className="flex items-baseline gap-1">
-                    <h3 className="text-base font-bold tracking-tight" style={{ color: 'var(--text-dark)' }}>{value}</h3>
+                    <h3 className="text-3xl font-bold tracking-tight" style={{ color: 'var(--text-dark)' }}>{value}</h3>
                 </div>
             </div>
-            <div className="absolute -bottom-2 -right-2 opacity-[0.02] transition-transform group-hover:scale-110 group-hover:-rotate-12 duration-1000">
-                <Icon size={40} style={{ color }} />
+            <div className="absolute -bottom-4 -right-4 opacity-[0.03] transition-transform group-hover:scale-125 group-hover:-rotate-12 duration-1000">
+                <Icon size={72} style={{ color }} />
             </div>
         </motion.div>
     );
@@ -66,9 +66,9 @@ function StatCard({ title, value, sub, trend, icon: Icon, color, onClick, delay 
 
 function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
     return (
-        <div className="mb-3">
-            <h3 className="text-[13px] font-bold tracking-tight" style={{ color: 'var(--text-dark)' }}>{title}</h3>
-            {subtitle && <p className="text-[9px] font-medium mt-0.5 opacity-60" style={{ color: 'var(--text-muted)' }}>{subtitle}</p>}
+        <div className="mb-6">
+            <h3 className="text-lg font-bold tracking-tight border-l-4 border-primary pl-4 py-0.5" style={{ color: 'var(--text-dark)' }}>{title}</h3>
+            {subtitle && <p className="text-sm font-bold mt-1 opacity-70 ml-5" style={{ color: 'var(--text-muted)' }}>{subtitle}</p>}
         </div>
     );
 }
@@ -82,17 +82,17 @@ function DateFilterTabs({ active, onChange }: { active: DateFilter; onChange: (f
     ];
     return (
         <div className="flex items-center gap-1 p-1 rounded-xl" style={{ background: 'var(--card-bg-alt)', border: '1px solid var(--border-color)' }}>
-            {tabs.map(t => (
-                <button key={t.id} onClick={() => onChange(t.id)}
-                    className="px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all"
-                    style={{
-                        background: active === t.id ? 'var(--primary)' : 'transparent',
-                        color: active === t.id ? 'white' : 'var(--text-muted)',
-                        boxShadow: active === t.id ? '0 2px 8px var(--primary-glow)' : 'none',
-                    }}>
-                    {t.label}
-                </button>
-            ))}
+              {tabs.map(t => (
+                  <button key={t.id} onClick={() => onChange(t.id)}
+                      className="px-4 py-2 rounded-lg text-sm font-bold transition-all"
+                      style={{
+                          background: active === t.id ? 'var(--primary)' : 'transparent',
+                          color: active === t.id ? 'white' : 'var(--text-muted)',
+                          boxShadow: active === t.id ? '0 2px 8px var(--primary-glow)' : 'none',
+                      }}>
+                      {t.label}
+                  </button>
+              ))}
         </div>
     );
 }
@@ -150,11 +150,11 @@ export function Dashboard({ setActiveTab, userRole, theme }: { setActiveTab?: (t
             supabase.from('patients').select('*', { count: 'exact', head: true }).gte('created_at', startOfMonth),
             supabase.from('patients').select('*', { count: 'exact', head: true }),
             supabase.from('bills').select('amount, date'),
-            supabase.from('lab_orders').select('*', { count: 'exact', head: true }).neq('status', 'Delivered to Patient'),
+            supabase.from('lab_orders').select('*', { count: 'exact', head: true }).neq('order_status', 'Delivered to Patient'),
             supabase.from('accounts').select('amount').eq('type', 'expense'),
-            supabase.from('staff').select('*', { count: 'exact', head: true }).eq('role', 'doctor'),
-            supabase.from('staff').select('salary'),
-            supabase.from('lab_orders').select('patient_name, test_name, status, created_at').neq('status', 'Delivered to Patient').order('created_at', { ascending: false }).limit(5),
+            supabase.from('staff').select('role', { count: 'exact', head: true }).eq('role', 'doctor'),
+            supabase.from('staff').select('id'), // Fetch IDs for general staff info
+            supabase.from('lab_orders').select('patient_name, order_status, created_at').neq('order_status', 'Delivered to Patient').order('created_at', { ascending: false }).limit(5),
         ]);
 
         // Logic for auto-completing sessions older than 24h
@@ -172,7 +172,7 @@ export function Dashboard({ setActiveTab, userRole, theme }: { setActiveTab?: (t
         const totalRev = (billsData || []).reduce((a, c) => a + Number(c.amount || 0), 0);
         const totalExp = (expensesData || []).reduce((a, c) => a + Number(c.amount || 0), 0);
         const billCount = billsData?.length || 1;
-        const totalSal = (staffData || []).reduce((a, c) => a + Number(c.salary || 0), 0);
+        const totalSal = 0; // Salary column missing from current schema
         const lastMonthPats = (await supabase.from('patients').select('*', { count: 'exact', head: true }).lt('created_at', startOfMonth).gte('created_at', lastMonth)).count || 0;
 
         setStats({
@@ -314,19 +314,19 @@ export function Dashboard({ setActiveTab, userRole, theme }: { setActiveTab?: (t
                 style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
                 <div className="absolute top-0 right-0 p-4 opacity-[0.03] pointer-events-none transition-transform group-hover:scale-105 duration-1000 rotate-animation"><Activity size={60} /></div>
                 <div className="relative z-10 flex-1 text-center md:text-left">
-                    <div className="flex items-center justify-center md:justify-start gap-1.5 mb-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.3)]" />
-                        <span className="text-[9px] font-bold" style={{ color: 'var(--text-muted)' }}>
-                            {new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                    <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
+                        <span className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>
+                            {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })}
                         </span>
                     </div>
-                    <h2 className="text-lg md:text-xl font-bold tracking-tight mb-0.5" style={{ color: 'var(--text-dark)' }}>Clinic Dashboard</h2>
-                    <p className="text-[10px] font-medium opacity-60" style={{ color: 'var(--text-muted)' }}>Manage daily clinic activities</p>
+                    <h2 className="text-3xl font-black tracking-tight" style={{ color: 'var(--text-dark)' }}>Clinic Overview</h2>
+                    <p className="text-sm font-bold mt-1 opacity-50" style={{ color: 'var(--text-muted)' }}>Manage your daily clinic activities and performance records.</p>
                 </div>
                 <div className="flex flex-wrap justify-center md:justify-end gap-2 relative z-10 w-full md:w-auto">
                     <button onClick={() => {
                         window.open('https://github.com/asmoneyworldttt-creator/mad/releases', '_blank');
-                        showToast('Redirecting...', 'success');
+                        showToast('Opening Releases...', 'success');
                     }}
                         className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[9px] font-bold transition-all bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 hover:bg-emerald-500/20 shadow-sm active:scale-95"
                     >
@@ -348,11 +348,11 @@ export function Dashboard({ setActiveTab, userRole, theme }: { setActiveTab?: (t
             <div>
                 <SectionHeader title="Active Schedule" subtitle="Live tracking" />
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                    <StatCard title="Today's Ops" value={isLoading ? '...' : stats.todayAppointments} icon={Calendar} color="var(--primary)" delay={0.05} onClick={() => setActiveTab?.('appointments')} />
-                    <StatCard title="Legacy Visits" value={isLoading ? '...' : stats.totalVisits} icon={Activity} color="#10b981" delay={0.1} />
+                    <StatCard title="Today's Appointments" value={isLoading ? '...' : stats.todayAppointments} icon={Calendar} color="var(--primary)" delay={0.05} onClick={() => setActiveTab?.('appointments')} />
+                    <StatCard title="Total Visits" value={isLoading ? '...' : stats.totalVisits} icon={Activity} color="#10b981" delay={0.1} />
                     <StatCard title="Fulfilled" value={isLoading ? '...' : stats.completedApts} sub="Total" trend="up" icon={CheckCircle2} color="#10b981" delay={0.15} />
                     <StatCard title="No-Show" value={isLoading ? '...' : stats.missedApts} sub="Total" trend="down" icon={XCircle} color="#f43f5e" delay={0.2} />
-                    <StatCard title="Expected Labs" value={isLoading ? '...' : stats.pendingLabs} sub="Updates" trend="down" icon={FlaskConical} color="#f59e0b" delay={0.25} onClick={() => setActiveTab?.('labwork')} />
+                    <StatCard title="Pending Labs" value={isLoading ? '...' : stats.pendingLabs} sub="Updates" trend="down" icon={FlaskConical} color="#f59e0b" delay={0.25} onClick={() => setActiveTab?.('labwork')} />
                 </div>
             </div>
 
@@ -362,7 +362,7 @@ export function Dashboard({ setActiveTab, userRole, theme }: { setActiveTab?: (t
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                     <StatCard title="New Patients" value={isLoading ? '...' : stats.newPatients} sub="Monthly" trend="up" icon={UserPlus} color="#8b5cf6" delay={0.05} />
                     <StatCard title="Returning" value={isLoading ? '...' : stats.oldPatients} sub="Regulars" trend="up" icon={UserCheck} color="#0d9488" delay={0.1} />
-                    <StatCard title="Total Registry" value={isLoading ? '...' : stats.totalPatients} icon={Users} color="var(--primary)" delay={0.15} onClick={() => setActiveTab?.('patients')} />
+                    <StatCard title="Total Patients" value={isLoading ? '...' : stats.totalPatients} icon={Users} color="var(--primary)" delay={0.15} onClick={() => setActiveTab?.('patients')} />
                     <StatCard title="Medical Staff" value={isLoading ? '...' : stats.totalDoctors} sub={`₹${(stats.totalSalaries / 1000).toFixed(1)}k pay`} icon={Stethoscope} color="#f59e0b" delay={0.2} onClick={() => setActiveTab?.('team-hub')} />
                 </div>
             </div>
@@ -371,10 +371,10 @@ export function Dashboard({ setActiveTab, userRole, theme }: { setActiveTab?: (t
             <div>
                 <SectionHeader title="Financial Health" subtitle="Revenue & profit" />
                 <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                    <StatCard title="Gross Earnings" value={isLoading ? '...' : formatINR(stats.totalRevenue)} sub="Total" trend="up" icon={Wallet} color="#10b981" delay={0.05} onClick={() => setActiveTab?.('earnings')} />
+                    <StatCard title="Total Revenue" value={isLoading ? '...' : formatINR(stats.totalRevenue)} sub="Total" trend="up" icon={Wallet} color="#10b981" delay={0.05} onClick={() => setActiveTab?.('earnings')} />
                     <StatCard title="Average Bill" value={isLoading ? '...' : formatINR(stats.avgTicket)} sub="Per Unit" icon={DollarSign} color="var(--primary)" delay={0.1} />
-                    <StatCard title="Ops Spend" value={isLoading ? '...' : formatINR(stats.totalExpenses)} sub="Outflow" trend="down" icon={TrendingDown} color="#f43f5e" delay={0.15} onClick={() => setActiveTab?.('accounts')} />
-                    <StatCard title="Clean Profit" value={isLoading ? '...' : formatINR(stats.netProfit)} sub={stats.totalRevenue > 0 ? `${((stats.netProfit / stats.totalRevenue) * 100).toFixed(0)}% margin` : '—'} trend={stats.netProfit >= 0 ? 'up' : 'down'} icon={Target} color={stats.netProfit >= 0 ? '#10b981' : '#f43f5e'} delay={0.2} />
+                    <StatCard title="Clinic Expenses" value={isLoading ? '...' : formatINR(stats.totalExpenses)} sub="Outflow" trend="down" icon={TrendingDown} color="#f43f5e" delay={0.15} onClick={() => setActiveTab?.('accounts')} />
+                    <StatCard title="Net Profit" value={isLoading ? '...' : formatINR(stats.netProfit)} sub={stats.totalRevenue > 0 ? `${((stats.netProfit / stats.totalRevenue) * 100).toFixed(0)}% margin` : '—'} trend={stats.netProfit >= 0 ? 'up' : 'down'} icon={Target} color={stats.netProfit >= 0 ? '#10b981' : '#f43f5e'} delay={0.2} />
                 </div>
             </div>
 
@@ -388,8 +388,8 @@ export function Dashboard({ setActiveTab, userRole, theme }: { setActiveTab?: (t
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
                     {/* Chart 1: New Registrations & Total Visits */}
                     <div className="rounded-xl p-4" style={cardStyle}>
-                        <h4 className="font-bold text-[9px] uppercase tracking-wider mb-0.5 opacity-60" style={{ color: 'var(--text-muted)' }}>Flow Analysis</h4>
-                        <p className="text-xs font-bold mb-4" style={{ color: 'var(--text-dark)' }}>Patient Visits</p>
+                        <h4 className="font-bold text-xs mb-1 opacity-50" style={{ color: 'var(--text-muted)' }}>Patient Flow</h4>
+                        <p className="text-sm font-bold mb-4" style={{ color: 'var(--text-dark)' }}>Visit Statistics</p>
                         <div className="h-40">
                             <ResponsiveContainer width="100%" height="100%">
                                 <AreaChart data={patientChartData}>
@@ -437,8 +437,8 @@ export function Dashboard({ setActiveTab, userRole, theme }: { setActiveTab?: (t
 
                 {/* Chart 3: Gross Collection */}
                 <div className="rounded-xl p-4" style={cardStyle}>
-                    <h4 className="font-bold text-[9px] uppercase tracking-wider mb-0.5 opacity-60" style={{ color: 'var(--text-muted)' }}>Collection Curve</h4>
-                    <p className="text-xs font-bold mb-4" style={{ color: 'var(--text-dark)' }}>Performance Tracker</p>
+                    <h4 className="font-bold text-xs mb-1 opacity-50" style={{ color: 'var(--text-muted)' }}>Financial Curve</h4>
+                    <p className="text-sm font-bold mb-4" style={{ color: 'var(--text-dark)' }}>Growth Tracker</p>
                     <div className="h-40">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={collectionChartData}>
@@ -517,12 +517,12 @@ export function Dashboard({ setActiveTab, userRole, theme }: { setActiveTab?: (t
                                     </div>
                                     <div>
                                         <p className="text-xs font-bold" style={{ color: 'var(--text-dark)' }}>{lab.patient_name || 'Patient'}</p>
-                                        <p className="text-[9px] font-semibold" style={{ color: 'var(--text-muted)' }}>{lab.test_name || 'Lab Test'}</p>
+                                        <p className="text-[9px] font-semibold" style={{ color: 'var(--text-muted)' }}>Lab Case</p>
                                     </div>
                                 </div>
                                 <span className="px-2 py-0.5 rounded-lg text-[9px] font-bold"
                                     style={{ background: 'rgba(245,158,11,0.1)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.2)' }}>
-                                    {lab.status || 'Pending'}
+                                    {lab.order_status || 'Pending'}
                                 </span>
                             </div>
                         ))}

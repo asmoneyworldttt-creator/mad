@@ -39,7 +39,8 @@ export function GlobalAIAssistant({ activeTab }: { activeTab: string }) {
     };
 
     return (
-        <div className="fixed bottom-6 right-6 z-[60] flex flex-col items-end">
+        <div className="fixed bottom-32 right-6 z-[60] flex flex-col items-end pointer-events-none md:bottom-8">
+            <div className="pointer-events-auto flex flex-col items-end">
             <AnimatePresence>
                 {isOpen && !isMinimized && (
                     <motion.div
@@ -58,7 +59,7 @@ export function GlobalAIAssistant({ activeTab }: { activeTab: string }) {
                                     <h3 className="font-bold text-sm leading-none">Dentora AI</h3>
                                     <div className="flex items-center gap-1 mt-1">
                                         <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
-                                        <span className="text-[10px] font-bold   opacity-80">GLM 4.5 Air • Live AI</span>
+                                        <span className="text-[10px] font-bold opacity-80">Neural Core • Live AI</span>
                                     </div>
                                 </div>
                             </div>
@@ -136,6 +137,7 @@ export function GlobalAIAssistant({ activeTab }: { activeTab: string }) {
                     }}
                     className={`relative w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all transform hover:scale-110 active:scale-95 ${isOpen && !isMinimized ? 'bg-slate-800 text-white' : 'bg-primary text-white shadow-primary/30'
                         }`}
+                    style={{ border: '2px solid rgba(255,255,255,0.2)' }}
                 >
                     <AnimatePresence mode="wait">
                         {isOpen && !isMinimized ? (
@@ -143,8 +145,9 @@ export function GlobalAIAssistant({ activeTab }: { activeTab: string }) {
                                 <X size={24} />
                             </motion.div>
                         ) : (
-                            <motion.div key="bot" initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 1.5, opacity: 0 }}>
-                                <Sparkles size={24} className="animate-pulse" />
+                            <motion.div key="bot" initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 1.5, opacity: 0 }} className="relative">
+                                <Bot size={28} className="stroke-[2.5px]" />
+                                <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-400 rounded-full border border-white animate-pulse" />
                             </motion.div>
                         )}
                     </AnimatePresence>
@@ -172,6 +175,7 @@ export function GlobalAIAssistant({ activeTab }: { activeTab: string }) {
                   border-radius: 20px;
                 }
             `}</style>
+            </div>
         </div>
     );
 }

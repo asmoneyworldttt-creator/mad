@@ -59,7 +59,7 @@ export function MobileBottomNav({ activeTab, setActiveTab, toggleMore, theme, us
                 <div className="fixed inset-0 z-[60]" onClick={() => setShowAllMenu(false)}>
                     <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
                     <div
-                        className={`absolute bottom-28 left-4 right-4 rounded-[2rem] p-5 shadow-2xl border flex flex-col max-h-[70vh] ${isDark ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'}`}
+                        className={`absolute bottom-24 left-4 right-4 rounded-[2.5rem] p-6 shadow-2xl border flex flex-col max-h-[75vh] ${isDark ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'}`}
                         onClick={e => e.stopPropagation()}
                     >
                         <div className="flex items-center justify-between mb-4">
@@ -68,19 +68,21 @@ export function MobileBottomNav({ activeTab, setActiveTab, toggleMore, theme, us
                                 <X size={16} />
                             </button>
                         </div>
-                        <div className="grid grid-cols-4 gap-2.5 overflow-y-auto p-1 custom-scrollbar">
+                        <div className="grid grid-cols-3 gap-3 overflow-y-auto p-1 custom-scrollbar">
                             {filteredLinks.map(link => (
                                 <button
                                     key={link.id}
                                     onClick={() => { setActiveTab(link.id); setShowAllMenu(false); }}
-                                    className={`flex flex-col items-center gap-1.5 p-2.5 rounded-2xl transition-all active:scale-90 ${activeTab === link.id
-                                        ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                                    className={`flex flex-col items-center justify-center gap-2 p-3 min-h-[96px] rounded-2xl transition-all active:scale-95 border ${activeTab === link.id
+                                        ? 'bg-primary text-white shadow-lg shadow-primary/20 border-primary'
                                         : isDark
-                                            ? 'bg-white/5 text-slate-400 hover:bg-white/10'
-                                            : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}
+                                            ? 'bg-white/5 text-slate-300 border-white/5 hover:bg-white/10'
+                                            : 'bg-white text-slate-600 border-slate-100 shadow-md transform hover:-translate-y-0.5'}`}
                                 >
-                                    <link.icon size={18} />
-                                    <span className="text-[8px] font-bold text-center leading-tight">{link.label}</span>
+                                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 mb-1 ${activeTab === link.id ? 'bg-white/20' : 'bg-primary/10 text-primary'}`}>
+                                        <link.icon size={22} />
+                                    </div>
+                                    <span className="text-[10px] font-extrabold text-center leading-tight line-clamp-2 w-full px-0.5 break-words uppercase tracking-tighter">{link.label}</span>
                                 </button>
                             ))}
                         </div>
@@ -96,39 +98,41 @@ export function MobileBottomNav({ activeTab, setActiveTab, toggleMore, theme, us
                     <button
                         onClick={() => setActiveTab('dashboard')}
                         className={`flex flex-col items-center gap-1 transition-all duration-300 p-2 rounded-xl ${activeTab === 'dashboard' ? 'text-primary' : isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}>
-                        <Home size={22} fill={activeTab === 'dashboard' ? 'currentColor' : 'none'} />
-                        <span className="text-[8px] font-bold">Home</span>
+                        <Home size={24} fill={activeTab === 'dashboard' ? 'currentColor' : 'none'} />
+                        <span className="text-[10px] font-bold">Home</span>
                     </button>
 
                     <button
                         onClick={() => setActiveTab('appointments')}
                         className={`flex flex-col items-center gap-1 transition-all duration-300 p-2 rounded-xl ${activeTab === 'appointments' ? 'text-primary' : isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}>
-                        <Calendar size={22} />
-                        <span className="text-[8px] font-bold">Schedule</span>
+                        <Calendar size={24} />
+                        <span className="text-[10px] font-bold">Schedule</span>
                     </button>
 
-                    {/* Central Action Button */}
-                    <div className="relative -top-4">
+                    {/* Central Action Button - Revamped Design */}
+                    <div className="flex flex-col items-center">
                         <button
                             onClick={() => setActiveTab('patient-registration')}
-                            className="w-14 h-14 rounded-full bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/40 active:scale-90 hover:scale-105 transition-all duration-300 border-4 border-white">
-                            <Plus size={26} strokeWidth={3} />
+                            className="w-14 h-14 rounded-2xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/30 active:scale-95 hover:scale-105 transition-all duration-300 -mt-8 mb-1 border-4 border-white"
+                            style={{ background: 'linear-gradient(135deg, var(--primary), #8B5CF6)' }}
+                        >
+                            <Plus size={28} strokeWidth={2.5} />
                         </button>
-                        <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[7px] font-bold text-slate-400 whitespace-nowrap">New Patient</span>
+                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Register</span>
                     </div>
 
                     <button
                         onClick={() => setActiveTab('patients')}
                         className={`flex flex-col items-center gap-1 transition-all duration-300 p-2 rounded-xl ${activeTab === 'patients' ? 'text-primary' : isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}>
-                        <Users size={22} />
-                        <span className="text-[8px] font-bold">Patients</span>
+                        <Users size={24} />
+                        <span className="text-[10px] font-bold">Patients</span>
                     </button>
 
                     <button
                         onClick={() => setShowAllMenu(true)}
                         className={`flex flex-col items-center gap-1 transition-all duration-300 p-2 rounded-xl ${showAllMenu ? 'text-primary' : isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}>
-                        <Grid3X3 size={22} />
-                        <span className="text-[8px] font-bold">More</span>
+                        <Grid3X3 size={24} />
+                        <span className="text-[10px] font-bold">More</span>
                     </button>
                 </div>
             </nav>

@@ -21,7 +21,7 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
 
     const fetchLabOrders = async () => {
         setIsLoading(true);
-        const { data } = await supabase.from('lab_orders').select('*, patients!patient_id(name)').order('date', { ascending: false });
+        const { data } = await supabase.from('lab_orders').select('*, patients!patient_id(name)').order('order_date', { ascending: false });
         if (data) setOrders(data);
         setIsLoading(false);
     };
@@ -88,11 +88,10 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
 
         const { error } = await supabase.from('lab_orders').insert({
             patient_id: selectedPatient?.id,
-            test_name: formData.prosthesis.join(', ') || 'General Lab Work',
-            lab_name: formData.vendor,
-            status: 'Pending',
-            cost: totalAmount,
-            date: formData.orderDate
+            vendor_name: formData.vendor,
+            order_status: 'Pending',
+            order_date: formData.orderDate,
+            patient_name: selectedPatient?.name || formData.patientSearch
         });
 
         if (error) {
@@ -123,12 +122,12 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                                 <ArrowLeft size={24} />
                             </button>
                             <div>
-                                <h2 className="text-3xl font-black tracking-tight" style={{ color: 'var(--text-dark)' }}>Restorative Request</h2>
-                                <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Drafting high-fidelity request for dental prosthetics.</p>
+                                <h2 className="text-3xl font-bold tracking-tight" style={{ color: 'var(--text-dark)' }}>New Lab Order</h2>
+                                <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Create order for dental work and prosthetics</p>
                             </div>
                         </div>
-                        <button onClick={handleSaveOrder} className="bg-primary hover:scale-105 active:scale-95 text-white px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 shadow-xl shadow-primary/30 transition-all">
-                            <Save size={20} /> Commit Protocol
+                        <button onClick={handleSaveOrder} className="bg-primary hover:scale-105 active:scale-95 text-white px-10 py-4 rounded-xl text-sm font-bold flex items-center gap-3 shadow-xl shadow-primary/30 transition-all">
+                            <Save size={20} /> Save Lab Order
                         </button>
                     </div>
                 </div>
@@ -138,18 +137,18 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                     <div className="xl:col-span-2 space-y-6">
                         {/* Header & Patient */}
                         <div className="rounded-2xl p-6 shadow-sm" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
-                            <h3 className="font-sans font-bold text-lg mb-4 border-b pb-2 flex items-center gap-2" style={{ color: 'var(--text-dark)', borderColor: 'var(--border-color)' }}><FlaskConical size={18} className="text-primary" /> Order Details</h3>
+                            <h3 className="font-sans font-bold text-lg mb-4 border-b pb-2 flex items-center gap-2" style={{ color: 'var(--text-dark)', borderColor: 'var(--border-color)' }}><FlaskConical size={20} className="text-primary" /> Order Details</h3>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                                 <div>
-                                    <label className="text-xs font-bold mb-1 block" style={{ color: 'var(--text-muted)' }}>Order Date</label>
-                                    <input type="date" value={formData.orderDate} onChange={e => setFormData({ ...formData, orderDate: e.target.value })} className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: 'var(--bg-page)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }} />
+                                    <label className="text-sm font-bold mb-1.5 block" style={{ color: 'var(--text-muted)' }}>Order Date</label>
+                                    <input type="date" value={formData.orderDate} onChange={e => setFormData({ ...formData, orderDate: e.target.value })} className="w-full rounded-xl px-3 py-2.5 text-sm" style={{ background: 'var(--bg-page)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }} />
                                 </div>
                                 <div>
-                                    <label className="text-xs font-bold mb-1 block" style={{ color: 'var(--text-muted)' }}>Order Time</label>
-                                    <input type="time" value={formData.time} onChange={e => setFormData({ ...formData, time: e.target.value })} className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: 'var(--bg-page)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }} />
+                                    <label className="text-sm font-bold mb-1.5 block" style={{ color: 'var(--text-muted)' }}>Order Time</label>
+                                    <input type="time" value={formData.time} onChange={e => setFormData({ ...formData, time: e.target.value })} className="w-full rounded-xl px-3 py-2.5 text-sm" style={{ background: 'var(--bg-page)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }} />
                                 </div>
                                 <div>
-                                    <label className="text-xs font-bold mb-1 block" style={{ color: 'var(--text-muted)' }}>Referring Doctor</label>
+                                    <label className="text-sm font-bold mb-1.5 block" style={{ color: 'var(--text-muted)' }}>Referring Doctor</label>
                                     <CustomSelect 
                                         value={formData.doctor} 
                                         onChange={val => setFormData({ ...formData, doctor: val })}
@@ -157,7 +156,7 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-xs font-bold mb-1 block" style={{ color: 'var(--text-muted)' }}>Lab / Tech Center</label>
+                                    <label className="text-sm font-bold mb-1.5 block" style={{ color: 'var(--text-muted)' }}>Lab / Tech Center</label>
                                     <CustomSelect 
                                         value={formData.vendor} 
                                         onChange={val => setFormData({ ...formData, vendor: val })}
@@ -166,7 +165,7 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                                 </div>
                             </div>
                             <div className="relative">
-                                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+                                <Search size={20} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
                                 <input type="text" placeholder="Select Patient..." value={formData.patientSearch} onChange={e => setFormData({ ...formData, patientSearch: e.target.value })} className="w-full rounded-lg py-2 pl-9 pr-4 text-sm focus:outline-none transition-all font-medium" style={{ background: 'var(--bg-page)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }} />
                                 {searchResults.length > 0 && (
                                     <div className="absolute top-full left-0 right-0 mt-1 rounded-xl shadow-xl z-50 overflow-hidden border" style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
@@ -184,7 +183,7 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                                                 </div>
                                                 <div>
                                                     <p className="font-bold text-sm" style={{ color: 'var(--text-dark)' }}>{p.name}</p>
-                                                    <p className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>{p.phone}</p>
+                                                    <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{p.phone}</p>
                                                 </div>
                                             </button>
                                         ))}
@@ -195,12 +194,12 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
 
                         {/* Interactive Dental Chart */}
                         <div className="rounded-2xl p-6 shadow-sm" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
-                            <h3 className="font-sans font-bold text-lg mb-4 border-b pb-2" style={{ color: 'var(--text-dark)', borderColor: 'var(--border-color)' }}>Clinical Mapping (Universal)</h3>
+                             <h3 className="font-sans font-bold text-lg mb-4 border-b pb-2" style={{ color: 'var(--text-dark)', borderColor: 'var(--border-color)' }}>Tooth Selection</h3>
                             <div className="rounded-xl p-4 border mb-6 overflow-x-auto custom-scrollbar" style={{ background: 'var(--bg-page)', borderColor: 'var(--border-color)' }}>
                                 <div className="flex justify-center gap-1 mb-6 min-w-max">
                                     {upperTeeth.map(t => (
                                         <button key={t} onClick={() => toggleTooth(t)} className={`w-8 flex flex-col items-center gap-2 group transition-all`}>
-                                            <div className="text-[10px] font-bold text-slate-500 group-hover:text-primary">{t}</div>
+                                            <div className="text-xs font-bold text-slate-500 group-hover:text-primary">{t}</div>
                                             <div className="w-6 h-8 rounded border transition-colors flex items-center justify-center" style={{ background: formData.selectedTeeth.includes(t) ? 'var(--primary)' : 'var(--card-bg)', borderColor: formData.selectedTeeth.includes(t) ? 'var(--primary)' : 'var(--border-color)' }}>
                                                 <div className={`w-3 h-4 rounded-b-full ${formData.selectedTeeth.includes(t) ? 'bg-white' : 'opacity-20'}`} style={{ backgroundColor: formData.selectedTeeth.includes(t) ? undefined : 'var(--text-muted)' }} />
                                             </div>
@@ -213,7 +212,7 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                                             <div className="w-6 h-8 rounded border transition-colors flex items-center justify-center" style={{ background: formData.selectedTeeth.includes(t) ? 'var(--primary)' : 'var(--card-bg)', borderColor: formData.selectedTeeth.includes(t) ? 'var(--primary)' : 'var(--border-color)' }}>
                                                 <div className={`w-3 h-4 rounded-t-full ${formData.selectedTeeth.includes(t) ? 'bg-white' : 'opacity-20'}`} style={{ backgroundColor: formData.selectedTeeth.includes(t) ? undefined : 'var(--text-muted)' }} />
                                             </div>
-                                            <div className="text-[10px] font-bold text-slate-500 group-hover:text-primary">{t}</div>
+                                            <div className="text-xs font-bold text-slate-500 group-hover:text-primary">{t}</div>
                                         </button>
                                     ))}
                                 </div>
@@ -428,27 +427,27 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                                     <td className="p-4">
                                         <p className="font-bold text-sm" style={{ color: 'var(--text-main)' }}>{o.id?.slice(0, 8)}...</p>
-                                        <p className="text-xs font-medium text-slate-500">{o.date}</p>
+                                        <p className="text-xs font-medium text-slate-500">{o.order_date}</p>
                                     </td>
-                                    <td className="p-4 font-bold text-sm" style={{ color: 'var(--text-muted)' }}>{o.patients?.name || 'Manual Entry'}</td>
-                                    <td className="p-4 text-sm font-medium text-slate-600" style={{ color: 'var(--text-muted)' }}>{o.lab_name}</td>
+                                    <td className="p-4 font-bold text-sm" style={{ color: 'var(--text-muted)' }}>{o.patients?.name || o.patient_name || 'Manual Entry'}</td>
+                                    <td className="p-4 text-sm font-medium text-slate-600" style={{ color: 'var(--text-muted)' }}>{o.vendor_name}</td>
                                     <td className="p-4 text-center">
                                         <div className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold`} style={{ 
-                                            background: o.status === 'Delivered to Patient' ? 'rgba(16,185,129,0.1)' : 
-                                                        o.status === 'Handover to Lab' ? 'rgba(245,158,11,0.1)' : 
+                                            background: o.order_status === 'Delivered to Patient' ? 'rgba(16,185,129,0.1)' : 
+                                                        o.order_status === 'Handover to Lab' ? 'rgba(245,158,11,0.1)' : 
                                                         'rgba(19,91,236,0.1)',
-                                            color: o.status === 'Delivered to Patient' ? '#10b981' : 
-                                                   o.status === 'Handover to Lab' ? '#f59e0b' : 
+                                            color: o.order_status === 'Delivered to Patient' ? '#10b981' : 
+                                                   o.order_status === 'Handover to Lab' ? '#f59e0b' : 
                                                    '#135bec',
-                                            border: `1px solid ${o.status === 'Delivered to Patient' ? 'rgba(16,185,129,0.2)' : 
-                                                                o.status === 'Handover to Lab' ? 'rgba(245,158,11,0.2)' : 
+                                            border: `1px solid ${o.order_status === 'Delivered to Patient' ? 'rgba(16,185,129,0.2)' : 
+                                                                o.order_status === 'Handover to Lab' ? 'rgba(245,158,11,0.2)' : 
                                                                 'rgba(19,91,236,0.2)'}`
                                         }}>
-                                            {o.status}
+                                            {o.order_status}
                                         </div>
                                     </td>
                                     <td className="p-4 text-right">
-                                        <p className="text-sm font-bold text-primary">₹{o.cost?.toLocaleString('en-IN')}</p>
+                                        <p className="text-sm font-bold text-primary">—</p>
                                     </td>
                                     <td className="p-4 text-right">
                                         <button className="text-xs font-bold text-primary hover:text-primary-hover px-3 py-1.5 rounded bg-primary/5 hover:bg-primary/10 transition-colors">

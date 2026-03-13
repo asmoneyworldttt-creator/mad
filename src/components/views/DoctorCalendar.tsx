@@ -23,6 +23,10 @@ export function DoctorCalendar({ theme, setActiveTab }: { theme?: 'light' | 'dar
     const [doctors, setDoctors] = useState<any[]>([]);
     const [appointments, setAppointments] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isQuickBooking, setIsQuickBooking] = useState<{ doc: any, time: string } | null>(null);
+    const [quickFormData, setQuickFormData] = useState({ patient_id: '', type: 'Consultation', notes: '' });
+    const [searchPatients, setSearchPatients] = useState<any[]>([]);
+    const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
         fetchInitialData();
@@ -62,6 +66,43 @@ export function DoctorCalendar({ theme, setActiveTab }: { theme?: 'light' | 'dar
         setAppointments(data || []);
     }
 
+    const handleSearchPatients = async (term: string) => {
+        setSearchTerm(term);
+        if (term.length < 2) {
+            setSearchPatients([]);
+            return;
+        }
+        const { data } = await supabase.from('patients').select('id, name, last_name').ilike('name', `%${term}%`).limit(5);
+        setSearchPatients(data || []);
+    };
+
+    const handleSaveQuickSession = async () => {
+        if (!isQuickBooking) return;
+        const selectedPatient = searchPatients.find(p => p.id === quickFormData.patient_id) || searchPatients[0];
+        
+        const newApt = {
+            patient_id: quickFormData.patient_id,
+            name: selectedPatient ? `${selectedPatient.name} ${selectedPatient.last_name || ''}` : 'Quick Patient',
+            doctor_id: isQuickBooking.doc.id,
+            doctor_name: isQuickBooking.doc.name,
+            date: date,
+            time: isQuickBooking.time,
+            type: quickFormData.type,
+            notes: quickFormData.notes || 'Routine checkup',
+            status: 'Confirmed'
+        };
+
+        const { error } = await supabase.from('appointments').insert(newApt);
+        if (error) {
+            showToast('Failed to record session', 'error');
+        } else {
+            showToast(`Recording book session for ${isQuickBooking.doc.name}`, 'success');
+            setIsQuickBooking(null);
+            setQuickFormData({ patient_id: '', type: 'Consultation', notes: '' });
+            fetchAppointments();
+        }
+    };
+
     const prevDay = () => {
         const d = new Date(date);
         d.setDate(d.getDate() - 1);
@@ -82,10 +123,7 @@ export function DoctorCalendar({ theme, setActiveTab }: { theme?: 'light' | 'dar
     };
 
     const handleAddSession = (doc: any, time: string) => {
-        showToast(`Redirecting to book session for ${doc.name} at ${time}`, 'success');
-        if (setActiveTab) {
-            setActiveTab('appointments');
-        }
+        setIsQuickBooking({ doc, time });
     };
 
     return (
@@ -215,6 +253,108 @@ export function DoctorCalendar({ theme, setActiveTab }: { theme?: 'light' | 'dar
                     </div>
                 ))}
             </div>
+
+            <AnimatePresence>
+                {isQuickBooking && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <motion.div 
+                            initial={{ opacity: 0 }} 
+                            animate={{ opacity: 1 }} 
+                            exit={{ opacity: 0 }}
+                            onClick={() => setIsQuickBooking(null)}
+                            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                        />
+                        <motion.div 
+                            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                            className={`relative w-full max-w-md p-8 rounded-[2.5rem] border shadow-2xl ${isDark ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'}`}
+                        >
+                            <div className="mb-6 text-center">
+                                <div className="w-16 h-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4 font-black text-2xl">
+                                    {isQuickBooking.doc.name.charAt(0)}
+                                </div>
+                                <h3 className="text-xl font-bold tracking-tight">Record Quick Session</h3>
+                                <p className="text-xs font-bold text-slate-500 mt-1 uppercase tracking-widest">{isQuickBooking.doc.name} • {isQuickBooking.time}</p>
+                            </div>
+
+                            <div className="space-y-5">
+                                <div>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block px-1">Select Patient</label>
+                                    <div className="relative">
+                                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                        <input 
+                                            type="text" 
+                                            placeholder="Search name..."
+                                            onChange={(e) => handleSearchPatients(e.target.value)}
+                                            className={`w-full pl-12 pr-4 py-3.5 rounded-2xl border text-sm font-bold outline-none transition-all ${isDark ? 'bg-white/5 border-white/10 text-white focus:border-primary' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-primary focus:bg-white shadow-inner'}`}
+                                        />
+                                    </div>
+                                    {searchPatients.length > 0 && (
+                                        <div className={`mt-2 rounded-2xl border overflow-hidden shadow-xl ${isDark ? 'bg-slate-800 border-white/10' : 'bg-white border-slate-100'}`}>
+                                            {searchPatients.map(p => (
+                                                <button 
+                                                    key={p.id}
+                                                    onClick={() => { setQuickFormData({ ...quickFormData, patient_id: p.id }); setSearchPatients([]); }}
+                                                    className={`w-full p-4 text-left flex items-center gap-3 transition-colors ${quickFormData.patient_id === p.id ? 'bg-primary text-white' : 'hover:bg-primary/5'}`}
+                                                >
+                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${quickFormData.patient_id === p.id ? 'bg-white/20' : 'bg-primary/10 text-primary'}`}>
+                                                        {p.name.charAt(0)}
+                                                    </div>
+                                                    <span className="text-sm font-bold">{p.name} {p.last_name}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block px-1">Procedural Intent</label>
+                                    <select 
+                                        value={quickFormData.type}
+                                        onChange={(e) => setQuickFormData({ ...quickFormData, type: e.target.value })}
+                                        className={`w-full px-5 py-3.5 rounded-2xl border text-sm font-bold outline-none transition-all ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900 focus:bg-white shadow-inner'}`}
+                                    >
+                                        <option>Consultation</option>
+                                        <option>X-Ray / Scan</option>
+                                        <option>Extraction</option>
+                                        <option>Root Canal</option>
+                                        <option>Scaling</option>
+                                        <option>Emergency</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block px-1">Quick Note</label>
+                                    <input 
+                                        type="text" 
+                                        placeholder="Add clinical context..."
+                                        value={quickFormData.notes}
+                                        onChange={(e) => setQuickFormData({ ...quickFormData, notes: e.target.value })}
+                                        className={`w-full px-5 py-3.5 rounded-2xl border text-sm font-bold outline-none transition-all ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900 focus:bg-white shadow-inner'}`}
+                                    />
+                                </div>
+
+                                <div className="flex gap-3 pt-4">
+                                    <button 
+                                        onClick={() => setIsQuickBooking(null)}
+                                        className={`flex-1 py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all active:scale-95 ${isDark ? 'bg-white/5 text-slate-400 hover:text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button 
+                                        onClick={handleSaveQuickSession}
+                                        disabled={!quickFormData.patient_id}
+                                        className="flex-[2] py-4 rounded-2xl bg-primary text-white font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-primary/30 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:grayscale"
+                                    >
+                                        Commit Record
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

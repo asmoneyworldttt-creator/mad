@@ -139,9 +139,9 @@ export function Header({ toggleMenu, userRole, setUserRole, setActiveTab, setGlo
                         {liveResults.length > 0 && (
                             <div className="absolute top-full left-0 w-full mt-3 rounded-2xl overflow-hidden z-50 animate-slide-up"
                                 style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)', boxShadow: '0 12px 40px var(--glass-shadow)' }}>
-                                <div className="p-3 border-b text-[11px] font-black tracking-widest text-center uppercase"
+                                <div className="p-3 border-b text-[13px] font-bold text-center"
                                     style={{ borderColor: 'var(--border-color)', color: 'var(--primary)', background: 'var(--primary-soft)' }}>
-                                    Live Results — Quick Access
+                                    Search Results — Quick Access
                                 </div>
                                 {liveResults.map(p => (
                                     <div
@@ -177,11 +177,11 @@ export function Header({ toggleMenu, userRole, setUserRole, setActiveTab, setGlo
                             <button
                                 key={r}
                                 onClick={() => setUserRole(r)}
-                                className="px-4 py-1.5 rounded-full text-[11px] font-black tracking-wide transition-all duration-300 capitalize hover:scale-105"
+                                className="px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-300 capitalize hover:scale-105"
                                 style={{
                                     background: userRole === r ? 'var(--primary)' : 'transparent',
                                     color: userRole === r ? '#fff' : 'var(--text-muted)',
-                                    boxShadow: userRole === r ? '0 2px 12px var(--primary-glow)' : 'none',
+                                    boxShadow: userRole === r ? '0 4px 15px var(--primary-glow)' : 'none',
                                 }}
                             >
                                 {r}
@@ -194,7 +194,7 @@ export function Header({ toggleMenu, userRole, setUserRole, setActiveTab, setGlo
                     <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full border"
                         style={{ background: 'var(--warning-soft)', borderColor: 'var(--warning)', color: 'var(--warning)' }}>
                         <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--warning)' }} />
-                        <span className="text-[10px] font-bold uppercase tracking-wider">
+                        <span className="text-xs font-bold">
                             {waitingCount} {waitingCount === 1 ? 'Waiting' : 'Waiting'}
                         </span>
                     </div>
@@ -235,9 +235,9 @@ export function Header({ toggleMenu, userRole, setUserRole, setActiveTab, setGlo
                 )}
 
                 {['master', 'admin', 'staff'].includes(userRole) && (
-                    <button onClick={() => setActiveTab('patient-registration')} className="px-4 py-2 rounded-full flex items-center gap-2 transition-all duration-300 hover:-translate-y-0.5 active:scale-95 group font-bold text-[10px] uppercase tracking-wider text-white"
-                        style={{ background: 'var(--primary)', boxShadow: '0 2px 8px var(--primary-glow)' }}>
-                        <UserPlus size={16} />
+                    <button onClick={() => setActiveTab('patient-registration')} className="px-4 py-2.5 rounded-full flex items-center gap-2 transition-all duration-300 hover:-translate-y-0.5 active:scale-95 group font-bold text-[13px] text-white"
+                        style={{ background: 'var(--primary)', boxShadow: '0 10px 25px -5px var(--primary-glow)' }}>
+                        <UserPlus size={18} />
                         <span className="hidden xl:inline">New Patient</span>
                     </button>
                 )}

@@ -100,23 +100,46 @@ function App() {
     try {
       if (!user) return;
       
-      // Fetch clinic info based on role
-      const { data: clinic } = await supabase
+      let clinicId = null;
+      let clinicData = null;
+
+      // 1. Try to find clinic where user is owner
+      const { data: ownedClinic } = await supabase
         .from('clinics')
         .select('id, name, status, owner_id')
-        .or(`owner_id.eq.${user.id},id.in.(select clinic_id from staff where id = '${user.id}')`)
-        .single();
+        .eq('owner_id', user.id)
+        .maybeSingle();
 
-      if (clinic) {
-        setClinicName(clinic.name);
-        setClinicStatus(clinic.status as any);
+      if (ownedClinic) {
+        clinicData = ownedClinic;
+      } else {
+        // 2. Try to find clinic via staff table
+        const { data: staffMember } = await supabase
+            .from('staff')
+            .select('clinic_id')
+            .eq('id', user.id)
+            .maybeSingle();
+        
+        if (staffMember?.clinic_id) {
+            const { data: linkedClinic } = await supabase
+                .from('clinics')
+                .select('id, name, status, owner_id')
+                .eq('id', staffMember.clinic_id)
+                .maybeSingle();
+            clinicData = linkedClinic;
+        }
+      }
+
+      if (clinicData) {
+        setClinicName(clinicData.name);
+        setClinicStatus(clinicData.status as any);
 
         // Check subscription for expiration (28-day policy)
         const { data: sub } = await supabase
           .from('subscriptions')
           .select('*')
-          .eq('clinic_id', clinic.id)
-          .single();
+          .eq('clinic_id', clinicData.id)
+          .maybeSingle();
 
         if (sub && sub.status === 'active' && sub.validity_end) {
           const end = new Date(sub.validity_end);
@@ -128,7 +151,7 @@ function App() {
           if (daysLeft <= 0) {
             setClinicStatus('deactivated');
             // Update DB status if it was active but expired
-            await supabase.from('clinics').update({ status: 'deactivated' }).eq('id', clinic.id);
+            await supabase.from('clinics').update({ status: 'deactivated' }).eq('id', clinicData.id);
           } else if (daysLeft <= 3) {
              // 28-day monthly reminder (last 3 days)
              const evt = new CustomEvent('dentora:toast', { 
@@ -445,8 +468,8 @@ function App() {
           <header className="sticky top-0 z-40 px-5 py-3 transition-all duration-300">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-xl overflow-hidden shadow-sm" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
-                  <img alt="User avatar" className="w-full h-full object-cover" src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150" />
+                <div className="w-10 h-10 rounded-xl overflow-hidden shadow-sm border border-slate-100" onClick={() => setActiveTab('profile')}>
+                  <img alt="User avatar" className="w-full h-full object-cover" src={userRole === 'patient' ? "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150" : "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=150"} />
                 </div>
                 <div>
                   <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider leading-none mb-1">Welcome</p>

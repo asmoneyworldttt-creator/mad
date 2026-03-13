@@ -90,10 +90,10 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen, userRole, 
                         <Activity className="text-white w-full h-full" />
                     </div>
                     <div className="flex flex-col">
-                        <h1 className="font-bold text-lg tracking-tight leading-none" style={{ color: 'var(--sidebar-text)' }}>Dentora</h1>
-                        <div className="flex items-center gap-1 mt-1 opacity-80">
+                        <h1 className="font-bold text-xl tracking-tight leading-none" style={{ color: 'var(--sidebar-text)' }}>Dentora</h1>
+                        <div className="flex items-center gap-1 mt-1.5 opacity-80">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)]" />
-                            <p className="text-[10px] font-bold" style={{ color: 'var(--sidebar-muted)' }}>Clinic Manager</p>
+                            <p className="text-[11px] font-bold" style={{ color: 'var(--sidebar-muted)' }}>Clinic Manager</p>
                         </div>
                     </div>
                 </div>
@@ -116,9 +116,9 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen, userRole, 
                             {activeTab === m.id && (
                                 <motion.div layoutId="sidebar-active" className="absolute inset-0 bg-primary -z-10" />
                             )}
-                            <m.icon size={15} aria-hidden="true" className={`flex-shrink-0 transition-all duration-200 ${activeTab === m.id ? 'stroke-[2.5px]' : 'group-hover:scale-105'}`} />
-                            <span className={`text-[11px] tracking-wide uppercase font-bold ${activeTab === m.id ? 'opacity-100' : 'opacity-70'}`}>{m.label}</span>
-                        </button>
+                             <m.icon size={18} aria-hidden="true" className={`flex-shrink-0 transition-all duration-200 ${activeTab === m.id ? 'stroke-[2.5px]' : 'group-hover:scale-105'}`} />
+                             <span className={`text-[14px] font-bold ${activeTab === m.id ? 'opacity-100' : 'opacity-80'}`}>{m.label}</span>
+                         </button>
                     ))}
                 </div>
 
@@ -134,8 +134,8 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen, userRole, 
                                 ? <Sun size={15} className="text-amber-400 group-hover:rotate-180 transition-transform duration-700" />
                                 : <Moon size={15} className="text-primary group-hover:-rotate-12 transition-transform" />
                             }
-                            <span className="text-[10px] font-bold uppercase">{isDark ? 'Light' : 'Dark'}</span>
-                        </div>
+                             <span className="text-xs font-bold">{isDark ? 'Light' : 'Dark'}</span>
+                         </div>
                         <div className={`w-8 h-4 rounded-full p-0.5 transition-colors duration-500 ${isDark ? 'bg-primary' : 'bg-slate-200'}`}>
                             <div className={`w-3 h-3 rounded-full bg-white transition-transform duration-500 ${isDark ? 'translate-x-4' : 'translate-x-0'}`} />
                         </div>

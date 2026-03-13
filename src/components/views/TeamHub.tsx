@@ -82,21 +82,21 @@ export function TeamHub({ userRole, theme }: { userRole: string; theme?: 'light'
         <div className="animate-slide-up space-y-4">
             <div className="flex justify-between items-center">
                 <div>
-                    <h2 className={`text-xl font-bold tracking-tight`} style={{ color: 'var(--text-dark)' }}>Team Operations</h2>
-                    <p className="text-[10px] font-bold mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                        Staff attendance • Performance metrics • Duty roster
+                    <h2 className={`text-xl font-bold tracking-tight`} style={{ color: 'var(--text-dark)' }}>Team Management</h2>
+                    <p className="text-sm font-bold mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                        Staff attendance • Work records • Schedule
                     </p>
                 </div>
-                <button onClick={exportCSV} className="flex items-center gap-2 px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all"
+                <button onClick={exportCSV} className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all"
                     style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
-                    <Download size={14} /> Export
+                    <Download size={16} /> Export
                 </button>
             </div>
 
             {/* Who's In Today */}
                 <div className="p-6 rounded-2xl border shadow-lg" style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
-                <h3 className={`font-black text-sm mb-6 flex items-center gap-2`} style={{ color: 'var(--text-dark)' }}>
-                    <Users size={18} className="text-primary" /> Active Personnel
+                <h3 className={`font-bold text-sm mb-6 flex items-center gap-2`} style={{ color: 'var(--text-dark)' }}>
+                    <Users size={18} className="text-primary" /> Active Staff
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                     {staff.map(s => {
@@ -111,15 +111,15 @@ export function TeamHub({ userRole, theme }: { userRole: string; theme?: 'light'
                                 style={{ background: isClockedIn ? 'var(--primary-soft)' : 'var(--card-bg-alt)', borderColor: isClockedIn ? 'rgba(16,185,129,0.15)' : 'var(--border-color)' }}>
                                 {isClockedIn && <div className="absolute top-0 right-0 p-2"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /></div>}
                                 <div className="flex items-center gap-3 relative z-10">
-                                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs transition-transform group-hover:scale-110`}
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm transition-transform group-hover:scale-110`}
                                         style={{ background: isClockedIn ? 'rgba(16,185,129,0.15)' : 'var(--primary-soft)', color: isClockedIn ? '#10b981' : 'var(--primary)' }}>
                                         {s.name?.charAt(0)}
                                     </div>
                                     <div>
-                                        <p className="font-bold text-xs" style={{ color: 'var(--text-dark)' }}>{s.name}</p>
-                                        <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>{s.role}</p>
-                                        {isClockedIn && <p className="text-[8px] text-emerald-500 font-bold mt-1 flex items-center gap-1"><Clock size={10}/> {new Date(log.clock_in).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</p>}
-                                        {isDone && <p className="text-[8px] font-black uppercase tracking-widest mt-1" style={{ color: 'var(--text-muted)' }}>{hoursWorked}H LOGGED</p>}
+                                        <p className="font-bold text-sm" style={{ color: 'var(--text-dark)' }}>{s.name}</p>
+                                        <p className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>{s.role}</p>
+                                        {isClockedIn && <p className="text-xs text-emerald-500 font-bold mt-1.5 flex items-center gap-1.5"><Clock size={14}/> {new Date(log.clock_in).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</p>}
+                                        {isDone && <p className="text-xs font-bold mt-1.5" style={{ color: 'var(--text-muted)' }}>{hoursWorked}h Logged</p>}
                                     </div>
                                 </div>
                                 <div className="flex flex-col gap-1.5 relative z-10 transition-all opacity-90 group-hover:opacity-100">
@@ -127,9 +127,9 @@ export function TeamHub({ userRole, theme }: { userRole: string; theme?: 'light'
                                         <button
                                             onClick={() => clockIn(s.id)}
                                             disabled={clockingId === s.id}
-                                            className="px-3 py-1.5 bg-emerald-500 text-white rounded-lg text-[8px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all disabled:opacity-60 flex items-center gap-1.5 shadow-lg shadow-emerald-500/20"
+                                            className="px-4 py-2.5 bg-emerald-500 text-white rounded-xl text-xs font-bold hover:scale-105 active:scale-95 transition-all disabled:opacity-60 flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/20"
                                         >
-                                            {clockingId === s.id ? <div className="w-2 h-2 border-2 border-white/40 border-t-white rounded-full animate-spin" /> : <CheckCircle size={10} />}
+                                            {clockingId === s.id ? <div className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" /> : <CheckCircle size={14} />}
                                             Clock In
                                         </button>
                                     )}
@@ -137,17 +137,17 @@ export function TeamHub({ userRole, theme }: { userRole: string; theme?: 'light'
                                         <button
                                             onClick={() => clockOut(s.id)}
                                             disabled={clockingId === s.id}
-                                            className="px-3 py-1.5 bg-rose-500 text-white rounded-lg text-[8px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all disabled:opacity-60 flex items-center gap-1.5 shadow-lg shadow-rose-500/20"
+                                            className="px-4 py-2.5 bg-rose-500 text-white rounded-xl text-xs font-bold hover:scale-105 active:scale-95 transition-all disabled:opacity-60 flex items-center justify-center gap-1.5 shadow-lg shadow-rose-500/20"
                                         >
-                                            {clockingId === s.id ? <div className="w-2 h-2 border-2 border-white/40 border-t-white rounded-full animate-spin" /> : <XCircle size={10} />}
+                                            {clockingId === s.id ? <div className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" /> : <XCircle size={14} />}
                                             Clock Out
                                         </button>
                                     )}
-                                    <button onClick={() => { setSelectedStaff(s); setShowQR(true); }}
-                                        className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all border`}
-                                        style={{ background: 'var(--card-bg)', color: 'var(--text-muted)', borderColor: 'var(--border-color)' }}>
-                                        View ID
-                                    </button>
+                                     <button onClick={() => { setSelectedStaff(s); setShowQR(true); }}
+                                         className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all border`}
+                                         style={{ background: 'var(--card-bg)', color: 'var(--text-muted)', borderColor: 'var(--border-color)' }}>
+                                         View ID
+                                     </button>
                                 </div>
                             </div>
                         );
@@ -156,30 +156,30 @@ export function TeamHub({ userRole, theme }: { userRole: string; theme?: 'light'
             </div>
 
             <div className="grid grid-cols-3 gap-3">
-                <div className="p-5 rounded-2xl border text-center shadow-lg transition-all hover:scale-[1.02]" style={{ background: 'var(--card-bg-alt)', borderColor: 'rgba(16,185,129,0.15)' }}>
-                    <p className="text-xl font-black text-emerald-500">{logs.filter(l => l.clock_in && !l.clock_out).length}</p>
-                    <p className="text-[8px] font-black uppercase tracking-widest text-emerald-500/70 mt-0.5">Clocked In</p>
-                </div>
-                <div className="p-5 rounded-2xl border text-center shadow-lg transition-all hover:scale-[1.02]" style={{ background: 'var(--card-bg-alt)', borderColor: 'rgba(245,158,11,0.15)' }}>
-                    <p className="text-xl font-black text-amber-500">{staff.length - logs.length}</p>
-                    <p className="text-[8px] font-black uppercase tracking-widest text-amber-500/70 mt-0.5">Absent</p>
-                </div>
-                <div className="p-5 rounded-2xl border text-center shadow-lg transition-all hover:scale-[1.02]" style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)' }}>
-                    <p className="text-xl font-black" style={{ color: 'var(--text-dark)' }}>{logs.filter(l => l.clock_out).length}</p>
-                    <p className="text-[8px] font-black uppercase tracking-widest mt-0.5" style={{ color: 'var(--text-muted)' }}>Clocked Out</p>
-                </div>
+                  <div className="p-5 rounded-2xl border text-center shadow-lg transition-all hover:scale-[1.02]" style={{ background: 'var(--card-bg-alt)', borderColor: 'rgba(16,185,129,0.15)' }}>
+                      <p className="text-2xl font-black text-emerald-500">{logs.filter(l => l.clock_in && !l.clock_out).length}</p>
+                      <p className="text-xs font-bold text-emerald-500 mt-1">Clocked In</p>
+                  </div>
+                  <div className="p-5 rounded-2xl border text-center shadow-lg transition-all hover:scale-[1.02]" style={{ background: 'var(--card-bg-alt)', borderColor: 'rgba(245,158,11,0.15)' }}>
+                      <p className="text-2xl font-black text-amber-500">{staff.length - logs.length}</p>
+                      <p className="text-xs font-bold text-amber-500 mt-1">Absent</p>
+                  </div>
+                  <div className="p-5 rounded-2xl border text-center shadow-lg transition-all hover:scale-[1.02]" style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)' }}>
+                      <p className="text-2xl font-black" style={{ color: 'var(--text-dark)' }}>{logs.filter(l => l.clock_out).length}</p>
+                      <p className="text-xs font-bold mt-1" style={{ color: 'var(--text-muted)' }}>Clocked Out</p>
+                  </div>
             </div>
 
             {showQR && selectedStaff && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setShowQR(false)}>
                     <div className={`p-8 rounded-3xl border shadow-2xl text-center max-w-sm w-full ${isDark ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'}`} onClick={e => e.stopPropagation()}>
-                        <h3 className="font-bold text-lg mb-1">{selectedStaff.name}</h3>
-                        <p className={`text-[9px] uppercase tracking-widest font-black mb-6 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>IDENTIFICATION TOKEN</p>
-                        <div className="bg-white p-3 rounded-xl inline-block shadow-inner border">
+                         <h3 className="font-bold text-lg mb-1">{selectedStaff.name}</h3>
+                         <p className={`text-sm font-bold mb-6 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Staff Details</p>
+                        <div className="bg-white p-3 rounded-2xl inline-block shadow-inner border">
                             <QRCodeSVG value={`dentora-checkin:${selectedStaff.id}:${selectedStaff.name}`} size={160} />
                         </div>
-                        <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mt-6">Scan for auto-identification</p>
-                        <button onClick={() => setShowQR(false)} className="mt-6 w-full py-3 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-primary/20">Close</button>
+                         <p className="text-xs text-slate-400 font-bold mt-6">Scan for quick check-in</p>
+                        <button onClick={() => setShowQR(false)} className="mt-6 w-full py-3 bg-primary text-white rounded-xl text-xs font-bold hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-primary/25">Close</button>
                     </div>
                 </div>
             )}

@@ -172,35 +172,35 @@ ${rx.medication_data?.notes ? `<div class="notes"><strong>Special Instructions:<
 
     return (
         <>
-            <div className="animate-slide-up space-y-4">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="animate-slide-up space-y-6">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                     <div>
-                        <h2 className={`text-xl font-bold tracking-tight`} style={{ color: 'var(--text-dark)' }}>Prescription Hub</h2>
-                        <p className="text-[10px] font-bold mt-0.5" style={{ color: 'var(--text-muted)' }}>Digital pharmacological records</p>
+                        <h2 className={`text-2xl md:text-3xl font-bold tracking-tight`} style={{ color: 'var(--text-dark)' }}>Clinical prescriptions</h2>
+                        <p className="text-base font-medium mt-1" style={{ color: 'var(--text-muted)' }}>Secure digital vault for patient medicine records</p>
                     </div>
                     <button
                         onClick={() => setIsPrescModalOpen(true)}
-                        className="bg-primary hover:scale-105 active:scale-95 text-white shadow-lg shadow-primary/20 px-4 py-2 rounded-xl font-bold text-xs transition-all w-full md:w-auto flex items-center justify-center gap-2"
+                        className="bg-primary hover:scale-105 active:scale-95 text-white shadow-premium px-8 py-3.5 rounded-2xl font-bold text-sm transition-all w-full md:w-auto flex items-center justify-center gap-3"
                     >
-                        <Plus size={16} /> New Prescription
+                        <Plus size={20} /> Authorize New Rx
                     </button>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                    <div className="lg:col-span-2 space-y-4">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-2 space-y-6">
                         <div className="relative">
-                            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
-                            <input
-                                type="text"
-                                value={searchQuery}
-                                onChange={e => setSearchQuery(e.target.value)}
-                                placeholder="Lookup patients..."
-                                className={`w-full rounded-xl py-2 pl-12 pr-4 font-bold text-xs outline-none border transition-all focus:ring-4 focus:ring-primary/10`}
-                                style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }}
-                            />
+                            <Search size={20} className="absolute left-5 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+                             <input
+                                 type="text"
+                                 value={searchQuery}
+                                 onChange={e => setSearchQuery(e.target.value)}
+                                 placeholder="Lookup patient records..."
+                                 className={`w-full rounded-2xl py-4.5 pl-14 pr-6 font-bold text-base outline-none border transition-all focus:ring-4 focus:ring-primary/10 shadow-inner`}
+                                 style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }}
+                             />
                         </div>
 
-                        <div className="space-y-3">
+                        <div className="space-y-4">
                             {filtered.map((rx, idx) => {
                                 const drugs: Drug[] = rx.medication_data?.drugs || [];
                                 const allergies: string[] = rx.patients?.allergies ? (typeof rx.patients.allergies === 'string' ? rx.patients.allergies.split(',').map((a: string) => a.trim()) : rx.patients.allergies) : [];
@@ -208,27 +208,27 @@ ${rx.medication_data?.notes ? `<div class="notes"><strong>Special Instructions:<
 
                                 return (
                                     <div key={rx.id || idx} 
-                                        className={`p-4 md:p-5 rounded-2xl border transition-all duration-300 relative overflow-hidden group hover:shadow-xl ${hasAllergyConflict ? 'ring-2 ring-rose-500/30' : ''}`}
-                                        style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)', boxShadow: '0 4px 20px var(--glass-shadow)' }}>
+                                        className={`p-6 rounded-[2rem] border transition-all duration-300 relative overflow-hidden group hover:shadow-xl ${hasAllergyConflict ? 'ring-2 ring-rose-500/30' : ''}`}
+                                        style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
                                         <div className="flex items-center justify-between gap-4 relative z-10">
-                                            <div className="flex gap-3 items-center">
-                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110`}
+                                            <div className="flex gap-4 items-center">
+                                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 shadow-sm`}
                                                     style={{ background: 'var(--primary-soft)', color: 'var(--primary)' }}>
-                                                    <FileText size={18} />
+                                                    <FileText size={24} />
                                                 </div>
-                                                <div>
-                                                    <p className="font-bold text-sm" style={{ color: 'var(--text-dark)' }}>{rx.patients?.name || 'Walk-in Patient'}</p>
-                                                    <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
-                                                        {drugs.length} items • {new Date(rx.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                                    </p>
-                                                </div>
+                                                 <div>
+                                                     <p className="font-bold text-lg transition-colors" style={{ color: 'var(--text-dark)' }}>{rx.patients?.name || 'Walk-in Patient'}</p>
+                                                     <p className="text-sm font-bold mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                                                         {drugs.length} Items Prescribed • {new Date(rx.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                     </p>
+                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-1.5 shrink-0">
-                                                {hasAllergyConflict && (
-                                                    <span className="flex items-center gap-1 text-[8px] font-black px-2 py-0.5 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-lg uppercase tracking-widest">
-                                                        <AlertCircle size={10} /> Conflict
-                                                    </span>
-                                                )}
+                                            <div className="flex items-center gap-3 shrink-0">
+                                                 {hasAllergyConflict && (
+                                                     <span className="flex items-center gap-2 text-xs font-black px-3 py-1.5 bg-rose-500/10 text-rose-500 border border-rose-500/20 rounded-xl uppercase tracking-widest animate-pulse">
+                                                         <AlertCircle size={16} /> Allergy Alert
+                                                     </span>
+                                                 )}
                                                 <button
                                                     onClick={() => {
                                                         downloadPrescriptionPDF({
@@ -244,9 +244,9 @@ ${rx.medication_data?.notes ? `<div class="notes"><strong>Special Instructions:<
                                                         });
                                                         showToast('PDF Exported', 'success');
                                                     }}
-                                                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-105 active:scale-95 text-[10px] font-bold ${isDark ? 'bg-primary/10 border-primary/20 text-primary hover:bg-primary/20' : 'bg-primary/5 border-primary/20 text-primary hover:bg-primary/10'}`}
+                                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all hover:scale-105 active:scale-95 text-xs font-bold ${isDark ? 'bg-primary/10 border-primary/20 text-primary hover:bg-primary/20' : 'bg-primary/5 border-primary/20 text-primary hover:bg-primary/10'}`}
                                                 >
-                                                    <Download size={12} /> PDF
+                                                    <Download size={16} /> Export Rx
                                                 </button>
                                                 <button
                                                     onClick={() => {
@@ -284,8 +284,8 @@ ${rx.medication_data?.notes ? `<div class="notes"><strong>Special Instructions:<
                                         onClick={() => { setNewPresc({ ...newPresc, drugs: tmpl.drugs }); setIsPrescModalOpen(true); }}
                                         className={`w-full p-3 border rounded-xl text-left transition-all group hover:border-primary hover:bg-primary/5 ${isDark ? 'border-white/10 bg-white/3' : 'border-slate-200 bg-slate-50'}`}
                                     >
-                                        <p className="font-bold text-xs group-hover:text-primary transition-colors">{tmpl.label}</p>
-                                        <p className={`text-[9px] font-bold uppercase tracking-widest mt-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{tmpl.drugs.length} drugs</p>
+                                         <p className="font-bold text-xs group-hover:text-primary transition-colors">{tmpl.label}</p>
+                                         <p className={`text-[10px] font-bold mt-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{tmpl.drugs.length} drugs</p>
                                     </button>
                                 ))}
                             </div>
@@ -316,7 +316,7 @@ ${rx.medication_data?.notes ? `<div class="notes"><strong>Special Instructions:<
                     </div>
 
                     <div>
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Medications</p>
+                        <p className="text-xs font-bold text-slate-500 mb-2 px-1">Medication details</p>
                         <div className="space-y-2">
                             {newPresc.drugs.map((drug, i) => (
                                 <div key={i} className="p-3 rounded-xl space-y-2" style={{ background: 'var(--card-bg-alt)', border: '1px solid var(--border-color)' }}>

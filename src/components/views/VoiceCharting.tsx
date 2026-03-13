@@ -17,6 +17,11 @@ export function VoiceCharting({ onTranscript, currentText, theme, disabled }: Vo
     const [interimText, setInterimText] = useState('');
     const recognitionRef = useRef<any>(null);
 
+    const currentTextRef = useRef(currentText);
+    useEffect(() => {
+        currentTextRef.current = currentText;
+    }, [currentText]);
+
     useEffect(() => {
         const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
         if (SpeechRecognition) {
@@ -37,8 +42,10 @@ export function VoiceCharting({ onTranscript, currentText, theme, disabled }: Vo
                         interim += transcript;
                     }
                 }
+                
                 if (finalText) {
-                    onTranscript(currentText + (currentText ? ' ' : '') + finalText.trim());
+                    const baseText = currentTextRef.current;
+                    onTranscript(baseText + (baseText ? ' ' : '') + finalText.trim());
                     setInterimText('');
                 } else {
                     setInterimText(interim);
@@ -48,20 +55,28 @@ export function VoiceCharting({ onTranscript, currentText, theme, disabled }: Vo
             recognition.onerror = (event: any) => {
                 console.error('Voice error:', event.error);
                 if (event.error === 'not-allowed') {
-                    showToast('Microphone access denied. Please allow mic access.', 'error');
+                    showToast('Microphone access denied.', 'error');
                 }
-                setIsListening(false);
             };
 
             recognition.onend = () => {
-                setIsListening(false);
-                setInterimText('');
+                if (isListening) {
+                    try { recognition.start(); } catch (e) {}
+                } else {
+                    setIsListening(false);
+                    setInterimText('');
+                }
             };
 
             recognitionRef.current = recognition;
         }
-        return () => recognitionRef.current?.stop();
-    }, [currentText]); // re-bind when currentText changes
+        return () => {
+            if (recognitionRef.current) {
+                recognitionRef.current.onend = null;
+                recognitionRef.current.stop();
+            }
+        };
+    }, []);
 
     const toggleListening = () => {
         if (!recognitionRef.current) return showToast('Voice not supported on this browser', 'error');
