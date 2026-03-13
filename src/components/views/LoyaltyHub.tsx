@@ -87,15 +87,15 @@ export function LoyaltyHub({ userRole, theme }: { userRole: string; theme?: 'lig
                     { label: 'Loyalty Participation', value: stats.activeMembers.toString(), icon: Zap, color: 'text-primary' },
                     { label: 'Reward Tier Eligible', value: stats.totalRewards.toString(), icon: Award, color: 'text-emerald-500' }
                 ].map((s, i) => (
-                    <div key={i} className={`p-8 rounded-[2rem] border relative overflow-hidden ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
+                    <div key={i} className="p-8 rounded-[2rem] border relative overflow-hidden" style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)', boxShadow: '0 1px 8px var(--glass-shadow)' }}>
                         <div className={`absolute top-0 right-0 p-8 opacity-5 ${s.color}`}><s.icon size={64} /></div>
-                        <p className={`text-[9px] font-extrabold uppercase tracking-[0.2em] mb-3 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{s.label}</p>
-                        <h3 className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{s.value}</h3>
+                        <p className="text-xs font-semibold mb-3" style={{ color: 'var(--text-muted)' }}>{s.label}</p>
+                        <h3 className="text-3xl font-bold" style={{ color: 'var(--text-dark)' }}>{s.value}</h3>
                     </div>
                 ))}
             </div>
 
-            <div className={`p-8 rounded-[2.5rem] border ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
+            <div className="p-8 rounded-[2.5rem] border" style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)', boxShadow: '0 1px 8px var(--glass-shadow)' }}>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
                     <h3 className="text-xl font-bold">Reward Leaderboard</h3>
                     <div className="relative flex-1 max-w-md">
@@ -104,7 +104,8 @@ export function LoyaltyHub({ userRole, theme }: { userRole: string; theme?: 'lig
                             placeholder="Find member..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className={`w-full rounded-2xl px-12 py-4 font-bold outline-none border transition-all ${isDark ? 'bg-white/5 border-white/10 text-white focus:border-primary/50' : 'bg-slate-50 border-slate-200 focus:border-primary'}`}
+                            className={`w-full rounded-2xl px-12 py-4 font-medium outline-none border transition-all text-sm`}
+                            style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }}
                         />
                     </div>
                 </div>
@@ -120,7 +121,7 @@ export function LoyaltyHub({ userRole, theme }: { userRole: string; theme?: 'lig
                         };
 
                         return (
-                            <div key={p.id} className={`p-6 rounded-[2rem] border group transition-all flex items-center justify-between ${isDark ? 'bg-white/5 border-white/5 hover:border-white/10' : 'bg-slate-50 border-slate-100'}`}>
+                            <div key={p.id} className="p-6 rounded-[2rem] border group transition-all flex items-center justify-between" style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)' }}>
                                 <div className="flex items-center gap-6">
                                     <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-lg text-white shadow-lg ${levelColors[level as keyof typeof levelColors]}`}>
                                         {i + 1}
@@ -128,7 +129,7 @@ export function LoyaltyHub({ userRole, theme }: { userRole: string; theme?: 'lig
                                     <div>
                                         <h4 className="font-bold text-lg">{p.name}</h4>
                                         <div className="flex items-center gap-3">
-                                            <span className={`text-[10px] font-extrabold uppercase tracking-widest ${level === 'Platinum' ? 'text-emerald-500' : 'text-slate-500'}`}>
+                                            <span className={`text-xs font-semibold ${level === 'Platinum' ? 'text-emerald-500' : 'text-slate-500'}`}>
                                                 {level} Tier
                                             </span>
                                             <p className="text-[10px] font-medium text-slate-400">ID: {p.id.slice(0, 8)}</p>
@@ -142,10 +143,11 @@ export function LoyaltyHub({ userRole, theme }: { userRole: string; theme?: 'lig
                                             {p.loyalty_points || 0}
                                             <Coins size={18} />
                                         </p>
-                                        <p className="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest">Available Points</p>
+                                        <p className="text-xs font-semibold text-slate-500">Available Points</p>
                                     </div>
                                     <div className="flex gap-2">
-                                        <button onClick={() => addPoints(p.id, 100, 'Visit Completion')} className={`p-3 rounded-xl border transition-all hover:scale-105 ${isDark ? 'bg-white/5 border-white/10 text-slate-400 hover:text-primary' : 'bg-white border-slate-200 text-slate-400 hover:text-primary'}`} title="Reward Completion (+100)">
+                                        <button onClick={() => addPoints(p.id, 100, 'Visit Completion')} className="p-3 rounded-xl border transition-all hover:scale-105" title="Reward Completion (+100)"
+                                            style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)', color: 'var(--text-muted)' }}>
                                             <Zap size={18} />
                                         </button>
                                         <button onClick={() => addPoints(p.id, 500, 'New Referral')} className={`p-3 rounded-xl border transition-all hover:scale-105 ${isDark ? 'bg-white/5 border-white/10 text-slate-400 hover:text-emerald-500' : 'bg-white border-slate-200 text-slate-400 hover:text-emerald-500'}`} title="Referral Bonus (+500)">

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Modal } from '../../components/Modal';
 import { useToast } from '../../components/Toast';
 import { supabase } from '../../supabase';
+import { CustomSelect } from '../ui/CustomControls';
 import {
     Calendar as CalendarIcon,
     Plus,
@@ -19,7 +20,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-type UserRole = 'admin' | 'staff' | 'doctor' | 'patient';
+type UserRole = 'master' | 'admin' | 'staff' | 'patient';
 
 export function Appointments({ userRole, setActiveTab, theme }: { userRole: UserRole; setActiveTab: (tab: string) => void; theme?: 'light' | 'dark' }) {
     const today = new Date().toISOString().split('T')[0];
@@ -181,14 +182,14 @@ export function Appointments({ userRole, setActiveTab, theme }: { userRole: User
                 className={`p-6 rounded-[2rem] border shadow-sm group hover:-translate-y-1 border-l-4 transition-all flex items-center justify-between cursor-pointer ${theme === 'dark' ? `bg-slate-900 border-white/5 ${colors.border}` : `bg-white ${colors.border} border-y-slate-100 border-r-slate-100`}`}
             >
                 <div>
-                    <div className="flex items-center gap-3 mb-2">
-                        <span className={`text-[9px] font-extrabold px-3 py-1 rounded-full uppercase tracking-widest ${colors.bg} ${colors.text}`}>
+                    <div className="flex items-center gap-2 mb-1.5">
+                        <span className={`text-[8px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wide ${colors.bg} ${colors.text}`}>
                             {apt.time}
                         </span>
-                        <span className={`text-[10px] font-bold uppercase tracking-widest ${colors.text}`}>{apt.type}</span>
+                        <span className={`text-[9px] font-bold uppercase tracking-wide ${colors.text}`}>{apt.type}</span>
                     </div>
-                    <h4 className="text-xl font-bold">{apt.patient_name}</h4>
-                    <p className="text-xs text-slate-500 font-medium">{apt.purpose}</p>
+                    <h4 className="text-base font-bold">{apt.patient_name}</h4>
+                    <p className="text-[11px] text-slate-500 font-medium">{apt.purpose}</p>
                 </div>
                 <div className="flex items-center gap-4">
                     <span className={`text-[9px] font-extrabold uppercase tracking-widest px-3 py-1 rounded-full border ${apt.status === 'Confirmed' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
@@ -219,91 +220,88 @@ export function Appointments({ userRole, setActiveTab, theme }: { userRole: User
 
     if (view === 'add' || view === 'edit') {
         return (
-            <div className="animate-slide-up space-y-8">
-                <div className="flex items-center gap-4">
-                    <button onClick={() => setView('list')} className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-600 hover:bg-slate-50 transition-all shadow-sm">
-                        <ChevronLeft size={20} />
+            <div className="animate-slide-up space-y-6">
+                <div className="flex items-center gap-3">
+                    <button onClick={() => setView('list')} className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-all shadow-sm">
+                        <ChevronLeft size={18} />
                     </button>
                     <div>
-                        <h2 className={`text-3xl font-sans font-bold tracking-tight ${theme === 'dark' ? 'text-white' : 'text-text-dark'}`}>{view === 'edit' ? 'Reschedule Clinical Session' : 'Book New Appointment'}</h2>
-                        <p className="text-slate-500 font-medium">Capture details for the upcoming patient interaction.</p>
+                        <h2 className={`text-xl md:text-2xl font-bold tracking-tight ${theme === 'dark' ? 'text-white' : 'text-text-dark'}`}>{view === 'edit' ? 'Reschedule' : 'New Appointment'}</h2>
+                        <p className="text-xs font-medium text-slate-500">Clinical session details.</p>
                     </div>
                 </div>
 
-                <div className={`rounded-[2.5rem] shadow-sm p-10 border ${theme === 'dark' ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-100'}`}>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                        <div className="space-y-6">
+                <div className={`rounded-2xl shadow-sm p-5 border ${theme === 'dark' ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-100'}`}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-3">
                             <div>
-                                <label className="text-xs font-bold text-slate-500 mb-2 block uppercase tracking-widest">Patient Identity</label>
+                                <label className="text-[9px] font-black text-slate-400 mb-1.5 block uppercase tracking-widest">Patient Name</label>
                                 <div className="relative">
-                                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                    <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                                     <input
                                         type="text"
-                                        placeholder="Search or Enter Patient Name"
+                                        placeholder="Full Name..."
                                         value={formData.name}
                                         onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                        className={`w-full border rounded-2xl pl-12 pr-4 py-4 text-sm font-bold outline-none transition-all focus:ring-4 ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white focus:border-primary/50 focus:ring-primary/10' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-primary focus:ring-primary/10'}`}
+                                        className={`w-full border rounded-xl pl-10 pr-4 py-2 text-xs font-bold outline-none transition-all focus:ring-4 ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white focus:border-primary/50' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-primary'}`}
                                     />
                                 </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="text-xs font-bold text-slate-500 mb-2 block uppercase tracking-widest">Scheduled Date</label>
+                                    <label className="text-[9px] font-black text-slate-400 mb-1.5 block uppercase tracking-widest">Date</label>
                                     <input
                                         type="date"
                                         value={formData.date}
                                         onChange={e => setFormData({ ...formData, date: e.target.value })}
-                                        className={`w-full border rounded-xl px-4 py-3.5 text-sm font-bold outline-none transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
+                                        className={`w-full border rounded-lg px-2.5 py-1.5 text-xs font-bold outline-none transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-xs font-bold text-slate-500 mb-2 block uppercase tracking-widest">Interval Slot</label>
+                                    <label className="text-[9px] font-black text-slate-400 mb-1.5 block uppercase tracking-widest">Time</label>
                                     <input
                                         type="time"
                                         value={formData.time}
                                         onChange={e => setFormData({ ...formData, time: e.target.value })}
-                                        className={`w-full border rounded-xl px-4 py-3.5 text-sm font-bold outline-none transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
+                                        className={`w-full border rounded-lg px-2.5 py-1.5 text-xs font-bold outline-none transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
                                     />
                                 </div>
                             </div>
                         </div>
 
-                        <div className="space-y-6">
-                            <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-3">
+                            <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="text-xs font-bold text-slate-500 mb-2 block uppercase tracking-widest">Clinical Protocol</label>
-                                    <select value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value })} className={`w-full border rounded-xl px-4 py-3.5 text-sm font-bold outline-none transition-all appearance-none ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}>
-                                        <option>Consultation</option>
-                                        <option>Scaling</option>
-                                        <option>Root Canal</option>
-                                        <option>Fillings</option>
-                                        <option>Follow-up</option>
-                                        <option>Extraction</option>
-                                        <option>Implant</option>
-                                        <option>Procedure</option>
-                                        <option>Surgery</option>
-                                        <option>Emergency</option>
-                                    </select>
+                                    <label className="text-[9px] font-black text-slate-400 mb-1.5 block uppercase tracking-widest">Treatment</label>
+                                    <CustomSelect 
+                                        value={formData.type} 
+                                        onChange={val => setFormData({ ...formData, type: val })}
+                                        options={[
+                                            'Consultation', 'Scaling', 'Root Canal', 'Fillings', 
+                                            'Follow-up', 'Extraction', 'Implant', 'Procedure', 
+                                            'Surgery', 'Emergency'
+                                        ]}
+                                    />
                                 </div>
                                 <div>
-                                    <label className="text-xs font-bold text-slate-500 mb-2 block uppercase tracking-widest">Tooth Mapping</label>
+                                    <label className="text-[9px] font-black text-slate-400 mb-1.5 block uppercase tracking-widest">Tooth #</label>
                                     <input
                                         type="text"
                                         placeholder="ISO/FDI #"
                                         value={formData.toothId}
                                         onChange={e => setFormData({ ...formData, toothId: e.target.value })}
-                                        className={`w-full border rounded-xl px-4 py-3.5 text-sm font-bold outline-none transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
+                                        className={`w-full border rounded-lg px-2.5 py-1.5 text-xs font-bold outline-none transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
                                     />
                                 </div>
                             </div>
                             <div>
-                                <label className="text-xs font-bold text-slate-500 mb-2 block uppercase tracking-widest">Status Workflow</label>
-                                <div className="flex flex-wrap gap-2">
+                                <label className="text-[9px] font-black text-slate-400 mb-1.5 block uppercase tracking-widest">Status</label>
+                                <div className="flex flex-wrap gap-1">
                                     {['Confirmed', 'Finished', 'Cancelled', 'Missed'].map(s => (
                                         <button
                                             key={s}
                                             onClick={() => setFormData({ ...formData, status: s })}
-                                            className={`px-4 py-2 rounded-xl text-[10px] font-extrabold border transition-all ${formData.status === s ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' : theme === 'dark' ? 'bg-white/5 border-white/10 text-slate-400 hover:border-white/30' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'}`}
+                                            className={`px-2.5 py-1 rounded-lg text-[8px] font-black border transition-all uppercase tracking-widest ${formData.status === s ? 'bg-primary text-white border-primary shadow-md' : theme === 'dark' ? 'bg-white/5 border-white/10 text-slate-400 hover:border-white/30' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'}`}
                                         >
                                             {s}
                                         </button>
@@ -313,15 +311,15 @@ export function Appointments({ userRole, setActiveTab, theme }: { userRole: User
                         </div>
                     </div>
 
-                    <div className="mt-10">
-                        <label className="text-xs font-bold text-slate-500 mb-2 block uppercase tracking-widest">Clinical Notes & Observations</label>
-                        <textarea rows={6} value={formData.purpose} onChange={e => setFormData({ ...formData, purpose: e.target.value })} className={`w-full border rounded-3xl p-6 text-sm font-medium outline-none transition-all focus:ring-4 ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white focus:border-primary/50 focus:ring-primary/10' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-primary focus:ring-primary/10'}`} placeholder="Enter clinical notes, history, or reason for visit..."></textarea>
+                    <div className="mt-4">
+                        <label className="text-[9px] font-black text-slate-400 mb-1.5 block uppercase tracking-widest">Clinical Notes</label>
+                        <textarea rows={3} value={formData.purpose} onChange={e => setFormData({ ...formData, purpose: e.target.value })} className={`w-full border rounded-xl p-3 text-xs font-bold outline-none transition-all focus:ring-4 ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white focus:border-primary/50' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-primary'}`} placeholder="Reason for visit..."></textarea>
                     </div>
 
-                    <div className="flex gap-4 mt-12 justify-end">
-                        <button onClick={() => setView('list')} className={`px-10 py-4 rounded-2xl border font-bold transition-all active:scale-95 ${theme === 'dark' ? 'border-white/10 text-slate-400 hover:bg-white/5' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>Cancel Operation</button>
-                        <button onClick={handleSaveAppointment} className="px-12 py-4 rounded-2xl bg-primary text-white font-bold hover:bg-primary-hover shadow-premium shadow-primary/20 transition-all active:scale-95">
-                            {view === 'edit' ? 'Update Credentials' : 'Commit Booking'}
+                    <div className="flex gap-2 mt-6 justify-end">
+                        <button onClick={() => setView('list')} className={`px-5 py-2.5 rounded-xl border text-[11px] font-bold transition-all active:scale-95 ${theme === 'dark' ? 'border-white/10 text-slate-400 hover:bg-white/5' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>Cancel</button>
+                        <button onClick={handleSaveAppointment} className="px-6 py-2.5 rounded-xl bg-primary text-white text-[11px] font-bold hover:bg-primary-hover shadow-lg shadow-primary/20 transition-all active:scale-95">
+                            {view === 'edit' ? 'Save' : 'Confirm Slot'}
                         </button>
                     </div>
                 </div>
@@ -335,31 +333,33 @@ export function Appointments({ userRole, setActiveTab, theme }: { userRole: User
     );
 
     return (
-        <div className="animate-slide-up space-y-6 pb-20">
+        <div className="animate-slide-up space-y-3 pb-20">
             {/* Header Section */}
-            <div className={`flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 p-8 rounded-[2rem] shadow-sm border ${theme === 'dark' ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-100'}`}>
+            <div className={`flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 p-4 md:p-5 rounded-2xl shadow-xl border transition-all`} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
                 <div>
-                    <h2 className={`text-3xl font-sans font-bold tracking-tight ${theme === 'dark' ? 'text-white' : 'text-text-dark'}`}>Clinical Scheduler</h2>
-                    <p className="text-slate-500 font-medium mt-1">Viewing records for <span className="text-primary font-bold">{selectedDate === today ? 'Today' : selectedDate}</span></p>
+                    <h2 className="text-xl font-bold tracking-tight" style={{ color: 'var(--text-dark)' }}>Appointments</h2>
+                    <p className="text-[10px] font-bold mt-0.5" style={{ color: 'var(--text-muted)' }}>Coordination for <span className="text-primary">{selectedDate === today ? 'Today' : selectedDate}</span></p>
                 </div>
                 <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
-                    <div className={`flex items-center gap-2 p-2 rounded-2xl border w-full sm:w-auto ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-700'}`}>
-                        <CalendarIcon size={18} className="text-slate-400 ml-2" />
+                    <div className={`flex items-center gap-2 p-1 px-3 rounded-xl border w-full sm:w-auto transition-all`} style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)' }}>
+                        <CalendarIcon size={14} className="text-primary" />
                         <input
                             type="date"
                             value={selectedDate}
                             onChange={(e) => setSelectedDate(e.target.value)}
-                            className="bg-transparent border-none text-sm font-bold focus:ring-0 outline-none p-1 cursor-pointer"
+                            className="bg-transparent border-none text-[10px] font-black focus:ring-0 outline-none p-1 cursor-pointer"
+                            style={{ color: 'var(--text-main)' }}
                         />
                     </div>
-                    <div className="relative flex-1 lg:w-64 w-full">
-                        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <div className="relative flex-1 lg:w-48 w-full">
+                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
                         <input
                             type="text"
-                            placeholder="Find in list..."
+                            placeholder="Find..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className={`w-full border rounded-2xl py-3 pl-12 pr-4 text-sm outline-none transition-all shadow-inner ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white focus:border-primary/50' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-primary/50 focus:bg-white'}`}
+                            className={`w-full border rounded-xl py-2 pl-9 pr-3 text-[10px] font-bold outline-none transition-all shadow-inner`}
+                            style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }}
                         />
                     </div>
                     <button
@@ -375,113 +375,115 @@ export function Appointments({ userRole, setActiveTab, theme }: { userRole: User
                             });
                             setView('add');
                         }}
-                        className="bg-primary hover:bg-primary-hover text-white shadow-premium shadow-primary/20 px-6 py-3 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95 w-full sm:w-auto"
+                        className="bg-primary hover:scale-[1.02] active:scale-95 text-white shadow-lg shadow-primary/20 px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all w-full sm:w-auto flex items-center justify-center gap-2"
                     >
-                        <Plus size={20} /> <span className="hidden sm:inline">Book New</span>
+                        <Plus size={16} /> New Slot
                     </button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-                <div className="xl:col-span-1 space-y-6">
-                    <div className={`p-6 rounded-[2rem] shadow-sm border ${theme === 'dark' ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-100'}`}>
-                        <div className="flex items-center justify-between mb-6">
-                            <h3 className={`font-bold flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
-                                <Filter size={18} className="text-primary" />
-                                Status Filters
+            <div className="grid grid-cols-1 xl:grid-cols-4 gap-3">
+                <div className="xl:col-span-1 space-y-3">
+                    <div className={`p-4 rounded-2xl shadow-lg border transition-all`} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="font-black text-[8px] uppercase tracking-widest flex items-center gap-1.5" style={{ color: 'var(--text-dark)' }}>
+                                <Filter size={12} className="text-primary" />
+                                Filters
                             </h3>
-                            <div className="flex gap-1">
-                                <button onClick={prevDay} className="p-2 hover:bg-slate-50 rounded-xl transition-colors text-slate-400 hover:text-primary"><ChevronLeft size={18} /></button>
-                                <button onClick={nextDay} className="p-2 hover:bg-slate-50 rounded-xl transition-colors text-slate-400 hover:text-primary"><ChevronRight size={18} /></button>
+                            <div className="flex gap-0.5">
+                                <button onClick={prevDay} className="p-1 hover:bg-primary/10 rounded-md transition-all text-slate-400 hover:text-primary"><ChevronLeft size={14} /></button>
+                                <button onClick={nextDay} className="p-1 hover:bg-primary/10 rounded-md transition-all text-slate-400 hover:text-primary"><ChevronRight size={14} /></button>
                             </div>
                         </div>
 
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-1 gap-2">
-                                {['All', 'Confirmed', 'Finished', 'Cancelled', 'Missed'].map(status => (
-                                    <button
-                                        key={status}
-                                        onClick={() => setStatusFilter(status)}
-                                        className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all ${statusFilter === status ? 'bg-primary/10 text-primary border border-primary/20' : theme === 'dark' ? 'bg-white/5 text-slate-400 border border-transparent hover:bg-white/10' : 'bg-slate-50 text-slate-600 border border-transparent hover:bg-slate-100'}`}
-                                    >
-                                        <span>{status}</span>
-                                        {statusFilter === status && <div className="w-1.5 h-1.5 bg-primary rounded-full" />}
-                                    </button>
-                                ))}
-                            </div>
+                        <div className="space-y-1">
+                            {['All', 'Confirmed', 'Finished', 'Cancelled', 'Missed'].map(status => (
+                                <button
+                                    key={status}
+                                    onClick={() => setStatusFilter(status)}
+                                    className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all border ${statusFilter === status ? 'bg-primary text-white border-primary shadow-md' : 'hover:bg-primary/5'}`}
+                                    style={statusFilter === status ? {} : { background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)', color: 'var(--text-muted)' }}
+                                >
+                                    <span>{status}</span>
+                                    {statusFilter === status && <div className="w-1 h-1 bg-white rounded-full" />}
+                                </button>
+                            ))}
                         </div>
                     </div>
 
-                    <div className="bg-gradient-to-br from-primary to-primary-hover p-8 rounded-[2rem] shadow-lg shadow-primary/20 text-white relative overflow-hidden">
+                    <div className="bg-gradient-to-br from-primary via-primary to-primary-hover p-5 rounded-2xl shadow-xl shadow-primary/20 text-white relative overflow-hidden group">
                         <div className="relative z-10">
-                            <p className="text-xs font-bold opacity-80   mb-2">Live Count</p>
-                            <h4 className="text-4xl font-sans font-bold mb-6">{appointments.length}</h4>
-                            <p className="text-sm font-medium opacity-90">Appointments for selected date.</p>
+                            <p className="text-[8px] font-black uppercase tracking-widest opacity-80 mb-0.5">Registry</p>
+                            <h4 className="text-2xl font-black mb-2 flex items-baseline gap-1">
+                                {appointments.length}
+                                <span className="text-[9px] font-bold opacity-60">NODES</span>
+                            </h4>
+                            <div className="h-1 w-full bg-white/20 rounded-full overflow-hidden">
+                                <div className="h-full bg-white rounded-full transition-all duration-1000" style={{ width: `${Math.min(100, (appointments.length / 20) * 100)}%` }} />
+                            </div>
                         </div>
-                        <CalendarIcon size={120} className="absolute -right-8 -bottom-8 opacity-10 rotate-12" />
+                        <CalendarIcon size={60} className="absolute -right-3 -bottom-3 opacity-10 rotate-12 transition-transform group-hover:scale-110 duration-700" />
                     </div>
                 </div>
 
-                <div className="xl:col-span-3 space-y-4">
+                <div className="xl:col-span-3 space-y-3">
                     {isLoading ? (
-                        <div className={`p-20 flex items-center justify-center rounded-[2rem] border ${theme === 'dark' ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-100'}`}>
-                            <div className="flex flex-col items-center gap-4">
-                                <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-                                <p className="text-slate-400 font-bold italic">Loading schedule...</p>
+                        <div className={`p-16 flex items-center justify-center rounded-2xl border ${theme === 'dark' ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-100'}`}>
+                            <div className="flex flex-col items-center gap-3">
+                                <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+                                <p className="text-xs text-slate-400 font-bold italic">Loading...</p>
                             </div>
                         </div>
                     ) : filteredAppointments.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <AnimatePresence>
                                 {filteredAppointments.map((apt, idx) => (
                                     <motion.div
                                         key={apt.id}
-                                        initial={{ opacity: 0, y: 20 }}
+                                        initial={{ opacity: 0, y: 15 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         transition={{ delay: idx * 0.05 }}
-                                        className={`p-6 rounded-[2rem] shadow-sm border transition-all group relative overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-white/10 hover:border-primary/30' : 'bg-white border-slate-100 hover:shadow-md'}`}
+                                        className={`p-3.5 rounded-2xl shadow-sm border transition-all group relative overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-white/10 hover:border-primary/30' : 'bg-white border-slate-100 hover:shadow-md'}`}
                                     >
-                                        <div className="flex justify-between items-start mb-6">
-                                            <div className="flex items-center gap-4">
-                                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-primary font-bold text-xl shadow-inner border transition-colors ${theme === 'dark' ? 'bg-white/5 border-white/10 group-hover:bg-primary/5' : 'bg-slate-50 border-slate-100 group-hover:bg-primary/5'}`}>
+                                        <div className="flex justify-between items-start mb-3">
+                                            <div className="flex items-center gap-2.5">
+                                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-primary font-black text-xs shadow-inner border transition-colors ${theme === 'dark' ? 'bg-white/5 border-white/10 group-hover:bg-primary/5' : 'bg-slate-50 border-slate-100 group-hover:bg-primary/5'}`}>
                                                     {apt.name.charAt(0)}
                                                 </div>
                                                 <div>
-                                                    <h3 className={`font-bold text-lg leading-tight ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>{apt.name}</h3>
-                                                    <span className="text-xs font-bold text-slate-400 flex items-center gap-1 mt-1  ">
-                                                        <Clock size={12} /> {apt.time}
+                                                    <h3 className={`font-bold text-xs leading-tight ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>{apt.name}</h3>
+                                                    <span className="text-[9px] font-bold text-slate-400 flex items-center gap-1 mt-0.5 uppercase tracking-widest">
+                                                        <Clock size={8} /> {apt.time}
                                                     </span>
                                                 </div>
                                             </div>
-                                            <div className="flex flex-col items-end gap-2">
-                                                <span className={`text-[10px] font-extrabold px-3 py-1 rounded-full   shadow-sm border ${apt.status === 'Confirmed' ? 'bg-green-50 text-green-600 border-green-100' :
-                                                    apt.status === 'Finished' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                                        'bg-red-50 text-red-600 border-red-100'
-                                                    }`}>
-                                                    {apt.status}
-                                                </span>
-                                            </div>
+                                            <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-widest border ${apt.status === 'Confirmed' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                                apt.status === 'Finished' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                                    'bg-rose-50 text-rose-600 border-rose-100'
+                                                }`}>
+                                                {apt.status}
+                                            </span>
                                         </div>
 
-                                        <div className={`flex items-center gap-3 p-4 rounded-2xl mb-6 transition-all border ${theme === 'dark' ? 'bg-white/5 border-transparent group-hover:border-white/10' : 'bg-slate-50 border-transparent group-hover:border-slate-100'}`}>
-                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-sm text-primary ${theme === 'dark' ? 'bg-white/10' : 'bg-white'}`}>
-                                                <AlertCircle size={16} />
+                                        <div className={`flex items-center gap-2 p-2 rounded-xl mb-3 transition-all border ${theme === 'dark' ? 'bg-white/5 border-transparent group-hover:border-white/10' : 'bg-slate-50 border-transparent group-hover:border-slate-100'}`}>
+                                            <div className={`w-6 h-6 rounded-lg flex items-center justify-center shadow-sm text-primary ${theme === 'dark' ? 'bg-white/10' : 'bg-white'}`}>
+                                                <AlertCircle size={12} />
                                             </div>
-                                            <p className={`text-xs font-bold line-clamp-1 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>{apt.type} • {apt.notes || 'No notes provided'}</p>
+                                            <p className={`text-[9px] font-bold line-clamp-1 uppercase tracking-widest ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>{apt.type} • {apt.notes || 'Routine'}</p>
                                         </div>
 
-                                        <div className="flex gap-2">
+                                        <div className="flex gap-1.5">
                                             <button
                                                 onClick={() => handleDetailsClick(apt)}
-                                                className={`flex-1 py-3 rounded-xl text-xs font-bold shadow-sm transition-all transform active:scale-95 flex items-center justify-center gap-2 ${theme === 'dark' ? 'bg-primary text-white' : 'bg-slate-800 text-white'}`}
+                                                className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-sm transition-all transform active:scale-95 flex items-center justify-center gap-1.5 ${theme === 'dark' ? 'bg-primary text-white' : 'bg-slate-800 text-white'}`}
                                             >
-                                                View Details
+                                                View
                                             </button>
                                             <button
                                                 onClick={() => handleEditClick(apt)}
-                                                className={`p-3 border rounded-xl transition-all active:scale-95 ${theme === 'dark' ? 'bg-white/5 border-white/10 text-slate-400 hover:text-white' : 'bg-white border-slate-200 text-slate-400 hover:text-primary hover:border-primary/30'}`}
+                                                className={`p-1.5 border rounded-lg transition-all active:scale-95 ${theme === 'dark' ? 'bg-white/5 border-white/10 text-slate-400 hover:text-white' : 'bg-white border-slate-200 text-slate-400 hover:text-primary hover:border-primary/30'}`}
                                             >
-                                                <MoreVertical size={18} />
+                                                <MoreVertical size={14} />
                                             </button>
                                         </div>
                                     </motion.div>
@@ -489,21 +491,20 @@ export function Appointments({ userRole, setActiveTab, theme }: { userRole: User
                             </AnimatePresence>
                         </div>
                     ) : (
-                        <div className={`p-20 text-center rounded-[2rem] border flex flex-col items-center justify-center gap-4 ${theme === 'dark' ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-100'}`}>
-                            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center text-slate-200">
-                                <CalendarIcon size={40} />
+                        <div className={`p-16 text-center rounded-2xl border flex flex-col items-center justify-center gap-3 ${theme === 'dark' ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-100'}`}>
+                            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-200">
+                                <CalendarIcon size={32} />
                             </div>
                             <div>
-                                <h4 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-700'}`}>No appointments for this date</h4>
-                                <p className="text-slate-400 font-medium">Try selecting another date or check filters.</p>
+                                <h4 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-700'}`}>No appointments</h4>
+                                <p className="text-xs text-slate-400 font-medium">Try another date.</p>
                             </div>
-                            <button onClick={() => setSelectedDate(today)} className="text-primary font-bold text-sm hover:underline">Back to Today</button>
                         </div>
                     )}
                 </div>
             </div>
 
-            <Modal isOpen={isDetailsModalOpen} onClose={() => setIsDetailsModalOpen(false)} title="Patient Interaction Log" maxWidth="max-w-md">
+            <Modal isOpen={isDetailsModalOpen} onClose={() => setIsDetailsModalOpen(false)} title="Appointment Details" maxWidth="max-w-md">
                 {selectedAppointment && (
                     <div className="space-y-6">
                         <div className={`flex items-center gap-4 p-4 rounded-3xl border ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-100'}`}>

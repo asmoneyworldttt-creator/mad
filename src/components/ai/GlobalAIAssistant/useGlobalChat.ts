@@ -37,8 +37,8 @@ export function useGlobalChat() {
 
     const historyRef = useRef<{ role: string; content: string }[]>([]);
 
-    const sendMessage = useCallback(async (userText: string, contextData: any = null) => {
-        if (!userText.trim()) return;
+    const sendMessage = useCallback(async (userText: string, contextData: any = null): Promise<string> => {
+        if (!userText.trim()) return '';
 
         const newUserMessage: Message = { role: 'user', content: userText, timestamp: new Date() };
         setMessages(prev => [...prev, newUserMessage]);
@@ -59,9 +59,10 @@ export function useGlobalChat() {
         if (!OPENROUTER_API_KEY) {
             setMessages(prev => [...prev, { role: 'assistant', content: '⚠️ **Key Missing.** Configure `VITE_OPENROUTER_API_KEY` in `.env`.', timestamp: new Date() }]);
             setIsTyping(false);
-            return;
+            return '';
         }
 
+        let aiText = '';
         try {
             const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
                 method: 'POST',
@@ -87,7 +88,6 @@ export function useGlobalChat() {
 
             const reader = response.body?.getReader();
             const decoder = new TextDecoder();
-            let aiText = '';
 
             // Add initial empty assistant message to populate via stream
             setMessages(prev => [...prev, { role: 'assistant', content: '', timestamp: new Date() }]);
@@ -124,10 +124,12 @@ export function useGlobalChat() {
             }
 
             historyRef.current = [...currentHistory, { role: 'assistant', content: aiText }];
+            return aiText;
         } catch (err: any) {
             console.error('AI Logic Error:', err);
             const helpText = "I encountered a synchronization delay. Please check your connectivity or use manual navigation for now.";
             setMessages(prev => [...prev, { role: 'assistant', content: `⚠️ ${helpText}`, timestamp: new Date() }]);
+            return '';
         } finally {
             setIsTyping(false);
         }

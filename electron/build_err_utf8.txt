@@ -1,0 +1,24 @@
+﻿
+> Dentora@1.0.0 build
+> tsc && electron-rebuild
+
+node_modules/@types/node/process.d.ts(1832,17): error TS2687: All declarations of 'noDeprecation' must have identical modifiers.
+node_modules/builder-util-runtime/out/httpExecutor.d.ts(9,5): error TS2411: Property '"accept-charset"' of type 'string | string[]' is not assignable to 'string' index type 'string'.
+node_modules/builder-util-runtime/out/httpExecutor.d.ts(9,5): error TS2411: Property '"accept-encoding"' of type 'string | string[]' is not assignable to 'string' index type 'string'.
+node_modules/builder-util-runtime/out/httpExecutor.d.ts(9,5): error TS2411: Property '"accept-language"' of type 'string | string[]' is not assignable to 'string' index type 'string'.
+node_modules/builder-util-runtime/out/httpExecutor.d.ts(9,5): error TS2411: Property '"content-length"' of type 'string | number' is not assignable to 'string' index type 'string'.
+node_modules/builder-util-runtime/out/httpExecutor.d.ts(9,5): error TS2411: Property '"proxy-authenticate"' of type 'string | string[]' is not assignable to 'string' index type 'string'.
+node_modules/builder-util-runtime/out/httpExecutor.d.ts(9,5): error TS2411: Property '"sec-websocket-extensions"' of type 'string | string[]' is not assignable to 'string' index type 'string'.
+node_modules/builder-util-runtime/out/httpExecutor.d.ts(9,5): error TS2411: Property '"sec-websocket-protocol"' of type 'string | string[]' is not assignable to 'string' index type 'string'.
+node_modules/builder-util-runtime/out/httpExecutor.d.ts(9,5): error TS2411: Property '"set-cookie"' of type 'string | string[]' is not assignable to 'string' index type 'string'.
+node_modules/builder-util-runtime/out/httpExecutor.d.ts(9,5): error TS2411: Property '"www-authenticate"' of type 'string | string[]' is not assignable to 'string' index type 'string'.
+node_modules/builder-util-runtime/out/httpExecutor.d.ts(9,5): error TS2411: Property 'accept' of type 'string | string[]' is not assignable to 'string' index type 'string'.
+node_modules/builder-util-runtime/out/httpExecutor.d.ts(9,5): error TS2411: Property 'connection' of type 'string | string[]' is not assignable to 'string' index type 'string'.
+node_modules/builder-util-runtime/out/httpExecutor.d.ts(9,5): error TS2411: Property 'cookie' of type 'string | string[]' is not assignable to 'string' index type 'string'.
+node_modules/builder-util-runtime/out/httpExecutor.d.ts(9,5): error TS2411: Property 'dav' of type 'string | string[]' is not assignable to 'string' index type 'string'.
+node_modules/builder-util-runtime/out/httpExecutor.d.ts(9,5): error TS2411: Property 'link' of type 'string | string[]' is not assignable to 'string' index type 'string'.
+node_modules/builder-util-runtime/out/httpExecutor.d.ts(9,5): error TS2411: Property 'pragma' of type 'string | string[]' is not assignable to 'string' index type 'string'.
+node_modules/builder-util-runtime/out/httpExecutor.d.ts(9,5): error TS2411: Property 'via' of type 'string | string[]' is not assignable to 'string' index type 'string'.
+node_modules/chokidar/types/index.d.ts(9,14): error TS2420: Class 'import("D:/live p/medpro/electron/node_modules/chokidar/types/index").FSWatcher' incorrectly implements interface 'import("node:fs").FSWatcher'.
+  Type 'FSWatcher' is missing the following properties from type 'FSWatcher': ref, unref
+node_modules/electron/electron.d.ts(19539,5): error TS2687: All declarations of 'noDeprecation' must have identical modifiers.

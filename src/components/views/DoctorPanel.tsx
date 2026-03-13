@@ -12,23 +12,30 @@ import {
     Tooltip, ResponsiveContainer, Cell
 } from 'recharts';
 
-export function DoctorPanel({ theme }: { theme?: 'light' | 'dark' }) {
+interface DoctorPanelProps {
+    theme?: 'light' | 'dark';
+    setActiveTab?: (tab: string) => void;
+}
+
+export function DoctorPanel({ theme, setActiveTab }: DoctorPanelProps) {
     const { showToast } = useToast();
     const isDark = theme === 'dark';
     const [appointments, setAppointments] = useState<any[]>([]);
     const [stats, setStats] = useState({
         todayCount: 0,
         completedToday: 0,
-        avgSatisfaction: 4.8,
+        avgSatisfaction: 0,
         monthlyEarnings: 0
     });
     const [searchQuery, setSearchQuery] = useState('');
+    const [isAIOpen, setIsAIOpen] = useState(false);
 
     useEffect(() => {
         const syncSession = async () => {
             const { data: { session } } = await supabase.auth.getSession();
             if (session) {
                 fetchDoctorData(session.user);
+                fetchStats();
             }
         };
         syncSession();
@@ -39,7 +46,6 @@ export function DoctorPanel({ theme }: { theme?: 'light' | 'dark' }) {
             const today = new Date().toISOString().split('T')[0];
             const doctorName = user.user_metadata?.full_name || 'Dr. Jenkins';
 
-            // Fetch appointments for this specific doctor
             const { data: apts } = await supabase
                 .from('appointments')
                 .select('*')
@@ -55,162 +61,257 @@ export function DoctorPanel({ theme }: { theme?: 'light' | 'dark' }) {
                     completedToday: apts.filter(a => a.status === 'Completed' || a.status === 'Visited').length
                 }));
             }
-
-            // Mock monthly earnings calculation
-            setStats(prev => ({
-                ...prev,
-                monthlyEarnings: 124500
-            }));
-
         } catch (error) {
-            showToast('Logic Error: Failed to synchronize daily worklist', 'error');
+            showToast('Failed to synchronize daily worklist', 'error');
         }
     };
 
+    const fetchStats = async () => {
+        try {
+            const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+            const today = new Date().toISOString().split('T')[0];
+
+            // Monthly earnings from bills
+            const { data: bills } = await supabase
+                .from('bills')
+                .select('amount')
+                .gte('date', startOfMonth)
+                .lte('date', today);
+            const totalEarnings = bills?.reduce((acc, b) => acc + (Number(b.amount) || 0), 0) || 0;
+
+            setStats(prev => ({ ...prev, monthlyEarnings: totalEarnings }));
+        } catch (_) {
+            // Silently fail — stats will show 0
+        }
+    };
+
+    const filteredAppointments = appointments.filter(apt => {
+        if (!searchQuery) return true;
+        const q = searchQuery.toLowerCase();
+        return (
+            apt.patient_name?.toLowerCase().includes(q) ||
+            apt.type?.toLowerCase().includes(q) ||
+            apt.status?.toLowerCase().includes(q)
+        );
+    });
+
+    const handleOpenAI = () => {
+        // Trigger global AI assistant via custom event
+        window.dispatchEvent(new CustomEvent('dentora:open-ai'));
+        showToast('AI Diagnostic Engine activated', 'success');
+    };
+
+    const handleOpenTeleDentistry = () => {
+        if (setActiveTab) setActiveTab('teledentistry');
+    };
+
+    const handleOpenPatient = (apt: any) => {
+        if (setActiveTab) setActiveTab('patients');
+    };
+
+    const GlassIcon = ({ icon: Icon, color }: { icon: any, color: string }) => (
+        <div className={cn(
+            "w-12 h-12 rounded-2xl flex items-center justify-center relative overflow-hidden",
+            isDark ? "bg-white/10 backdrop-blur-md border border-white/20 shadow-lg" : "bg-slate-50 border border-slate-200 shadow-sm"
+        )}>
+            <div className={cn("absolute inset-0 opacity-10 bg-current", color)} />
+            <Icon className={cn("relative z-10", color)} size={24} />
+        </div>
+    );
+
     const StatusBadge = ({ status }: { status: string }) => {
         const styles: Record<string, string> = {
-            'Scheduled': 'bg-primary/10 text-primary border-primary/20',
+            'Scheduled': 'bg-blue-500/10 text-blue-500 border-blue-500/20',
             'Visited': 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
             'Completed': 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
             'Waiting': 'bg-amber-500/10 text-amber-500 border-amber-500/20',
             'Cancelled': 'bg-rose-500/10 text-rose-500 border-rose-500/20'
         };
         return (
-            <span className={`px-3 py-1 rounded-lg text-[9px] font-extrabold uppercase tracking-widest border ${styles[status] || styles['Scheduled']}`}>
+            <span className={cn(
+                "px-4 py-1.5 rounded-xl text-xs font-semibold border",
+                styles[status] || styles['Scheduled']
+            )}>
                 {status}
             </span>
         );
     };
 
-    const kpiCards = [
-        { label: "Today's Ledger", value: appointments.length, icon: Calendar, color: 'text-primary' },
-        { label: "Efficiency Rate", value: `${Math.round((stats.completedToday / (stats.todayCount || 1)) * 100)}%`, icon: Target, color: 'text-amber-500' },
-        { label: "Clinical Rating", value: stats.avgSatisfaction, icon: Star, color: 'text-emerald-500' },
-        { label: "Month Accrual", value: `₹${(stats.monthlyEarnings / 1000).toFixed(1)}k`, icon: TrendingUp, color: 'text-purple-500' },
-    ];
-
     return (
         <div className="animate-slide-up space-y-8 pb-20">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+                    <h2 className={`text-4xl font-extrabold tracking-tight flex items-center gap-3 ${isDark ? 'text-white' : 'text-slate-800'}`}>
                         <Activity className="text-primary" />
-                        Practitioner Desk
+                        My Workspace
                     </h2>
-                    <p className={`text-sm font-medium mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                        Clinical Workflow Optimization • Live Patient Stream
+                    <p className="text-sm font-medium mt-1" style={{ color: 'var(--text-muted)' }}>
+                        Today's Schedule & Patient Overview
                     </p>
                 </div>
-                <div className="relative w-full md:w-80">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-                    <input
-                        placeholder="Retrieve specific record..."
-                        className={`w-full pl-12 pr-6 py-3 rounded-2xl font-bold text-sm outline-none border transition-all ${isDark ? 'bg-white/5 border-white/10 text-white focus:border-primary/50' : 'bg-slate-50 border-slate-200 focus:border-primary'}`}
-                    />
+                <div className="flex gap-4 w-full md:w-auto">
+                    <div className="relative flex-1 md:w-80">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <input
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="Search patient or type..."
+                            className={`w-full pl-12 pr-6 py-4 rounded-2xl text-sm font-medium outline-none transition-all border`}
+                            style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }}
+                        />
+                    </div>
                 </div>
-            </div>
+            </header>
 
-            {/* KPI Row */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                {kpiCards.map((card, i) => (
-                    <div key={i} className={`p-6 rounded-[2rem] border relative overflow-hidden group ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
-                        <div className={`absolute -right-2 -top-2 p-6 opacity-5 group-hover:scale-125 transition-all ${card.color}`}><card.icon size={50} /></div>
-                        <p className={`text-[9px] font-extrabold uppercase tracking-[0.2em] mb-2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{card.label}</p>
-                        <h3 className="text-2xl font-bold">{card.value}</h3>
-                    </div>
-                ))}
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Live Worklist */}
-                <div className={`lg:col-span-2 p-10 rounded-[3rem] border ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
-                    <div className="flex justify-between items-center mb-10">
-                        <h4 className="text-xl font-bold flex items-center gap-3">
-                            <Clock className="text-primary" />
-                            Live Procedural Queue
-                        </h4>
-                        <span className="text-[10px] font-extrabold text-slate-500 px-4 py-2 bg-slate-500/5 rounded-xl uppercase tracking-widest">
-                            {appointments.filter(a => a.status === 'Waiting').length} Urgent Purgatory
-                        </span>
+            {/* Bento Grid Layout */}
+            <div className="bento-grid">
+                {/* Live Queue (Large) */}
+                <div className={cn("bento-card bento-grid-item-large p-10 flex flex-col", isDark ? "" : "bg-white border-slate-100 shadow-sm")}>
+                    <div className="flex justify-between items-center mb-8">
+                        <div>
+                            <h3 className={`text-2xl font-bold flex items-center gap-3 ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                                <Clock className="text-primary" />
+                                Today's Patients
+                            </h3>
+                            <p className="text-xs font-medium mt-1" style={{ color: 'var(--text-muted)' }}>Appointment Status</p>
+                        </div>
+                        <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 rounded-xl border border-amber-500/20">
+                            <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                            <span className="text-xs font-semibold text-amber-600">
+                                {filteredAppointments.filter(a => a.status === 'Waiting').length} High Priority
+                            </span>
+                        </div>
                     </div>
 
-                    <div className="space-y-4">
-                        {appointments.length > 0 ? appointments.map((apt, i) => (
-                            <div key={i} className={`p-6 rounded-[2rem] border group hover:border-primary/50 transition-all flex items-center justify-between ${isDark ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-100'}`}>
-                                <div className="flex items-center gap-6">
-                                    <div className="w-14 h-14 rounded-2xl bg-primary text-white flex items-center justify-center font-bold text-lg shadow-lg">
-                                        {apt.patient_name?.charAt(0) || 'P'}
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center gap-3">
-                                            <h5 className="font-bold text-lg">{apt.patient_name}</h5>
-                                            <PredictiveScoreBadge patientId={apt.patient_id} />
+                    <div className="flex-1 space-y-4 overflow-y-auto custom-scrollbar pr-2">
+                        {filteredAppointments.length > 0 ? filteredAppointments.map((apt, i) => (
+                            <div key={i} className={cn("p-6 rounded-2xl border hover:border-primary/30 group cursor-pointer transition-all", isDark ? "bg-white/5 border-white/10" : "bg-slate-50 border-slate-200 hover:bg-white")} onClick={() => handleOpenPatient(apt)}>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-6">
+                                        <div className="w-16 h-16 rounded-2xl bg-primary text-white flex items-center justify-center font-bold text-xl shadow-lg shadow-primary/20 relative overflow-hidden group-hover:scale-105 transition-transform">
+                                            {apt.patient_name?.charAt(0) || 'P'}
+                                            <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
                                         </div>
-                                        <p className="text-[10px] font-bold text-slate-500 flex items-center gap-2">
-                                            <ClipboardList size={12} className="text-primary" />
-                                            {apt.type} • {apt.time}
-                                        </p>
+                                        <div>
+                                            <div className="flex items-center gap-3 mb-1">
+                                                <h5 className={`font-bold text-xl ${isDark ? 'text-white' : 'text-slate-800'}`}>{apt.patient_name}</h5>
+                                                <PredictiveScoreBadge patientId={apt.patient_id} />
+                                            </div>
+                                            <div className={`flex items-center gap-4 text-[11px] font-bold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                <span className="flex items-center gap-1.5"><ClipboardList size={14} className="text-primary" /> {apt.type}</span>
+                                                <span className="flex items-center gap-1.5"><Clock size={14} className="text-slate-400" /> {apt.time}</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="flex items-center gap-6">
-                                    <StatusBadge status={apt.status} />
-                                    <div className="flex gap-2">
-                                        <button className="p-3 rounded-xl bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-white transition-all shadow-lg shadow-primary/10">
-                                            <Video size={18} />
-                                        </button>
-                                        <button className="p-3 rounded-xl bg-white/10 text-primary border border-primary/20 hover:bg-primary hover:text-white transition-all">
-                                            <ArrowRight size={18} />
+                                    <div className="flex items-center gap-4">
+                                        <StatusBadge status={apt.status} />
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleOpenPatient(apt); }}
+                                            className={`p-4 rounded-2xl transition-all hover:bg-primary hover:text-white ${isDark ? 'bg-white/5 text-primary' : 'bg-white text-primary border border-slate-100'}`}
+                                        >
+                                            <ArrowRight size={20} />
                                         </button>
                                     </div>
                                 </div>
                             </div>
                         )) : (
-                            <div className="py-20 text-center border-2 border-dashed border-slate-100/10 rounded-[3rem]">
-                                <p className="text-sm text-slate-500 font-medium italic italic">No clinical nodes assigned for today's session.</p>
+                            <div className="h-full flex flex-col items-center justify-center text-center opacity-40 py-20">
+                                <ClipboardList size={64} className="mb-4 text-slate-300" />
+                                <p className="font-medium text-sm" style={{ color: 'var(--text-muted)' }}>
+                                    {searchQuery ? 'No results found' : 'No clinical sessions active'}
+                                </p>
                             </div>
                         )}
                     </div>
                 </div>
 
-                {/* Right Column: Performance & Quick Actions */}
-                <div className="space-y-8">
-                    <div className={`p-8 rounded-[2.5rem] border ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
-                        <h4 className="text-lg font-bold mb-6">Recent Diagnostic Activity</h4>
-                        <div className="space-y-4">
-                            {[1, 2, 3].map((_, i) => (
-                                <div key={i} className="flex gap-4 items-start pb-4 border-b border-white/5 last:border-0">
-                                    <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
-                                        <CheckCircle2 size={16} className="text-emerald-500" />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-bold">SOAP Committed for J. Doe</p>
-                                        <p className="text-[10px] text-slate-500 mt-0.5">Tooth #46 RCT Phase 1 • 2h ago</p>
-                                    </div>
-                                </div>
-                            ))}
+                {/* Monthly Earnings — Real from DB */}
+                <div className={cn("bento-card p-8 flex flex-col justify-between", isDark ? "" : "bg-white border-slate-100 shadow-sm")}>
+                    <GlassIcon icon={TrendingUp} color="text-amber-500" />
+                    <div>
+                        <p className="text-xs font-semibold mb-1" style={{ color: 'var(--text-muted)' }}>Monthly Earnings</p>
+                        <h3 className={`text-4xl font-extrabold tracking-tight ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                            ₹{stats.monthlyEarnings > 0 ? (stats.monthlyEarnings / 1000).toFixed(1) + 'k' : '—'}
+                        </h3>
+                        <p className="text-[10px] text-slate-400 mt-1">From billing records</p>
+                    </div>
+                </div>
+
+                {/* Efficiency Goal */}
+                <div className="bento-card p-8 flex flex-col justify-between bg-emerald-500 text-white border-none">
+                    <div className="flex justify-between items-center relative z-10">
+                        <div className="w-12 h-12 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center">
+                            <CheckCircle2 size={24} />
+                        </div>
+                        <span className="text-[10px] font-bold px-3 py-1 bg-white/20 rounded-full">LIVE</span>
+                    </div>
+                    <div className="relative z-10">
+                        <p className="text-sm font-semibold opacity-80 mb-1">Today's Progress</p>
+                        <h3 className="text-4xl font-extrabold tracking-tight">
+                            {Math.round((stats.completedToday / (stats.todayCount || 1)) * 100)}%
+                        </h3>
+                        <div className="w-full h-1 bg-white/20 rounded-full mt-4 overflow-hidden">
+                            <div className="h-full bg-white rounded-full transition-all duration-700" style={{ width: `${(stats.completedToday / (stats.todayCount || 1)) * 100}%` }} />
+                        </div>
+                        <p className="text-[10px] text-white/70 mt-2">{stats.completedToday}/{stats.todayCount} sessions done</p>
+                    </div>
+                </div>
+
+                {/* Patient Rating — DB backed */}
+                <div className={cn("bento-card p-8 flex flex-col justify-between", isDark ? "" : "bg-white border-slate-100 shadow-sm")}>
+                    <GlassIcon icon={Star} color="text-primary" />
+                    <div>
+                        <p className="text-xs font-semibold mb-1" style={{ color: 'var(--text-muted)' }}>Today's Patients</p>
+                        <div className="flex items-center gap-2">
+                            <h3 className={`text-4xl font-extrabold tracking-tight ${isDark ? 'text-white' : 'text-slate-800'}`}>{stats.todayCount}</h3>
+                            <div className="flex text-amber-500"><Star size={16} fill="currentColor" /></div>
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-1">{stats.completedToday} completed</p>
+                    </div>
+                </div>
+
+                {/* AI Insights — Wired */}
+                <div className={cn("bento-card bento-grid-item-wide p-8 flex items-center justify-between border-l-4 border-l-primary", isDark ? "" : "bg-white border-slate-100 shadow-sm")}>
+                    <div className="flex items-center gap-6">
+                        <div className="w-16 h-16 rounded-3xl bg-primary/10 flex items-center justify-center text-primary relative">
+                            <Brain size={32} className="relative z-10" />
+                            <div className="absolute inset-0 bg-primary/20 blur-xl animate-pulse" />
+                        </div>
+                        <div>
+                            <h4 className={`font-bold text-xl ${isDark ? 'text-white' : 'text-slate-800'}`}>AI Assistant Ready</h4>
+                            <p className="text-xs font-medium mt-1" style={{ color: 'var(--text-muted)' }}>Powered by AI for better diagnosis</p>
                         </div>
                     </div>
-
-                    <div className={`p-8 rounded-[2.5rem] border relative overflow-hidden flex flex-col items-center text-center ${isDark ? 'bg-primary/10 border-primary/20' : 'bg-primary text-white shadow-xl shadow-primary/20'}`}>
-                        <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none"><TrendingUp size={80} /></div>
-                        <div className={`w-16 h-16 rounded-3xl bg-white/20 flex items-center justify-center mb-6`}>
-                            <TrendingUp size={32} />
-                        </div>
-                        <h4 className="text-xl font-bold mb-2">Clinical Incentive Engine</h4>
-                        <p className={`text-xs font-medium mb-8 leading-relaxed opacity-80`}>
-                            You are tracking 12% ahead of your quarterly performance conversion metrics.
-                        </p>
-                        <div className="w-full h-2 bg-white/20 rounded-full overflow-hidden mb-2">
-                            <div className="h-full bg-white rounded-full w-[82%]" />
-                        </div>
-                        <p className="text-[10px] font-extrabold uppercase tracking-widest opacity-60">82% of Goal Met</p>
-                    </div>
-
-                    <button className="w-full py-5 rounded-[2rem] bg-emerald-500 text-white font-bold flex items-center justify-center gap-3 shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all">
-                        <CheckCircle2 size={20} /> Mark Shift Complete
+                    <button
+                        onClick={handleOpenAI}
+                    className="px-6 py-3 rounded-2xl bg-primary text-white font-semibold text-sm shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
+                    >
+                        Launch Engine
                     </button>
                 </div>
+
+                {/* TeleDentistry — Wired */}
+                <div className={cn("bento-card p-8 flex flex-col justify-center items-center text-center space-y-4 cursor-pointer group", isDark ? "" : "bg-white border-slate-100 shadow-sm")} onClick={handleOpenTeleDentistry}>
+                    <div className={`w-16 h-16 rounded-full flex items-center justify-center transition-all group-hover:scale-110 ${isDark ? 'bg-white/10' : 'bg-slate-50'}`}>
+                        <Video className="text-primary" size={28} />
+                    </div>
+                    <div>
+                        <h5 className={`font-bold mb-1 ${isDark ? 'text-white' : 'text-slate-800'}`}>Video Consultation</h5>
+                        <p className="text-xs font-medium text-slate-400">Start a video call with patient</p>
+                    </div>
+                    <span className="text-[10px] text-primary font-bold opacity-0 group-hover:opacity-100 transition-opacity">Click to open →</span>
+                </div>
             </div>
+
+            <style>{`
+                .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(19, 91, 236, 0.1); border-radius: 10px; }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(19, 91, 236, 0.3); }
+            `}</style>
         </div>
     );
+}
+
+function cn(...inputs: any[]) {
+    return inputs.filter(Boolean).join(' ');
 }

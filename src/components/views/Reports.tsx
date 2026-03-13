@@ -1,19 +1,23 @@
-import { useState } from 'react';
-import { Plus, ArrowLeft, ChevronDown, FileText, Download, Calendar, Users, IndianRupee, Activity, Briefcase, Pill, Stethoscope, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, ArrowLeft, ChevronDown, FileText, Download, Calendar, Users, IndianRupee, Activity, Briefcase, Pill, Stethoscope, AlertCircle, Search, Filter } from 'lucide-react';
 import { supabase } from '../../supabase';
 import { useToast } from '../Toast';
+import { SkeletonList } from '../SkeletonLoader';
+import { EmptyState } from '../EmptyState';
 
 type ActiveReport = string | null;
+type UserRole = 'master' | 'admin' | 'staff' | 'patient';
 
-type UserRole = 'admin' | 'staff' | 'doctor' | 'patient';
-
-export function Reports({ userRole, theme }: { userRole: UserRole; theme?: 'light' | 'dark' }) {
+export function Reports({ userRole, theme, setActiveTab }: { userRole: UserRole; theme?: 'light' | 'dark'; setActiveTab?: (tab: string) => void }) {
     const { showToast } = useToast();
+    const isDark = theme === 'dark';
     const [expandedReport, setExpandedReport] = useState<ActiveReport>(null);
     const [viewingReportDetails, setViewingReportDetails] = useState<boolean>(false);
+    const [isLoading, setIsLoading] = useState(false);
     const [reportData, setReportData] = useState<any[]>([]);
     const [reportTitle, setReportTitle] = useState<string>('');
-    const [reportType, setReportType] = useState<string>('financial'); // financial, patient, medical, appointment
+    const [reportType, setReportType] = useState<string>('financial');
+    const [showDownloadMenu, setShowDownloadMenu] = useState(false);
 
     // Form inputs
     const [fromDate, setFromDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]);
@@ -30,13 +34,13 @@ export function Reports({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
             query = supabase.from('accounts').select('*').eq('type', 'expense').gte('date', fromDate).lte('date', toDate);
         } else if (title.includes('Income') || title.includes('Payment') || title.includes('Billing')) {
             setReportType('financial');
-            query = supabase.from('bills').select('*, patients(name)').gte('date', fromDate).lte('date', toDate);
+            query = supabase.from('bills').select('*, patients!patient_id(name)').gte('date', fromDate).lte('date', toDate);
         } else if (title.includes('Cash Flow')) {
             setReportType('financial');
             query = supabase.from('accounts').select('*').gte('date', fromDate).lte('date', toDate);
         } else if (title.includes('Lab')) {
             setReportType('appointment');
-            query = supabase.from('lab_orders').select('*, patients(name)').gte('date', fromDate).lte('date', toDate);
+            query = supabase.from('lab_orders').select('*, patients!patient_id(name)').gte('date', fromDate).lte('date', toDate);
         } else if (title.includes('Acquisition') || title.includes('Directory')) {
             setReportType('patient');
             query = supabase.from('patients').select('*').gte('created_at', fromDate).lte('created_at', toDate);
@@ -45,16 +49,18 @@ export function Reports({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
             query = supabase.from('appointments').select('*').gte('date', fromDate).lte('date', toDate);
         } else if (title.includes('Symptom') || title.includes('Treatment') || title.includes('Diagnosis')) {
             setReportType('medical');
-            query = supabase.from('patient_history').select('*, patients(name)').gte('date', fromDate).lte('date', toDate);
+            query = supabase.from('patient_history').select('*, patients!patient_id(name)').gte('date', fromDate).lte('date', toDate);
         } else if (title.includes('Medicine') || title.includes('Pharma')) {
             setReportType('medical');
-            query = supabase.from('prescriptions').select('*, patients(name)').gte('created_at', fromDate).lte('created_at', toDate);
+            query = supabase.from('prescriptions').select('*, patients!patient_id(name)').gte('created_at', fromDate).lte('created_at', toDate);
         } else {
             setReportType('financial');
-            query = supabase.from('bills').select('*, patients(name)').gte('date', fromDate).lte('date', toDate);
+            query = supabase.from('bills').select('*, patients!patient_id(name)').gte('date', fromDate).lte('date', toDate);
         }
 
+        setIsLoading(true);
         const { data, error } = await query;
+        setIsLoading(false);
         if (error) {
             showToast('Error fetching report data', 'error');
             console.error(error);
@@ -123,7 +129,7 @@ export function Reports({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                         </head>
                         <body>
                             <div class="header">
-                                <h1>DentiSphere Clinical Analytics</h1>
+                                <h1>Dentora Clinical Analytics</h1>
                                 <p class="meta">Report: ${reportTitle} | Period: ${fromDate} to ${toDate}</p>
                             </div>
                             <table>
@@ -161,7 +167,7 @@ export function Reports({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                                 </tbody>
                             </table>
                             <div class="footer">
-                                <p>This is a computer-generated clinical report from DentiSphere. Data verified by Authenticated Sync.</p>
+                                <p>This is a computer-generated clinical report from Dentora. Data verified by Authenticated Sync.</p>
                                 <p>Generated on ${new Date().toLocaleString()}</p>
                             </div>
                         </body>
@@ -181,16 +187,21 @@ export function Reports({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
         const isExpanded = expandedReport === title;
 
         return (
-            <div className={`border rounded-[1.5rem] overflow-hidden transition-all duration-300 ${isExpanded ? 'bg-white shadow-xl border-primary/20 ring-4 ring-primary/5 mb-6' : 'bg-white/50 border-slate-100 hover:border-slate-300 hover:bg-white mb-2'}`}>
+            <div className={`border rounded-[1.5rem] overflow-hidden transition-all duration-300 ${isExpanded ? 'bg-white shadow-xl border-primary/20 ring-4 ring-primary/5 mb-6' : 'mb-2'}`}
+                style={{
+                    background: isExpanded ? 'var(--card-bg)' : 'var(--card-bg-alt)',
+                    borderColor: isExpanded ? 'var(--primary-glow)' : 'var(--border-color)'
+                }}>
                 <button
                     onClick={() => toggleReport(title)}
                     className="w-full flex justify-between items-center p-5 text-left transition-colors focus:outline-none group"
                 >
                     <div className="flex items-center gap-4">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isExpanded ? 'bg-primary text-white' : 'bg-slate-100 text-slate-400 group-hover:bg-primary/10 group-hover:text-primary'}`}>
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isExpanded ? 'bg-primary text-white' : 'bg-slate-100 text-slate-400 group-hover:bg-primary/10 group-hover:text-primary'}`}
+                            style={!isExpanded ? { background: 'var(--card-bg)', color: 'var(--text-muted)' } : {}}>
                             <Icon size={20} />
                         </div>
-                        <span className={`text-sm font-bold ${isExpanded ? 'text-primary' : 'text-slate-600'}`}>{title}</span>
+                        <span className={`text-sm font-bold ${isExpanded ? 'text-primary' : ''}`} style={!isExpanded ? { color: 'var(--text-main)' } : {}}>{title}</span>
                     </div>
                     <div className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
                         <ChevronDown size={18} className={isExpanded ? 'text-primary' : 'text-slate-300'} />
@@ -198,24 +209,26 @@ export function Reports({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                 </button>
 
                 {isExpanded && (
-                    <div className="p-6 bg-slate-50 border-t border-slate-100 animate-slide-up">
+                    <div className="p-6 border-t animate-slide-up" style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)' }}>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
                             <div>
-                                <label className="text-[10px] font-extrabold text-slate-400   mb-2 block">Reporting Start Date</label>
+                                <label className="text-[10px] font-extrabold text-slate-400 mb-2 block">Reporting Start Date</label>
                                 <input
                                     type="date"
                                     value={fromDate}
                                     onChange={(e) => setFromDate(e.target.value)}
-                                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-600 outline-none focus:border-primary transition-all shadow-sm"
+                                    className="w-full rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-primary transition-all shadow-sm border"
+                                    style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }}
                                 />
                             </div>
                             <div>
-                                <label className="text-[10px] font-extrabold text-slate-400   mb-2 block">Reporting End Date</label>
+                                <label className="text-[10px] font-extrabold text-slate-400 mb-2 block">Reporting End Date</label>
                                 <input
                                     type="date"
                                     value={toDate}
                                     onChange={(e) => setToDate(e.target.value)}
-                                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-600 outline-none focus:border-primary transition-all shadow-sm"
+                                    className="w-full rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-primary transition-all shadow-sm border"
+                                    style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }}
                                 />
                             </div>
                             <button
@@ -244,17 +257,19 @@ export function Reports({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                         <h2 className="text-4xl font-sans font-bold text-text-dark tracking-tight">{reportTitle}</h2>
                     </div>
                     <div className="flex gap-3 w-full md:w-auto">
-                        <div className="relative group flex-1 md:flex-none">
+                        <div className="relative flex-1 md:flex-none">
                             <button
-                                onClick={() => handleDownload('PDF')}
+                                onClick={() => setShowDownloadMenu(prev => !prev)}
                                 className="w-full px-6 py-3 bg-slate-900 text-white rounded-2xl font-bold text-sm flex items-center justify-center gap-2 shadow-xl active:scale-95 transition-all"
                             >
                                 <Download size={18} /> Download Data
                             </button>
-                            <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-slate-100 rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden">
-                                <button onClick={() => handleDownload('PDF')} className="w-full text-left px-5 py-4 text-xs font-bold hover:bg-slate-50 border-b border-slate-50 flex items-center gap-3"><FileText size={16} className="text-red-500" /> Export as PDF Document</button>
-                                <button onClick={() => handleDownload('CSV')} className="w-full text-left px-5 py-4 text-xs font-bold hover:bg-slate-50 flex items-center gap-3"><Activity size={16} className="text-green-600" /> Export as CSV Sheet</button>
-                            </div>
+                            {showDownloadMenu && (
+                                <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-slate-100 rounded-2xl shadow-2xl z-50 overflow-hidden">
+                                    <button onClick={() => { handleDownload('PDF'); setShowDownloadMenu(false); }} className="w-full text-left px-5 py-4 text-xs font-bold hover:bg-slate-50 border-b border-slate-50 flex items-center gap-3"><FileText size={16} className="text-red-500" /> Export as PDF Document</button>
+                                    <button onClick={() => { handleDownload('CSV'); setShowDownloadMenu(false); }} className="w-full text-left px-5 py-4 text-xs font-bold hover:bg-slate-50 flex items-center gap-3"><Activity size={16} className="text-green-600" /> Export as CSV Sheet</button>
+                                </div>
+                            )}
                         </div>
                         <button
                             onClick={() => setViewingReportDetails(false)}
@@ -265,59 +280,72 @@ export function Reports({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                     </div>
                 </div>
 
-                <div className="bg-white border border-slate-100 rounded-[2.5rem] shadow-sm overflow-hidden flex flex-col p-8">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
-                        <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
-                            <p className="text-[10px] font-extrabold text-slate-400   mb-2">Record Count</p>
-                            <h4 className="text-3xl font-sans font-bold text-slate-800">{reportData.length} entries</h4>
-                        </div>
-                        <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
-                            <p className="text-[10px] font-extrabold text-slate-400   mb-2">Total Financials</p>
-                            <h4 className="text-3xl font-sans font-bold text-primary">₹{reportData.reduce((acc, curr) => acc + (Number(curr.amount || curr.cost || 0)), 0).toLocaleString('en-IN')}</h4>
-                        </div>
-                        <div className="p-6 bg-primary/5 rounded-3xl border border-primary/10 flex items-center justify-center">
-                            <div className="text-center">
-                                <p className="text-[10px] font-extrabold text-primary   mb-1">Status</p>
-                                <p className="font-bold text-primary flex items-center gap-2">
-                                    <span className="w-2 h-2 bg-primary rounded-full animate-ping" />
-                                    Authenticated Sync
-                                </p>
+                <div className="border rounded-[2.5rem] shadow-sm overflow-hidden flex flex-col p-8" style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
+                    {isLoading ? (
+                        <div className="space-y-6">
+                            <div className="grid grid-cols-3 gap-8">
+                                <div className="h-24 bg-slate-100 rounded-3xl animate-pulse" style={{ background: 'var(--card-bg-alt)' }} />
+                                <div className="h-24 bg-slate-100 rounded-3xl animate-pulse" style={{ background: 'var(--card-bg-alt)' }} />
+                                <div className="h-24 bg-slate-100 rounded-3xl animate-pulse" style={{ background: 'var(--card-bg-alt)' }} />
                             </div>
+                            <SkeletonList rows={6} />
                         </div>
-                    </div>
+                    ) : (
+                        <>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
+                                <div className="p-6 rounded-3xl border" style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)' }}>
+                                    <p className="text-[10px] font-extrabold text-slate-400 mb-2">Record Count</p>
+                                    <h4 className="text-3xl font-sans font-bold" style={{ color: 'var(--text-main)' }}>{reportData.length} entries</h4>
+                                </div>
+                                <div className="p-6 rounded-3xl border" style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)' }}>
+                                    <p className="text-[10px] font-extrabold text-slate-400 mb-2">Total Financials</p>
+                                    <h4 className="text-3xl font-sans font-bold text-primary">₹{reportData.reduce((acc, curr) => acc + (Number(curr.amount || curr.cost || 0)), 0).toLocaleString('en-IN')}</h4>
+                                </div>
+                                <div className="p-6 rounded-3xl border flex items-center justify-center border-primary/10" style={{ background: 'var(--primary-glow)' }}>
+                                    <div className="text-center">
+                                        <p className="text-[10px] font-extrabold text-primary mb-1">Status</p>
+                                        <p className="font-bold text-primary flex items-center gap-2">
+                                            <span className="w-2 h-2 bg-primary rounded-full animate-ping" />
+                                            Authenticated Sync
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
 
-                    <div className="overflow-x-auto border border-slate-100 rounded-3xl custom-scrollbar">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="bg-slate-50/50 border-b border-slate-100 text-[10px] tracking-[0.2em] text-slate-400 font-extrabold ">
-                                    <th className="px-8 py-5">Temporal Entry</th>
-                                    <th className="px-8 py-5">Object Identification</th>
-                                    <th className="px-8 py-5">Primary Value</th>
-                                    <th className="px-8 py-5 text-center">Status Trace</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-50">
-                                {reportData.map((row, idx) => (
-                                    <tr key={idx} className="hover:bg-slate-50/50 transition-colors group">
-                                        <td className="px-8 py-5 text-sm font-bold text-slate-600">{new Date(row.date || row.created_at).toLocaleDateString()}</td>
-                                        <td className="px-8 py-5">
-                                            <p className="font-bold text-text-dark text-base tracking-tight">{row.patients?.name || row.name || 'Anonymous Object'}</p>
-                                            <p className="text-[10px] text-slate-400 font-bold   mt-1">{row.type || row.id || row.treatment || 'System Transaction'}</p>
-                                        </td>
-                                        <td className="px-8 py-5">
-                                            <span className="font-sans font-bold text-lg text-primary">₹{(row.amount || row.cost || 0).toLocaleString('en-IN')}</span>
-                                        </td>
-                                        <td className="px-8 py-5 text-center">
-                                            <span className="px-4 py-1.5 rounded-full text-[10px] font-extrabold  border bg-green-50 text-green-600 border-green-100">Verified</span>
-                                        </td>
-                                    </tr>
-                                ))}
-                                {reportData.length === 0 && (
-                                    <tr><td colSpan={4} className="text-center py-32 text-slate-300 font-bold italic font-sans text-xl">No cryptographic records found for this period.</td></tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                            <div className="overflow-x-auto border rounded-3xl custom-scrollbar" style={{ borderColor: 'var(--border-color)' }}>
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="border-b text-[10px] tracking-[0.2em] text-slate-400 font-extrabold" style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)' }}>
+                                            <th className="px-8 py-5">Temporal Entry</th>
+                                            <th className="px-8 py-5">Object Identification</th>
+                                            <th className="px-8 py-5">Primary Value</th>
+                                            <th className="px-8 py-5 text-center">Status Trace</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y" style={{ borderColor: 'var(--border-color)' }}>
+                                        {reportData.map((row, idx) => (
+                                            <tr key={idx} className="transition-colors group hover:bg-slate-50/50" style={{ borderColor: 'var(--border-color)' }}>
+                                                <td className="px-8 py-5 text-sm font-bold text-slate-600" style={{ color: 'var(--text-muted)' }}>{new Date(row.date || row.created_at).toLocaleDateString()}</td>
+                                                <td className="px-8 py-5">
+                                                    <p className="font-bold text-base tracking-tight" style={{ color: 'var(--text-main)' }}>{row.patients?.name || row.name || 'Anonymous Object'}</p>
+                                                    <p className="text-[10px] text-slate-400 font-bold mt-1">{row.type || row.id || row.treatment || 'System Transaction'}</p>
+                                                </td>
+                                                <td className="px-8 py-5">
+                                                    <span className="font-sans font-bold text-lg text-primary">₹{(row.amount || row.cost || 0).toLocaleString('en-IN')}</span>
+                                                </td>
+                                                <td className="px-8 py-5 text-center">
+                                                    <span className="px-4 py-1.5 rounded-full text-[10px] font-extrabold border bg-green-50 text-green-600 border-green-100">Verified</span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {reportData.length === 0 && (
+                                            <tr><td colSpan={4} className="text-center py-32 text-slate-300 font-bold italic font-sans text-xl">No cryptographic records found for this period.</td></tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
         );
@@ -366,13 +394,12 @@ export function Reports({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                     </div>
                 </div>
 
-                {/* Operational / Doctor Reports */}
                 <div className="space-y-6">
                     <div className="flex items-center gap-4 px-2">
-                        <div className="w-12 h-12 bg-purple-500/10 text-purple-600 rounded-2xl flex items-center justify-center shadow-sm border border-purple-500/5">
+                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm border border-purple-500/5" style={{ background: 'var(--primary-glow)', color: 'var(--primary)' }}>
                             <Calendar size={24} />
                         </div>
-                        <h3 className="font-sans font-bold text-2xl text-slate-800">Operations</h3>
+                        <h3 className="font-sans font-bold text-2xl" style={{ color: 'var(--text-main)' }}>Operations</h3>
                     </div>
                     <div className="space-y-2">
                         <ReportItem title="Appointment Attendance" icon={Calendar} />

@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import {
-    Calendar, FileText, Heart, WalletCards,
-    Gift, History, ArrowRight, Download,
-    ChevronRight, Star, Clock, Activity, ShieldCheck, Video
+    Search, Bell, ChevronRight, Star, Clock,
+    Calendar, MessageSquare, Play, Video,
+    Plus, Sparkles, Activity
 } from 'lucide-react';
 import { supabase } from '../../supabase';
 import { useToast } from '../Toast';
@@ -10,11 +10,8 @@ import { motion } from 'framer-motion';
 
 export function PatientPortal({ theme }: { theme?: 'light' | 'dark' }) {
     const { showToast } = useToast();
-    const isDark = theme === 'dark';
     const [patientData, setPatientData] = useState<any>(null);
-    const [appointments, setAppointments] = useState<any[]>([]);
-    const [finances, setFinances] = useState({ revenue: 0, pending: 0 });
-    const [loyalty, setLoyalty] = useState({ points: 850, tier: 'Silver' });
+    const [activeService, setActiveService] = useState('All');
 
     useEffect(() => {
         const syncSession = async () => {
@@ -28,191 +25,161 @@ export function PatientPortal({ theme }: { theme?: 'light' | 'dark' }) {
 
     const fetchPatientContext = async (user: any) => {
         try {
-            const patientId = user.user_metadata?.patient_id || '666870-1'; // Check metadata first
+            const patientId = user.user_metadata?.patient_id || '666870-1';
             const { data: patient } = await supabase
                 .from('patients')
                 .select('*')
                 .eq('id', patientId)
                 .single();
-
-            if (patient) {
-                setPatientData(patient);
-                setLoyalty({ points: patient.loyalty_points || 850, tier: 'Silver' });
-            }
-
-            const { data: apts } = await supabase
-                .from('appointments')
-                .select('*')
-                .eq('patient_id', patientId)
-                .order('date', { ascending: false });
-
-            if (apts) setAppointments(apts);
-
+            if (patient) setPatientData(patient);
         } catch (error) {
-            showToast('Logic Error: Failed to retrieve secure patient vault', 'error');
+            console.error(error);
         }
     };
 
-    const StatusBadge = ({ status }: { status: string }) => {
-        const styles: Record<string, string> = {
-            'Completed': 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
-            'Scheduled': 'bg-primary/10 text-primary border-primary/20',
-            'Cancelled': 'bg-rose-500/10 text-rose-500 border-rose-500/20'
-        };
-        return (
-            <span className={`px-2 py-0.5 rounded-lg text-[8px] font-extrabold uppercase tracking-widest border ${styles[status] || styles['Scheduled']}`}>
-                {status}
-            </span>
-        );
-    };
+    const GlassIcon = ({ icon: Icon, color }: { icon: any, color: string }) => (
+        <div className={cn(
+            "w-12 h-12 rounded-2xl flex items-center justify-center relative overflow-hidden",
+            "bg-white/40 backdrop-blur-md border border-white/50 shadow-sm"
+        )}>
+            <div className={cn("absolute inset-0 opacity-20 bg-current", color)} />
+            <Icon className={cn("relative z-10", color)} size={24} />
+            <div className="absolute -top-2 -right-2 w-6 h-6 bg-white/40 blur-md rounded-full" />
+        </div>
+    );
+
+    const services = [
+        { id: 'Surgery', label: 'Surgery', icon: Sparkles, color: 'text-rose-500', img: 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&q=80&w=300' },
+        { id: 'Cleaning', label: 'Cleaning', icon: Play, color: 'text-emerald-500', img: 'https://images.unsplash.com/photo-1606811841689-23dfddce3e95?auto=format&fit=crop&q=80&w=300' },
+        { id: 'Braces', label: 'Braces', icon: Star, color: 'text-blue-500', img: 'https://images.unsplash.com/photo-1594911772125-07fc7a2d8d9f?auto=format&fit=crop&q=80&w=300' },
+        { id: 'Checkup', label: 'Checkup', icon: Calendar, color: 'text-amber-500', img: 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&q=80&w=300' },
+    ];
 
     return (
-        <div className="animate-slide-up space-y-8 pb-32">
-            {/* Header / Profile Summary */}
-            <div className={`p-10 rounded-[3rem] border flex flex-col md:flex-row items-center justify-between gap-8 ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
-                <div className="flex flex-col md:flex-row items-center gap-8">
-                    <div className="relative">
-                        <div className="w-24 h-24 rounded-[2.5rem] overflow-hidden border-2 border-primary/20 p-1">
-                            <img
-                                src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=200"
-                                className="w-full h-full object-cover rounded-[2rem]"
-                                alt="Patient"
-                            />
-                        </div>
-                        <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-emerald-500 rounded-2xl border-4 border-slate-900 flex items-center justify-center text-white shadow-lg">
-                            <ShieldCheck size={20} />
-                        </div>
+        <div className="animate-slide-up space-y-10 pb-32">
+            {/* Consumer Header */}
+            <header className="flex items-center justify-between px-2 pt-2">
+                <div className="flex items-center gap-5">
+                    <div className="w-16 h-16 rounded-[2rem] border-4 border-white shadow-xl overflow-hidden relative group">
+                        <img
+                            src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150"
+                            className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                            alt="Profile"
+                        />
+                        <div className="absolute bottom-0 right-0 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full" />
                     </div>
-                    <div className="text-center md:text-left">
-                        <h2 className="text-3xl font-bold tracking-tight">{patientData?.name || 'Jane Doe'}</h2>
-                        <div className="flex items-center gap-3 mt-2 justify-center md:justify-start">
-                            <span className="text-xs font-bold text-slate-500">ID: #{patientData?.id || '666870-1'}</span>
-                            <span className="w-1 h-1 rounded-full bg-slate-700" />
-                            <span className="text-xs font-extrabold text-primary uppercase tracking-widest">Premium Member</span>
-                        </div>
+                    <div>
+                        <p className="text-xs font-medium text-primary mb-1">Clinic Ready</p>
+                        <h2 className="text-2xl font-black tracking-tight text-slate-800">
+                            Hi, {patientData?.name?.split(' ')[0] || 'Martin'}!
+                        </h2>
                     </div>
                 </div>
+                <button className="w-14 h-14 rounded-3xl glass-premium flex items-center justify-center text-slate-500 relative">
+                    <Bell size={24} />
+                    <span className="absolute top-4 right-4 w-2 h-2 bg-rose-500 rounded-full border-2 border-white" />
+                </button>
+            </header>
 
-                <div className="grid grid-cols-2 gap-4 w-full md:w-auto">
-                    <div className={`p-6 rounded-[2rem] border ${isDark ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-100'} flex flex-col items-center`}>
-                        <Gift className="text-amber-500 mb-2" size={24} />
-                        <p className="text-2xl font-bold">{loyalty.points}</p>
-                        <p className="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest">{loyalty.tier} Points</p>
+            {/* Hero Bento: Next Appointment */}
+            <div className="bento-card p-10 bg-primary text-white border-none shadow-2xl shadow-primary/30 relative overflow-hidden group">
+                <div className="absolute -right-10 -top-10 w-64 h-64 bg-white/10 rounded-full blur-3xl group-hover:scale-125 transition-transform duration-1000" />
+                <div className="relative z-10 flex justify-between items-start">
+                    <div className="space-y-6">
+                        <div className="flex items-center gap-3 px-4 py-1.5 bg-white/20 rounded-full w-fit">
+                            <Clock size={16} />
+                            <span className="text-xs font-semibold">In 24 Hours</span>
+                        </div>
+                        <div>
+                            <h3 className="text-3xl font-black leading-none mb-2">Morning Cleaning</h3>
+                            <p className="opacity-80 font-bold text-sm">Tomorrow • 09:30 AM • Room 12</p>
+                        </div>
+                        <button className="px-8 py-4 bg-white text-primary rounded-2xl font-bold text-sm shadow-xl shadow-slate-900/10 hover:scale-105 active:scale-95 transition-all">
+                            Prepare Case
+                        </button>
                     </div>
-                    <div className={`p-6 rounded-[2rem] border ${isDark ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-100'} flex flex-col items-center`}>
-                        <Heart className="text-rose-500 mb-2" size={24} />
-                        <p className="text-2xl font-bold">Health</p>
-                        <p className="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest">Optimized</p>
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="w-24 h-24 rounded-[2.5rem] bg-white/20 flex items-center justify-center relative">
+                            <Activity size={48} className="animate-pulse" />
+                            <div className="absolute inset-0 bg-white/10 blur-xl rounded-full animate-ping" />
+                        </div>
+                        <span className="text-xs font-semibold opacity-70">Health Sync</span>
                     </div>
                 </div>
             </div>
 
-            {/* Upcoming Tele-Consult Alert if any */}
-            {(appointments.some(a => a.type?.toLowerCase().includes('consult') || a.type?.toLowerCase().includes('tele'))) && (
-                <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className="p-8 rounded-[3rem] bg-emerald-500 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl shadow-emerald-500/20 border-4 border-white/20"
-                >
-                    <div className="flex items-center gap-6">
-                        <div className="w-16 h-16 rounded-[2rem] bg-white/20 flex items-center justify-center animate-pulse">
-                            <Video size={32} />
-                        </div>
-                        <div>
-                            <h3 className="text-xl font-bold italic">Tele-Consultation Node Ready</h3>
-                            <p className="text-sm opacity-80 font-medium">Dr. Jenkins is waiting in the secure virtual lobby.</p>
-                        </div>
-                    </div>
-                    <button
-                        onClick={() => (window as any).setActiveTab('teledentistry')}
-                        className="px-10 py-5 bg-white text-emerald-600 rounded-[2rem] font-bold shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
-                    >
-                        Enter Virtual Clinic <ArrowRight size={20} />
-                    </button>
-                </motion.div>
-            )}
+            {/* Service Selection Bento Grid */}
+            <div className="space-y-6">
+                <div className="flex justify-between items-end px-2">
+                    <h3 className="text-2xl font-black tracking-tight text-slate-800 leading-none">
+                        Clinical<br /><span className="text-primary">Services</span>
+                    </h3>
+                    <button className="text-xs font-semibold text-slate-400 hover:text-primary transition-colors">See All</button>
+                </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Health Timeline */}
-                <div className={`lg:col-span-2 p-10 rounded-[3rem] border ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
-                    <h4 className="text-xl font-bold mb-10 flex items-center gap-3">
-                        <Activity className="text-primary" />
-                        Clinical Journey
-                    </h4>
-                    <div className="space-y-6 relative before:absolute before:left-8 before:top-4 before:bottom-0 before:w-px before:bg-white/5">
-                        {appointments.length > 0 ? appointments.slice(0, 4).map((apt, i) => (
-                            <div key={i} className={`ml-16 p-6 rounded-[2rem] border transition-all hover:bg-white/5 relative ${isDark ? 'bg-white/3 border-white/5' : 'bg-slate-50 border-slate-100'}`}>
-                                <div className="absolute -left-[3.25rem] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-primary border-4 border-slate-900 shadow-neon" />
-                                <div className="flex justify-between items-center">
-                                    <div>
-                                        <p className="text-[9px] font-extrabold text-primary uppercase tracking-widest mb-1">{apt.date}</p>
-                                        <h5 className="font-bold text-lg">{apt.type}</h5>
-                                        <p className="text-xs text-slate-500 font-medium">Performed by Dr. Jenkins</p>
-                                    </div>
-                                    <div className="flex items-center gap-4">
-                                        <StatusBadge status={apt.status} />
-                                        {(apt.status === 'Completed' || apt.status === 'Visited') && (
-                                            <button className="p-3 rounded-xl bg-white/5 text-slate-400 hover:text-white transition-all">
-                                                <Download size={16} />
-                                            </button>
-                                        )}
+                <div className="bento-grid">
+                    {services.map((service, idx) => (
+                        <div key={idx} className="bento-card p-6 flex flex-col justify-between group cursor-pointer overflow-hidden border-white/60">
+                            <div className="flex justify-between items-start relative z-10">
+                                <GlassIcon icon={service.icon} color={service.color} />
+                                <ChevronRight className="text-slate-300 group-hover:text-primary transition-colors" />
+                            </div>
+                            <div className="mt-8 relative z-10">
+                                <h4 className="font-extrabold text-lg text-slate-800">{service.label}</h4>
+                                <p className={cn("text-xs font-semibold mt-1", service.color)}>Primary Care</p>
+                            </div>
+                            <img
+                                src={service.img}
+                                className="absolute -bottom-10 -right-10 w-32 h-32 object-cover opacity-10 group-hover:opacity-20 group-hover:scale-110 transition-all duration-700 rounded-full"
+                                alt=""
+                            />
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Top Specialists - Premium List */}
+            <div className="space-y-6">
+                <h3 className="text-xl font-bold px-2 flex items-center gap-3">
+                    <Sparkles className="text-primary" size={20} />
+                    Top Practitioners
+                </h3>
+                <div className="space-y-4">
+                    {[1, 2].map((_, i) => (
+                        <div key={i} className="bento-card p-6 flex items-center justify-between border-white/60">
+                            <div className="flex items-center gap-6">
+                                <div className="w-16 h-16 rounded-3xl overflow-hidden shadow-lg border-2 border-white">
+                                    <img
+                                        src={`https://images.unsplash.com/photo-${i === 0 ? '1559839734-2b71f15890c2' : '1612349317150-e413f6a5b16d'}?auto=format&fit=crop&q=80&w=150`}
+                                        className="w-full h-full object-cover"
+                                        alt="Specialist"
+                                    />
+                                </div>
+                                <div>
+                                    <h4 className="font-extrabold text-slate-800">Dr. {i === 0 ? 'Jenny Wilson' : 'Michael Scott'}</h4>
+                                    <p className="text-xs text-slate-400 font-medium">Dental Specialist • AI Certified</p>
+                                    <div className="flex items-center gap-1.5 mt-2">
+                                        <div className="flex text-amber-500"><Star size={10} fill="currentColor" /></div>
+                                        <span className="text-[10px] font-black text-slate-600">4.9 (3.8k Active Sessions)</span>
                                     </div>
                                 </div>
                             </div>
-                        )) : (
-                            <div className="py-20 text-center text-slate-500 italic">No health artifacts committed to the timeline.</div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Right Widgets: Quick Actions & Stats */}
-                <div className="space-y-8">
-                    {/* Financial Summary */}
-                    <div className={`p-8 rounded-[2.5rem] border ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
-                        <h4 className="text-lg font-bold mb-6 flex items-center gap-2">
-                            <WalletCards className="text-primary" size={20} /> Financial Status
-                        </h4>
-                        <div className="space-y-4">
-                            <div className="flex justify-between items-center p-4 rounded-2xl bg-white/5 border border-white/5">
-                                <span className="text-xs font-bold text-slate-400">Next Installment</span>
-                                <span className="font-bold">₹0.00</span>
-                            </div>
-                            <div className="flex justify-between items-center p-4 rounded-2xl bg-white/5 border border-white/5">
-                                <span className="text-xs font-bold text-slate-400">Available Credits</span>
-                                <span className="font-bold text-emerald-500">₹2,400.00</span>
-                            </div>
+                            <button className="w-12 h-12 rounded-2xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/20 hover:scale-110 transition-transform">
+                                <Calendar size={20} />
+                            </button>
                         </div>
-                        <button className="w-full mt-6 py-4 rounded-2xl bg-primary text-white font-bold text-xs flex items-center justify-center gap-2 hover:bg-primary-hover transition-all">
-                            View All Invoices <ArrowRight size={14} />
-                        </button>
-                    </div>
-
-                    {/* Quick Resources */}
-                    <div className={`p-8 rounded-[2.5rem] border ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
-                        <h4 className="text-lg font-bold mb-6 flex items-center gap-2">
-                            <FileText className="text-primary" size={20} /> Essential Nodes
-                        </h4>
-                        <div className="space-y-2">
-                            {['Active Treatment Plan', 'Post-Op Instructions', 'Membership Benefits'].map((item, i) => (
-                                <button key={i} className="w-full p-4 rounded-xl hover:bg-white/5 flex items-center justify-between group transition-all">
-                                    <span className="text-xs font-bold text-slate-300 group-hover:text-primary transition-colors">{item}</span>
-                                    <ChevronRight size={14} className="text-slate-600 group-hover:text-primary transition-all" />
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Booking Prompt */}
-                    <div className={`p-8 rounded-[2.5rem] bg-gradient-to-br from-primary to-blue-600 text-white relative overflow-hidden group`}>
-                        <div className="absolute -right-4 -bottom-4 p-8 opacity-20 transform group-hover:scale-125 transition-all"><Calendar size={100} /></div>
-                        <h4 className="text-xl font-bold mb-2">Ready for a checkup?</h4>
-                        <p className="text-xs opacity-80 mb-6 leading-relaxed">Early detection ensures preservation. Book your next maintenance node in 3 seconds.</p>
-                        <button className="px-6 py-3 bg-white text-primary rounded-xl font-bold text-xs shadow-lg active:scale-95 transition-all">
-                            Book Appointment
-                        </button>
-                    </div>
+                    ))}
                 </div>
             </div>
+
+            <style>{`
+                .no-scrollbar::-webkit-scrollbar { display: none; }
+                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+            `}</style>
         </div>
     );
+}
+
+function cn(...inputs: any[]) {
+    return inputs.filter(Boolean).join(' ');
 }

@@ -2,8 +2,11 @@ import { useState, useEffect } from 'react';
 import { Search, Plus, Save, IndianRupee, ArrowLeft, FlaskConical, SearchX } from 'lucide-react';
 import { useToast } from '../../components/Toast';
 import { supabase } from '../../supabase';
+import { SkeletonList } from '../SkeletonLoader';
+import { EmptyState } from '../EmptyState';
+import { CustomSelect } from '../ui/CustomControls';
 
-type UserRole = 'admin' | 'staff' | 'doctor' | 'patient';
+type UserRole = 'master' | 'admin' | 'staff' | 'patient';
 
 export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'light' | 'dark' }) {
     const { showToast } = useToast();
@@ -112,69 +115,76 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
 
         return (
             <div className="animate-slide-up space-y-6">
-                <div className="flex justify-between items-center border-b border-slate-200 pb-4">
-                    <div className="flex items-center gap-4">
-                        <button onClick={() => setView('list')} className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-colors">
-                            <ArrowLeft size={20} className="text-slate-600" />
-                        </button>
-                        <div>
-                            <h2 className="text-2xl font-sans font-bold text-text-dark">Create Lab Order</h2>
-                            <p className="text-sm text-text-muted font-medium">Draft a new request for dental prosthetics.</p>
+                <div className={`p-10 rounded-[3rem] border shadow-2xl transition-all relative overflow-hidden mb-8`} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
+                    <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none transition-transform hover:rotate-12 duration-700"><FlaskConical size={120} /></div>
+                    <div className="flex flex-col md:flex-row justify-between items-center gap-8 relative z-10">
+                        <div className="flex items-center gap-6">
+                            <button onClick={() => setView('list')} className="w-14 h-14 rounded-2xl border flex items-center justify-center transition-all bg-white/5 hover:scale-110 active:scale-95 shadow-xl shadow-primary/10" style={{ borderColor: 'var(--border-color)', color: 'var(--text-main)' }}>
+                                <ArrowLeft size={24} />
+                            </button>
+                            <div>
+                                <h2 className="text-3xl font-black tracking-tight" style={{ color: 'var(--text-dark)' }}>Restorative Request</h2>
+                                <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Drafting high-fidelity request for dental prosthetics.</p>
+                            </div>
                         </div>
+                        <button onClick={handleSaveOrder} className="bg-primary hover:scale-105 active:scale-95 text-white px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 shadow-xl shadow-primary/30 transition-all">
+                            <Save size={20} /> Commit Protocol
+                        </button>
                     </div>
-                    <button onClick={handleSaveOrder} className="bg-primary hover:bg-primary-hover text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-premium transition-transform active:scale-95">
-                        <Save size={18} /> Submit Order
-                    </button>
                 </div>
 
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                     {/* Left Column */}
                     <div className="xl:col-span-2 space-y-6">
                         {/* Header & Patient */}
-                        <div className="bg-surface border border-slate-200 rounded-2xl p-6 shadow-sm">
-                            <h3 className="font-sans font-bold text-lg text-text-dark mb-4 border-b border-slate-100 pb-2 flex items-center gap-2"><FlaskConical size={18} className="text-primary" /> Order Details</h3>
+                        <div className="rounded-2xl p-6 shadow-sm" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
+                            <h3 className="font-sans font-bold text-lg mb-4 border-b pb-2 flex items-center gap-2" style={{ color: 'var(--text-dark)', borderColor: 'var(--border-color)' }}><FlaskConical size={18} className="text-primary" /> Order Details</h3>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                                 <div>
-                                    <label className="text-xs font-bold text-slate-500 mb-1 block">Date</label>
-                                    <input type="date" value={formData.orderDate} onChange={e => setFormData({ ...formData, orderDate: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                                    <label className="text-xs font-bold mb-1 block" style={{ color: 'var(--text-muted)' }}>Order Date</label>
+                                    <input type="date" value={formData.orderDate} onChange={e => setFormData({ ...formData, orderDate: e.target.value })} className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: 'var(--bg-page)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }} />
                                 </div>
                                 <div>
-                                    <label className="text-xs font-bold text-slate-500 mb-1 block">Time</label>
-                                    <input type="time" value={formData.time} onChange={e => setFormData({ ...formData, time: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                                    <label className="text-xs font-bold mb-1 block" style={{ color: 'var(--text-muted)' }}>Order Time</label>
+                                    <input type="time" value={formData.time} onChange={e => setFormData({ ...formData, time: e.target.value })} className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: 'var(--bg-page)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }} />
                                 </div>
                                 <div>
-                                    <label className="text-xs font-bold text-slate-500 mb-1 block">Doctor</label>
-                                    <select value={formData.doctor} onChange={e => setFormData({ ...formData, doctor: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm">
-                                        <option>Dr. Sarah Jenkins</option>
-                                        <option>Dr. Mark Sloan</option>
-                                    </select>
+                                    <label className="text-xs font-bold mb-1 block" style={{ color: 'var(--text-muted)' }}>Referring Doctor</label>
+                                    <CustomSelect 
+                                        value={formData.doctor} 
+                                        onChange={val => setFormData({ ...formData, doctor: val })}
+                                        options={['Dr. Sarah Jenkins', 'Dr. Mark Sloan']}
+                                    />
                                 </div>
                                 <div>
-                                    <label className="text-xs font-bold text-slate-500 mb-1 block">Vendor / Lab</label>
-                                    <select value={formData.vendor} onChange={e => setFormData({ ...formData, vendor: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm">
-                                        <option value="">Select Lab...</option>
-                                        <option>DentalTech Labs</option>
-                                        <option>Ceramic Pro HQ</option>
-                                    </select>
+                                    <label className="text-xs font-bold mb-1 block" style={{ color: 'var(--text-muted)' }}>Lab / Tech Center</label>
+                                    <CustomSelect 
+                                        value={formData.vendor} 
+                                        onChange={val => setFormData({ ...formData, vendor: val })}
+                                        options={['DentalTech Labs', 'Ceramic Pro HQ']}
+                                    />
                                 </div>
                             </div>
                             <div className="relative">
-                                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                <input type="text" placeholder="Search Patient by name or phone..." value={formData.patientSearch} onChange={e => setFormData({ ...formData, patientSearch: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 pl-9 pr-4 text-sm focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all font-medium" />
+                                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+                                <input type="text" placeholder="Select Patient..." value={formData.patientSearch} onChange={e => setFormData({ ...formData, patientSearch: e.target.value })} className="w-full rounded-lg py-2 pl-9 pr-4 text-sm focus:outline-none transition-all font-medium" style={{ background: 'var(--bg-page)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }} />
                                 {searchResults.length > 0 && (
-                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
+                                    <div className="absolute top-full left-0 right-0 mt-1 rounded-xl shadow-xl z-50 overflow-hidden border" style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
                                         {searchResults.map(p => (
                                             <button
                                                 key={p.id}
                                                 onClick={() => handleSelectPatient(p)}
-                                                className="w-full text-left px-4 py-3 hover:bg-slate-50 flex items-center gap-3 transition-colors border-b border-slate-50 last:border-0"
+                                                className="w-full text-left px-4 py-3 flex items-center gap-3 transition-colors border-b last:border-0"
+                                                style={{ borderColor: 'var(--border-color)', color: 'var(--text-main)' }}
+                                                onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--primary-soft)'}
+                                                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
                                             >
                                                 <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
                                                     {p.name.charAt(0)}
                                                 </div>
                                                 <div>
-                                                    <p className="font-bold text-sm text-slate-700">{p.name}</p>
-                                                    <p className="text-[10px] text-slate-400 font-medium  ">{p.phone} • {p.id}</p>
+                                                    <p className="font-bold text-sm" style={{ color: 'var(--text-dark)' }}>{p.name}</p>
+                                                    <p className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>{p.phone}</p>
                                                 </div>
                                             </button>
                                         ))}
@@ -184,16 +194,15 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                         </div>
 
                         {/* Interactive Dental Chart */}
-                        <div className="bg-surface border border-slate-200 rounded-2xl p-6 shadow-sm">
-                            <h3 className="font-sans font-bold text-lg text-text-dark mb-4 border-b border-slate-100 pb-2">Dental Chart (Universal)</h3>
-                            <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 mb-6 overflow-x-auto custom-scrollbar">
+                        <div className="rounded-2xl p-6 shadow-sm" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
+                            <h3 className="font-sans font-bold text-lg mb-4 border-b pb-2" style={{ color: 'var(--text-dark)', borderColor: 'var(--border-color)' }}>Clinical Mapping (Universal)</h3>
+                            <div className="rounded-xl p-4 border mb-6 overflow-x-auto custom-scrollbar" style={{ background: 'var(--bg-page)', borderColor: 'var(--border-color)' }}>
                                 <div className="flex justify-center gap-1 mb-6 min-w-max">
                                     {upperTeeth.map(t => (
                                         <button key={t} onClick={() => toggleTooth(t)} className={`w-8 flex flex-col items-center gap-2 group transition-all`}>
-                                            <div className="text-[10px] font-bold text-slate-400 group-hover:text-primary">{t}</div>
-                                            <div className={`w-6 h-8 rounded border transition-colors flex items-center justify-center ${formData.selectedTeeth.includes(t) ? 'bg-primary border-primary shadow-sm shadow-primary/30' : 'bg-white border-slate-300'}`}>
-                                                {/* Simple tooth mock shape */}
-                                                <div className={`w-3 h-4 rounded-b-full ${formData.selectedTeeth.includes(t) ? 'bg-white' : 'bg-slate-200'}`} />
+                                            <div className="text-[10px] font-bold text-slate-500 group-hover:text-primary">{t}</div>
+                                            <div className="w-6 h-8 rounded border transition-colors flex items-center justify-center" style={{ background: formData.selectedTeeth.includes(t) ? 'var(--primary)' : 'var(--card-bg)', borderColor: formData.selectedTeeth.includes(t) ? 'var(--primary)' : 'var(--border-color)' }}>
+                                                <div className={`w-3 h-4 rounded-b-full ${formData.selectedTeeth.includes(t) ? 'bg-white' : 'opacity-20'}`} style={{ backgroundColor: formData.selectedTeeth.includes(t) ? undefined : 'var(--text-muted)' }} />
                                             </div>
                                         </button>
                                     ))}
@@ -201,10 +210,10 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                                 <div className="flex justify-center gap-1 min-w-max">
                                     {lowerTeeth.map(t => (
                                         <button key={t} onClick={() => toggleTooth(t)} className={`w-8 flex flex-col items-center gap-2 group transition-all`}>
-                                            <div className={`w-6 h-8 rounded border transition-colors flex items-center justify-center ${formData.selectedTeeth.includes(t) ? 'bg-primary border-primary shadow-sm shadow-primary/30' : 'bg-white border-slate-300'}`}>
-                                                <div className={`w-3 h-4 rounded-t-full ${formData.selectedTeeth.includes(t) ? 'bg-white' : 'bg-slate-200'}`} />
+                                            <div className="w-6 h-8 rounded border transition-colors flex items-center justify-center" style={{ background: formData.selectedTeeth.includes(t) ? 'var(--primary)' : 'var(--card-bg)', borderColor: formData.selectedTeeth.includes(t) ? 'var(--primary)' : 'var(--border-color)' }}>
+                                                <div className={`w-3 h-4 rounded-t-full ${formData.selectedTeeth.includes(t) ? 'bg-white' : 'opacity-20'}`} style={{ backgroundColor: formData.selectedTeeth.includes(t) ? undefined : 'var(--text-muted)' }} />
                                             </div>
-                                            <div className="text-[10px] font-bold text-slate-400 group-hover:text-primary">{t}</div>
+                                            <div className="text-[10px] font-bold text-slate-500 group-hover:text-primary">{t}</div>
                                         </button>
                                     ))}
                                 </div>
@@ -221,13 +230,13 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                         </div>
 
                         {/* Prosthesis Details */}
-                        <div className="bg-surface border border-slate-200 rounded-2xl p-6 shadow-sm">
-                            <h3 className="font-sans font-bold text-lg text-text-dark mb-4 border-b border-slate-100 pb-2">Prosthesis Details</h3>
+                        <div className="rounded-2xl p-6 shadow-sm" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
+                            <h3 className="font-sans font-bold text-lg mb-4 border-b pb-2" style={{ color: 'var(--text-dark)', borderColor: 'var(--border-color)' }}>Restoration Details</h3>
 
-                            <h4 className="text-xs font-bold text-slate-400   mb-2 mt-4">Type of Prosthesis</h4>
+                            <h4 className="text-xs font-bold mb-2 mt-4" style={{ color: 'var(--text-muted)' }}>Type of Restorative Work</h4>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                                 {['Crown', 'Bridge', 'Inlay', 'Onlay', 'Veneer', 'Post & Core', 'Denture'].map(item => (
-                                    <label key={item} className="flex items-center gap-2 text-sm font-bold text-slate-600 cursor-pointer bg-slate-50 border border-slate-100 py-2 px-3 rounded-lg hover:border-primary/30 transition-colors">
+                                    <label key={item} className="flex items-center gap-2 text-sm font-bold cursor-pointer py-2 px-3 rounded-lg border transition-colors" style={{ color: 'var(--text-main)', background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)' }}>
                                         <input type="checkbox" checked={formData.prosthesis.includes(item)} onChange={() => handleCheckboxChange('prosthesis', item)} className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary" />
                                         {item}
                                     </label>
@@ -236,10 +245,10 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                                 <div>
-                                    <h4 className="text-xs font-bold text-slate-400   mb-2">Surface Cluster</h4>
+                                    <h4 className="text-xs font-bold mb-2" style={{ color: 'var(--text-muted)' }}>Surface Texture</h4>
                                     <div className="flex gap-4">
                                         {['Smooth', 'Coarse', 'Glossy'].map(sc => (
-                                            <label key={sc} className="flex items-center gap-2 text-sm font-medium text-slate-600 cursor-pointer">
+                                            <label key={sc} className="flex items-center gap-2 text-sm font-medium cursor-pointer" style={{ color: 'var(--text-main)' }}>
                                                 <input type="radio" name="surfaceCluster" checked={formData.surfaceCluster === sc} onChange={() => setFormData({ ...formData, surfaceCluster: sc })} className="text-primary focus:ring-primary h-4 w-4" />
                                                 {sc}
                                             </label>
@@ -247,10 +256,10 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                                     </div>
                                 </div>
                                 <div>
-                                    <h4 className="text-xs font-bold text-slate-400   mb-2">Pontic Type</h4>
+                                    <h4 className="text-xs font-bold mb-2" style={{ color: 'var(--text-muted)' }}>Bridge Design</h4>
                                     <div className="flex flex-wrap gap-4">
-                                        {['Ovate', 'Ridge Lap', 'Modified Ridge Lap', 'Sanitary'].map(pt => (
-                                            <label key={pt} className="flex items-center gap-2 text-sm font-medium text-slate-600 cursor-pointer">
+                                        {['Standard', 'Ridge Fit', 'Ovate', 'Sanitary'].map(pt => (
+                                            <label key={pt} className="flex items-center gap-2 text-sm font-medium cursor-pointer" style={{ color: 'var(--text-main)' }}>
                                                 <input type="radio" name="ponticType" checked={formData.ponticType === pt} onChange={() => setFormData({ ...formData, ponticType: pt })} className="text-primary focus:ring-primary h-4 w-4" />
                                                 {pt}
                                             </label>
@@ -264,86 +273,78 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                     {/* Right Column */}
                     <div className="space-y-6">
                         {/* Shade Selection (Interactive Component Mock) */}
-                        <div className="bg-surface border border-slate-200 rounded-2xl p-6 shadow-sm">
-                            <h3 className="font-sans font-bold text-lg text-text-dark mb-4 border-b border-slate-100 pb-2">Shade Management</h3>
+                        <div className="rounded-2xl p-6 shadow-sm" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
+                            <h3 className="font-sans font-bold text-lg mb-4 border-b pb-2" style={{ color: 'var(--text-dark)', borderColor: 'var(--border-color)' }}>Shade Selection</h3>
 
                             <div className="flex items-center gap-6">
-                                <div className="w-24 h-32 border-2 border-slate-300 rounded-lg flex flex-col overflow-hidden relative shadow-inner">
-                                    <div className="flex-1 border-b-2 border-slate-200 bg-white hover:bg-slate-50 transition-colors relative group">
+                                <div className="w-24 h-32 border-2 rounded-lg flex flex-col overflow-hidden relative shadow-inner" style={{ borderColor: 'var(--border-color)' }}>
+                                    <div className="flex-1 border-b-2 hover:bg-white/10 transition-colors relative group" style={{ borderColor: 'var(--border-color)' }}>
                                         <div className="absolute inset-y-0 left-0 w-1 bg-blue-400 group-hover:w-full opacity-10 transition-all" />
                                     </div>
-                                    <div className="flex-1 border-b-2 border-slate-200 bg-white hover:bg-slate-50 transition-colors relative group">
+                                    <div className="flex-1 border-b-2 hover:bg-white/5 transition-colors relative group" style={{ borderColor: 'var(--border-color)' }}>
                                         <div className="absolute inset-y-0 left-0 w-1 bg-yellow-400 group-hover:w-full opacity-10 transition-all" />
                                     </div>
-                                    <div className="flex-1 bg-red-50 hover:bg-red-100 transition-colors relative group">
+                                    <div className="flex-1 hover:bg-red-500/10 transition-colors relative group">
                                         <div className="absolute inset-y-0 left-0 w-1 bg-red-400 group-hover:w-full opacity-10 transition-all" />
                                     </div>
                                 </div>
 
                                 <div className="flex-1 space-y-3">
                                     <div>
-                                        <label className="text-[10px] font-bold  text-slate-500 ">Incisal Shade</label>
-                                        <input type="text" placeholder="e.g. A1" value={formData.shades.incisal} onChange={e => setFormData({ ...formData, shades: { ...formData.shades, incisal: e.target.value } })} className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm font-bold placeholder:font-medium" />
+                                        <label className="text-[10px] font-bold mb-1 block" style={{ color: 'var(--text-muted)' }}>Incisal Shade</label>
+                                        <input type="text" placeholder="e.g. A1" value={formData.shades.incisal} onChange={e => setFormData({ ...formData, shades: { ...formData.shades, incisal: e.target.value } })} className="w-full rounded px-3 py-1.5 text-sm font-bold" style={{ background: 'var(--bg-page)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }} />
                                     </div>
                                     <div>
-                                        <label className="text-[10px] font-bold  text-slate-500 ">Middle Shade</label>
-                                        <input type="text" placeholder="e.g. B2" value={formData.shades.middle} onChange={e => setFormData({ ...formData, shades: { ...formData.shades, middle: e.target.value } })} className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm font-bold placeholder:font-medium" />
+                                        <label className="text-[10px] font-bold mb-1 block" style={{ color: 'var(--text-muted)' }}>Middle Shade</label>
+                                        <input type="text" placeholder="e.g. B2" value={formData.shades.middle} onChange={e => setFormData({ ...formData, shades: { ...formData.shades, middle: e.target.value } })} className="w-full rounded px-3 py-1.5 text-sm font-bold" style={{ background: 'var(--bg-page)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }} />
                                     </div>
                                     <div>
-                                        <label className="text-[10px] font-bold  text-slate-500 ">Gingival Shade</label>
-                                        <input type="text" placeholder="e.g. C3" value={formData.shades.gingival} onChange={e => setFormData({ ...formData, shades: { ...formData.shades, gingival: e.target.value } })} className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-1.5 text-sm font-bold placeholder:font-medium" />
+                                        <label className="text-[10px] font-bold mb-1 block" style={{ color: 'var(--text-muted)' }}>Gingival Shade</label>
+                                        <input type="text" placeholder="e.g. C3" value={formData.shades.gingival} onChange={e => setFormData({ ...formData, shades: { ...formData.shades, gingival: e.target.value } })} className="w-full rounded px-3 py-1.5 text-sm font-bold" style={{ background: 'var(--bg-page)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }} />
                                     </div>
                                 </div>
                             </div>
                         </div>
 
                         {/* Delivery Timeline */}
-                        <div className="bg-surface border border-slate-200 rounded-2xl p-6 shadow-sm">
-                            <h3 className="font-sans font-bold text-lg text-text-dark mb-4 border-b border-slate-100 pb-2">Delivery Dates</h3>
+                        <div className="rounded-2xl p-6 shadow-sm" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
+                            <h3 className="font-sans font-bold text-lg mb-4 border-b pb-2" style={{ color: 'var(--text-dark)', borderColor: 'var(--border-color)' }}>Delivery Schedule</h3>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-xs font-bold text-slate-500 mb-1 block">Metal Trial</label>
-                                    <input type="date" value={formData.delivery.metal} onChange={e => setFormData({ ...formData, delivery: { ...formData.delivery, metal: e.target.value } })} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                                    <label className="text-xs font-bold mb-1 block" style={{ color: 'var(--text-muted)' }}>Trial Fitment</label>
+                                    <input type="date" value={formData.delivery.metal} onChange={e => setFormData({ ...formData, delivery: { ...formData.delivery, metal: e.target.value } })} className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: 'var(--bg-page)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }} />
                                 </div>
                                 <div>
-                                    <label className="text-xs font-bold text-slate-500 mb-1 block">Bisque Trial</label>
-                                    <input type="date" value={formData.delivery.bisque} onChange={e => setFormData({ ...formData, delivery: { ...formData.delivery, bisque: e.target.value } })} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                                    <label className="text-xs font-bold mb-1 block" style={{ color: 'var(--text-muted)' }}>Final Fitment</label>
+                                    <input type="date" value={formData.delivery.bisque} onChange={e => setFormData({ ...formData, delivery: { ...formData.delivery, bisque: e.target.value } })} className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: 'var(--bg-page)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }} />
                                 </div>
                                 <div className="col-span-2">
-                                    <label className="text-xs font-bold text-slate-500 mb-1 block">Final Trial / Delivery</label>
-                                    <input type="date" value={formData.delivery.final} onChange={e => setFormData({ ...formData, delivery: { ...formData.delivery, final: e.target.value } })} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                                    <label className="text-xs font-bold mb-1 block" style={{ color: 'var(--text-muted)' }}>Final Delivery</label>
+                                    <input type="date" value={formData.delivery.final} onChange={e => setFormData({ ...formData, delivery: { ...formData.delivery, final: e.target.value } })} className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: 'var(--bg-page)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }} />
                                 </div>
                                 <div className="col-span-2">
-                                    <label className="text-xs font-bold text-slate-500 mb-1 block">Instructions for Lab</label>
-                                    <textarea rows={2} value={formData.delivery.notes} onChange={e => setFormData({ ...formData, delivery: { ...formData.delivery, notes: e.target.value } })} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm"></textarea>
+                                    <label className="text-xs font-bold mb-1 block" style={{ color: 'var(--text-muted)' }}>Lab Instructions</label>
+                                    <textarea rows={2} value={formData.delivery.notes} onChange={e => setFormData({ ...formData, delivery: { ...formData.delivery, notes: e.target.value } })} className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: 'var(--bg-page)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }} placeholder="Specific requests..."></textarea>
                                 </div>
                             </div>
                         </div>
 
                         {/* Financials & Status */}
-                        <div className="bg-surface border border-slate-200 rounded-2xl p-6 shadow-sm">
-                            <h3 className="font-sans font-bold text-lg text-text-dark mb-4 border-b border-slate-100 pb-2">Charges & Status</h3>
+                        <div className="rounded-2xl p-6 shadow-sm" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
+                            <h3 className="font-sans font-bold text-lg mb-4 border-b pb-2" style={{ color: 'var(--text-dark)', borderColor: 'var(--border-color)' }}>Billing & Lifecycle</h3>
                             <div className="grid grid-cols-2 gap-4 mb-4">
                                 <div>
-                                    <label className="text-xs font-bold text-slate-500 mb-1 block">Quantity</label>
-                                    <input type="number" min="1" value={formData.financial.qty} onChange={e => setFormData({ ...formData, financial: { ...formData.financial, qty: parseInt(e.target.value) || 1 } })} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                                    <label className="text-xs font-bold mb-1 block" style={{ color: 'var(--text-muted)' }}>Quantity</label>
+                                    <input type="number" min="1" value={formData.financial.qty} onChange={e => setFormData({ ...formData, financial: { ...formData.financial, qty: parseInt(e.target.value) || 1 } })} className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: 'var(--bg-page)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }} />
                                 </div>
                                 <div>
-                                    <label className="text-xs font-bold text-slate-500 mb-1 block">Rate (₹)</label>
-                                    <input type="number" value={formData.financial.rate} onChange={e => setFormData({ ...formData, financial: { ...formData.financial, rate: parseFloat(e.target.value) || 0 } })} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm" />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-bold text-slate-500 mb-1 block">Tax (₹)</label>
-                                    <input type="number" value={formData.financial.tax} onChange={e => setFormData({ ...formData, financial: { ...formData.financial, tax: parseFloat(e.target.value) || 0 } })} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm" />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-bold text-slate-500 mb-1 block">Discount (₹)</label>
-                                    <input type="number" value={formData.financial.discount} onChange={e => setFormData({ ...formData, financial: { ...formData.financial, discount: parseFloat(e.target.value) || 0 } })} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                                    <label className="text-xs font-bold mb-1 block" style={{ color: 'var(--text-muted)' }}>Unit Rate (₹)</label>
+                                    <input type="number" value={formData.financial.rate} onChange={e => setFormData({ ...formData, financial: { ...formData.financial, rate: parseFloat(e.target.value) || 0 } })} className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: 'var(--bg-page)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }} />
                                 </div>
                             </div>
 
                             <div className="flex justify-between items-center bg-primary/5 p-4 rounded-xl border border-primary/20 mb-4">
-                                <span className="text-lg font-bold text-text-dark">Total</span>
+                                <span className="text-lg font-bold" style={{ color: 'var(--text-dark)' }}>Total Order</span>
                                 <span className="text-2xl font-bold text-primary flex items-center shadow-sm">
                                     <IndianRupee size={20} className="mr-1" /> {total}
                                 </span>
@@ -351,17 +352,16 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
 
                             <div className="space-y-4">
                                 <div>
-                                    <label className="text-xs font-bold text-slate-500 mb-1 block">Lab Status</label>
-                                    <select value={formData.financial.status} onChange={e => setFormData({ ...formData, financial: { ...formData.financial, status: e.target.value } })} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-600">
-                                        <option>Handover to Lab</option>
-                                        <option>In-Lab Production</option>
-                                        <option>Received for Trial</option>
-                                        <option>Delivered to Patient</option>
-                                    </select>
+                                    <label className="text-xs font-bold mb-1 block" style={{ color: 'var(--text-muted)' }}>Current Status</label>
+                                    <CustomSelect 
+                                        value={formData.financial.status} 
+                                        onChange={val => setFormData({ ...formData, financial: { ...formData.financial, status: val } })}
+                                        options={['Handover to Lab', 'In-Lab Production', 'Received for Trial', 'Delivered to Patient']}
+                                    />
                                 </div>
                                 <div>
-                                    <label className="text-xs font-bold text-slate-500 mb-1 block">Warranty Details</label>
-                                    <input type="text" placeholder="e.g. 5 Years Crown Warranty" value={formData.financial.warranty} onChange={e => setFormData({ ...formData, financial: { ...formData.financial, warranty: e.target.value } })} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                                    <label className="text-xs font-bold mb-1 block" style={{ color: 'var(--text-muted)' }}>Lifecycle Warranty</label>
+                                    <input type="text" placeholder="e.g. 5 Years Crown Warranty" value={formData.financial.warranty} onChange={e => setFormData({ ...formData, financial: { ...formData.financial, warranty: e.target.value } })} className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: 'var(--bg-page)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }} />
                                 </div>
                             </div>
                         </div>
@@ -373,28 +373,32 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
     }
 
     return (
-        <div className="animate-slide-up space-y-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h2 className="text-3xl font-sans font-bold text-text-dark tracking-tight">Lab Orders</h2>
-                    <p className="text-text-muted font-medium">Track and process all incoming and outgoing lab requests.</p>
+        <div className="animate-slide-up space-y-8 pb-10">
+            <div className={`p-10 rounded-[3rem] border shadow-2xl transition-all relative overflow-hidden`} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
+                <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none transition-transform group-hover:rotate-12 duration-700"><FlaskConical size={120} /></div>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 relative z-10">
+                    <div>
+                        <h2 className="text-3xl font-black tracking-tight" style={{ color: 'var(--text-dark)' }}>Lab Infrastructure</h2>
+                        <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Track and process all clinic restorative requests.</p>
+                    </div>
+                    <button
+                        onClick={() => setView('add')}
+                        className="bg-primary hover:scale-105 active:scale-95 text-white px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 transition-all shadow-xl shadow-primary/30 w-full md:w-auto"
+                    >
+                        <Plus size={20} /> New Lab Order
+                    </button>
                 </div>
-                <button
-                    onClick={() => setView('add')}
-                    className="bg-primary hover:bg-primary-hover text-white px-5 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-transform active:scale-95 shadow-premium w-full md:w-auto"
-                >
-                    <Plus size={16} /> New Lab Order
-                </button>
             </div>
 
-            <div className="bg-surface border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
-                <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row gap-4 justify-between bg-slate-50/50">
+            <div className={`rounded-[3rem] border overflow-hidden shadow-2xl transition-all`} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
+                <div className="p-8 flex flex-col sm:flex-row gap-6 justify-between border-b" style={{ borderColor: 'var(--border-color)', background: 'var(--card-bg-alt)' }}>
                     <div className="relative w-full max-w-sm">
-                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <Search size={18} className="absolute left-5 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
                         <input
                             type="text"
-                            placeholder="Search by order id or patient..."
-                            className="w-full bg-white border border-slate-200 rounded-lg py-2 pl-9 pr-4 text-sm focus:border-primary focus:ring-1 focus:ring-primary/20 shadow-sm transition-all"
+                            placeholder="Find lab record..."
+                            className="w-full rounded-[2rem] py-4 pl-14 pr-6 text-sm font-bold outline-none transition-all shadow-inner"
+                            style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
                         />
                     </div>
                 </div>
@@ -402,42 +406,49 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className="bg-slate-50 border-b border-slate-200 text-xs   text-slate-500 font-bold">
-                                <th className="p-4 whitespace-nowrap">Order No. & Date</th>
-                                <th className="p-4 whitespace-nowrap">Patient Name</th>
-                                <th className="p-4 whitespace-nowrap">Vendor Name</th>
-                                <th className="p-4 whitespace-nowrap text-center">Status</th>
-                                <th className="p-4 whitespace-nowrap text-right">Order Amount</th>
-                                <th className="p-4"></th>
+                            <tr className="text-[10px] font-black uppercase tracking-[0.15em]" style={{ background: 'var(--card-bg-alt)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
+                                <th className="px-8 py-5">Node Identity</th>
+                                <th className="px-8 py-5">Patient Link</th>
+                                <th className="px-8 py-5">Tech Center</th>
+                                <th className="px-8 py-5 text-center">Protocol Status</th>
+                                <th className="px-8 py-5 text-right">Resource Cost</th>
+                                <th className="px-8 py-5"></th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
+                        <tbody style={{ borderColor: 'var(--border-color)' }}>
                             {isLoading ? (
                                 <tr>
                                     <td colSpan={6} className="p-12 text-center">
-                                        <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
-                                        <p className="text-slate-500 font-medium">Fetching Laboratory Status...</p>
+                                        <SkeletonList rows={5} />
                                     </td>
                                 </tr>
                             ) : orders.map((o, idx) => (
-                                <tr key={o.id || idx} className="hover:bg-slate-50/80 transition-colors group">
+                                <tr key={o.id || idx} className="transition-colors group" style={{ borderTop: '1px solid var(--border-color)' }}
+                                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--primary-soft)')}
+                                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                                     <td className="p-4">
-                                        <p className="font-bold text-text-dark text-sm">{o.id.slice(0, 8)}...</p>
+                                        <p className="font-bold text-sm" style={{ color: 'var(--text-main)' }}>{o.id?.slice(0, 8)}...</p>
                                         <p className="text-xs font-medium text-slate-500">{o.date}</p>
                                     </td>
-                                    <td className="p-4 font-bold text-sm text-slate-700">{o.patients?.name || 'Manual Entry'}</td>
-                                    <td className="p-4 text-sm font-medium text-slate-600">{o.lab_name}</td>
+                                    <td className="p-4 font-bold text-sm" style={{ color: 'var(--text-muted)' }}>{o.patients?.name || 'Manual Entry'}</td>
+                                    <td className="p-4 text-sm font-medium text-slate-600" style={{ color: 'var(--text-muted)' }}>{o.lab_name}</td>
                                     <td className="p-4 text-center">
-                                        <div className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold   ${o.status === 'Sent' ? 'bg-amber-100 text-amber-700' :
-                                            o.status === 'Trial Received' ? 'bg-blue-100 text-blue-700' :
-                                                o.status === 'Delivered to Patient' ? 'bg-green-100 text-green-700' :
-                                                    'bg-slate-100 text-slate-700'
-                                            }`}>
+                                        <div className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold`} style={{ 
+                                            background: o.status === 'Delivered to Patient' ? 'rgba(16,185,129,0.1)' : 
+                                                        o.status === 'Handover to Lab' ? 'rgba(245,158,11,0.1)' : 
+                                                        'rgba(19,91,236,0.1)',
+                                            color: o.status === 'Delivered to Patient' ? '#10b981' : 
+                                                   o.status === 'Handover to Lab' ? '#f59e0b' : 
+                                                   '#135bec',
+                                            border: `1px solid ${o.status === 'Delivered to Patient' ? 'rgba(16,185,129,0.2)' : 
+                                                                o.status === 'Handover to Lab' ? 'rgba(245,158,11,0.2)' : 
+                                                                'rgba(19,91,236,0.2)'}`
+                                        }}>
                                             {o.status}
                                         </div>
                                     </td>
                                     <td className="p-4 text-right">
-                                        <p className="text-sm font-bold text-text-dark">₹{o.cost?.toLocaleString('en-IN')}</p>
+                                        <p className="text-sm font-bold text-primary">₹{o.cost?.toLocaleString('en-IN')}</p>
                                     </td>
                                     <td className="p-4 text-right">
                                         <button className="text-xs font-bold text-primary hover:text-primary-hover px-3 py-1.5 rounded bg-primary/5 hover:bg-primary/10 transition-colors">
@@ -448,11 +459,14 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                             ))}
                         </tbody>
                     </table>
-                    {orders.length === 0 && (
-                        <div className="p-12 text-center flex flex-col items-center justify-center">
-                            <SearchX size={48} className="text-slate-200 mb-4" />
-                            <p className="text-slate-500 font-bold">No lab orders found.</p>
-                        </div>
+                    {orders.length === 0 && !isLoading && (
+                        <EmptyState
+                            icon={FlaskConical}
+                            title="No Lab Orders Yet"
+                            description="No lab work has been sent out. Create a new order to start tracking."
+                            actionLabel="New Lab Order"
+                            onAction={() => setView('add')}
+                        />
                     )}
                 </div>
             </div>

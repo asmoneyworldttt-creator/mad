@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     Search, FileText, Activity,
-    ChevronRight, History as HistoryIcon, Image as ImageIcon, Plus, Save, Sparkles, Database, Trash2, Camera, Bot, User
+    ChevronRight, History as HistoryIcon, Image as ImageIcon, Plus, Save, Sparkles, Database, Trash2, Camera, Bot, User, HeartPulse
 } from 'lucide-react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment } from '@react-three/drei';
@@ -16,7 +16,7 @@ import { VoiceCharting } from './VoiceCharting';
 import { PhotoGallery } from './PhotoGallery';
 import { ClinicalNotes } from './ClinicalNotes';
 
-type UserRole = 'admin' | 'staff' | 'doctor' | 'patient';
+type UserRole = 'master' | 'admin' | 'staff' | 'patient';
 
 export function EMR({ userRole, setActiveTab, theme }: { userRole: UserRole; setActiveTab: (tab: string) => void; theme?: 'light' | 'dark' }) {
     const { showToast } = useToast();
@@ -215,37 +215,44 @@ export function EMR({ userRole, setActiveTab, theme }: { userRole: UserRole; set
 
     const tabs = [
         { id: 'odontogram', label: '3D Mapping', icon: Activity },
-        { id: 'clinical-notes', label: 'Clinical Notes', icon: FileText },
+        { id: 'soap', label: 'SOAP Notes', icon: FileText },
+        { id: 'vitals', label: 'Vitals & Risk', icon: HeartPulse },
         { id: 'history', label: 'Patient Story', icon: HistoryIcon },
         { id: 'ai', label: 'Dentora AI', icon: Sparkles },
-        { id: 'imaging', label: 'Clinical Assets', icon: Camera },
+        { id: 'gallery', label: 'Imaging Vault', icon: Camera },
         { id: 'files', label: 'Vault', icon: Database }
     ];
 
     return (
-        <div className={`animate-slide-up space-y-8 min-h-screen ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
-            <div className={`p-8 rounded-[2.5rem] border shadow-sm transition-all ${theme === 'dark' ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
-                <div className="relative max-w-2xl">
-                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+        <div className={`animate-slide-up space-y-3 min-h-screen ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+            <div className={`p-4 md:p-5 rounded-2xl border shadow-xl transition-all relative overflow-hidden`} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
+                <div className="absolute top-0 right-0 p-4 opacity-[0.02] pointer-events-none"><Database size={60} /></div>
+                <div className="relative max-w-lg z-10">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-primary" size={16} />
                     <input
                         type="text"
                         value={searchQuery}
                         onChange={handleSearch}
-                        placeholder="Retrieve Clinical Record (Name, ID, Phone)..."
-                        className={`w-full pl-14 pr-6 py-5 rounded-[2rem] border outline-none font-bold text-lg transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white focus:border-primary/50' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-primary'}`}
+                        placeholder="Lookup patient records..."
+                        className={`w-full pl-10 pr-4 py-2 rounded-xl border outline-none font-bold text-xs transition-all shadow-inner`}
+                        style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }}
                     />
                     {searchResults.length > 0 && (
-                        <div className={`absolute top-full mt-4 w-full rounded-[2rem] border shadow-2xl overflow-hidden z-[100] animate-slide-up ${theme === 'dark' ? 'bg-slate-950 border-white/10' : 'bg-white border-slate-100'}`}>
+                        <div className={`absolute top-full mt-2 w-full rounded-2xl border shadow-2xl overflow-hidden z-[100] animate-slide-up backdrop-blur-xl`}
+                            style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
                             {searchResults.map(p => (
-                                <div key={p.id} onClick={() => selectPatient(p)} className={`p-5 cursor-pointer flex items-center justify-between transition-all group ${theme === 'dark' ? 'hover:bg-white/5 border-b border-white/5' : 'hover:bg-primary/5 border-b border-slate-50'}`}>
-                                    <div className="flex items-center gap-5">
-                                        <div className="w-12 h-12 rounded-2xl bg-primary text-white flex items-center justify-center font-bold shadow-lg shadow-primary/20">{p.name.charAt(0)}</div>
+                                <div key={p.id} onClick={() => selectPatient(p)} className={`p-3 cursor-pointer flex items-center justify-between transition-all group border-b last:border-0`}
+                                    style={{ borderColor: 'var(--border-color)' }}>
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="w-8 h-8 rounded-lg bg-primary text-white flex items-center justify-center font-bold shadow-lg shadow-primary/10 text-[10px]">{p.name.charAt(0)}</div>
                                         <div>
-                                            <p className="font-bold">{p.name}</p>
-                                            <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest">{p.id} • {p.phone}</p>
+                                            <p className="font-bold text-[11px]" style={{ color: 'var(--text-main)' }}>{p.name}</p>
+                                            <p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">{p.id} • {p.phone}</p>
                                         </div>
                                     </div>
-                                    <ChevronRight size={18} className="text-slate-500 group-hover:text-primary transition-all" />
+                                    <div className="w-6 h-6 rounded-lg flex items-center justify-center group-hover:bg-primary/5 transition-colors">
+                                        <ChevronRight size={14} className="text-slate-400 group-hover:text-primary transition-all" />
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -253,30 +260,33 @@ export function EMR({ userRole, setActiveTab, theme }: { userRole: UserRole; set
                 </div>
 
                 {selectedPatient && (
-                    <div className="mt-10 pt-8 border-t border-slate-100/10 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-6">
-                        <div className="flex items-center gap-6">
-                            <div className="w-16 h-16 rounded-[1.5rem] bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
-                                <Activity size={32} />
+                    <div className="mt-5 pt-4 border-t flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4" style={{ borderColor: 'var(--border-color)' }}>
+                        <div className="flex items-center gap-3">
+                            <div className="w-11 h-11 rounded-xl flex items-center justify-center text-primary shadow-xl transition-transform hover:scale-110" style={{ background: 'var(--primary-soft)', border: '1px solid var(--primary-glow)' }}>
+                                <User size={20} />
                             </div>
                             <div>
-                                <h2 className="text-2xl font-bold tracking-tight">{selectedPatient.name}</h2>
-                                <p className="text-sm text-slate-400 font-medium">F, 28y • <span className="text-emerald-500 font-bold">O Positive</span> • Last: Ongoing</p>
+                                <h2 className="text-base font-bold tracking-tight" style={{ color: 'var(--text-dark)' }}>{selectedPatient.name}</h2>
+                                <p className="text-[9px] font-bold flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
+                                    <span className="px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-[8px] uppercase font-black">O Positive</span>
+                                    • FDI Compliant • Active EMR
+                                </p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-4 flex-wrap">
-                            <div className={`p-1 rounded-2xl border flex gap-1 ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-100 border-slate-200'}`}>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <div className={`p-1 rounded-xl border flex gap-0.5`} style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)' }}>
                                 {tabs.map(tab => (
                                     <button
                                         key={tab.id}
                                         onClick={() => setEmrTab(tab.id)}
-                                        className={`px-6 py-3 rounded-xl text-xs font-extrabold tracking-widest uppercase flex items-center gap-3 transition-all ${emrTab === tab.id ? 'bg-primary text-white shadow-lg' : 'text-slate-400 hover:text-primary hover:bg-white/50'}`}
+                                        className={`px-3 py-1.5 rounded-lg text-[8px] font-black tracking-widest uppercase flex items-center gap-1 transition-all ${emrTab === tab.id ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-400 hover:text-primary'}`}
                                     >
-                                        <tab.icon size={16} /> {tab.label.split(' ')[0]}
+                                        <tab.icon size={11} /> {tab.label.split(' ')[0]}
                                     </button>
                                 ))}
                             </div>
-                            <button onClick={() => setActiveTab('quickbills')} className="px-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl text-xs font-extrabold shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center gap-3">
-                                <Plus size={18} /> Financial Gen
+                            <button onClick={() => setActiveTab('quickbills')} className="px-4 py-2 bg-primary hover:scale-[1.02] text-white rounded-xl text-[9px] font-bold uppercase tracking-wider shadow-lg shadow-primary/20 active:scale-95 transition-all flex items-center gap-1.5">
+                                <Plus size={12} /> Add Bill
                             </button>
                         </div>
                     </div>
@@ -284,17 +294,16 @@ export function EMR({ userRole, setActiveTab, theme }: { userRole: UserRole; set
             </div>
 
             {selectedPatient ? (
-                <main className="space-y-8 pb-32">
-                    <VitalSignsPanel patient={selectedPatient} theme={theme} />
+                <main className="space-y-4 pb-32">
                     {emrTab === 'odontogram' && (
-                        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
-                            <div className={`xl:col-span-2 rounded-[3rem] border shadow-2xl overflow-hidden relative group transition-all h-[600px] ${theme === 'dark' ? 'bg-slate-950 border-white/10' : 'bg-slate-900 border-slate-100'}`}>
-                                <div className="absolute top-8 left-8 z-10 space-y-2">
-                                    <div className="px-4 py-2 bg-slate-800/80 backdrop-blur-md rounded-xl border border-white/10 flex items-center gap-3">
-                                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
-                                        <span className="text-[10px] font-extrabold text-white uppercase tracking-widest">Procedural Dentosphere v2.4</span>
+                        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 items-start">
+                            <div className={`xl:col-span-2 rounded-2xl border shadow-xl overflow-hidden relative group transition-all h-[500px] ${theme === 'dark' ? 'bg-slate-950 border-white/10' : 'bg-slate-900 border-slate-100'}`}>
+                                <div className="absolute top-4 left-4 z-10 space-y-1.5">
+                                    <div className="px-3 py-1.5 bg-slate-800/80 backdrop-blur-md rounded-lg border border-white/10 flex items-center gap-2">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]" />
+                                        <span className="text-[8px] font-bold text-white uppercase tracking-wider">Dentosphere v2.4</span>
                                     </div>
-                                    {selectedTooth && <div className="px-4 py-2 bg-primary/80 backdrop-blur-md rounded-xl border border-white/10 text-[10px] font-extrabold text-white uppercase tracking-widest">Focus: Tooth #{selectedTooth}</div>}
+                                    {selectedTooth && <div className="px-3 py-1.5 bg-primary/80 backdrop-blur-md rounded-lg border border-white/10 text-[8px] font-bold text-white uppercase tracking-wider">Tooth #{selectedTooth}</div>}
                                 </div>
                                 <Canvas shadows camera={{ position: [10, 5, 10], fov: 40 }}>
                                     <Environment preset="city" />
@@ -303,33 +312,32 @@ export function EMR({ userRole, setActiveTab, theme }: { userRole: UserRole; set
                                     <RealisticDentition selectedTooth={selectedTooth} onSelectTooth={handleToothSelect} toothChartData={toothChartData} />
                                     <OrbitControls enablePan={false} minDistance={5} maxDistance={20} />
                                 </Canvas>
-                                <div className="absolute bottom-8 left-8 right-8 z-10 flex justify-between items-center pointer-events-none">
-                                    <div className="flex gap-3">
-                                        <div className="px-4 py-2 bg-slate-800/50 backdrop-blur-md rounded-xl text-[10px] font-bold text-white/50 border border-white/5">Rotation Active</div>
-                                        <div className="px-4 py-2 bg-slate-800/50 backdrop-blur-md rounded-xl text-[10px] font-bold text-white/50 border border-white/5">FDI Compliant</div>
+                                <div className="absolute bottom-4 left-4 right-4 z-10 flex justify-between items-center pointer-events-none">
+                                    <div className="flex gap-2">
+                                        <div className="px-3 py-1 bg-slate-800/50 backdrop-blur-md rounded-lg text-[8px] font-bold text-white/50 border border-white/5">FDI Compliant</div>
                                     </div>
-                                    <button onClick={() => showToast('Frame capture saved.', 'success')} className="p-4 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-2xl pointer-events-auto border border-white/10 text-white transition-all"><Camera size={20} /></button>
+                                    <button onClick={() => showToast('Frame capture saved.', 'success')} className="p-3 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl pointer-events-auto border border-white/10 text-white transition-all"><Camera size={16} /></button>
                                 </div>
                             </div>
 
-                            <div className={`rounded-[2.5rem] p-10 border shadow-xl flex flex-col h-full ${theme === 'dark' ? 'bg-slate-900 border-white/10 shadow-primary/5' : 'bg-white border-slate-100 shadow-sm'}`}>
+                            <div className={`rounded-2xl p-6 border shadow-lg flex flex-col h-full ${theme === 'dark' ? 'bg-slate-900 border-white/10 shadow-primary/5' : 'bg-white border-slate-100 shadow-sm'}`}>
                                 {selectedTooth ? (
-                                    <div className="space-y-8 animate-slide-up">
+                                    <div className="space-y-6 animate-slide-up">
                                         <div className="flex items-center justify-between">
-                                            <h4 className="text-3xl font-sans font-bold flex items-center gap-3">
-                                                <Database size={28} className="text-primary" /> Tooth #{selectedTooth}
+                                            <h4 className="text-xl font-bold flex items-center gap-2">
+                                                <Database size={20} className="text-primary" /> Tooth #{selectedTooth}
                                             </h4>
-                                            <span className="text-[10px] font-extrabold bg-primary/10 text-primary px-3 py-1 rounded-lg uppercase tracking-widest">FDI Mode</span>
+                                            <span className="text-[8px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-lg uppercase tracking-wider">FDI Mode</span>
                                         </div>
 
-                                        <div className="space-y-4">
-                                            <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">Clinical Condition</label>
-                                            <div className="grid grid-cols-2 gap-2">
+                                        <div className="space-y-3">
+                                            <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Clinical Condition</label>
+                                            <div className="grid grid-cols-2 gap-1.5">
                                                 {conditionsList.slice(0, 8).map(c => (
                                                     <button
                                                         key={c}
                                                         onClick={() => setToothCondition(c)}
-                                                        className={`p-3 rounded-xl border text-[10px] font-extrabold uppercase transition-all ${toothCondition === c ? 'bg-primary border-primary text-white shadow-lg' : 'bg-transparent border-slate-200 text-slate-400 hover:border-primary/50'}`}
+                                                        className={`p-2 rounded-lg border text-[9px] font-bold uppercase transition-all ${toothCondition === c ? 'bg-primary border-primary text-white shadow-md' : 'bg-transparent border-slate-200 text-slate-400 hover:border-primary/50'}`}
                                                     >
                                                         {c}
                                                     </button>
@@ -337,35 +345,35 @@ export function EMR({ userRole, setActiveTab, theme }: { userRole: UserRole; set
                                             </div>
                                         </div>
 
-                                        <div className="space-y-4">
+                                        <div className="space-y-3">
                                             <div className="flex items-center justify-between">
-                                                <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest block">Clinical Notes</label>
+                                                <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Clinical Notes</label>
                                                 <VoiceCharting onTranscript={setToothNote} currentText={toothNote} theme={theme} />
                                             </div>
                                             <textarea
                                                 value={toothNote}
                                                 onChange={e => setToothNote(e.target.value)}
-                                                className={`w-full h-32 rounded-3xl p-6 text-sm font-bold outline-none transition-all border ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white focus:border-primary/50' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-primary'}`}
-                                                placeholder="Enter granular findings..."
+                                                className={`w-full h-24 rounded-2xl p-4 text-xs font-bold outline-none transition-all border ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white focus:border-primary/50' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-primary'}`}
+                                                placeholder="Enter findings..."
                                             />
                                         </div>
 
                                         <button
                                             onClick={handleSaveNote}
                                             disabled={isSaving}
-                                            className="w-full py-5 bg-primary hover:bg-primary-hover text-white rounded-3xl font-bold flex items-center justify-center gap-3 shadow-premium shadow-primary/20 transition-all active:scale-95 disabled:bg-slate-700 disabled:cursor-not-allowed"
+                                            className="w-full py-4 bg-primary hover:bg-primary-hover text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:bg-slate-700"
                                         >
-                                            {isSaving ? <Activity className="animate-spin" size={20} /> : <Save size={20} />}
-                                            {isSaving ? 'Synching Cloud...' : 'Commit Record'}
+                                            {isSaving ? <Activity className="animate-spin" size={16} /> : <Save size={16} />}
+                                            {isSaving ? 'Synching...' : 'Commit Record'}
                                         </button>
                                     </div>
                                 ) : (
-                                    <div className="flex-1 flex flex-col items-center justify-center text-center px-10">
-                                        <div className="w-24 h-24 rounded-[2rem] bg-primary/5 flex items-center justify-center text-primary/30 mb-8 border border-primary/10 shadow-inner">
-                                            <Activity size={48} />
+                                    <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
+                                        <div className="w-16 h-16 rounded-2xl bg-primary/5 flex items-center justify-center text-primary/30 mb-6 border border-primary/10 shadow-inner">
+                                            <Activity size={32} />
                                         </div>
-                                        <h4 className="text-xl font-bold mb-3">Diagnostic Ready</h4>
-                                        <p className="text-sm text-slate-500 font-medium italic">Select a tooth node in the 3D environment to start clinical mapping.</p>
+                                        <h4 className="text-base font-bold mb-2">Diagnostic Ready</h4>
+                                        <p className="text-xs text-slate-500 font-medium italic">Select a tooth node in the 3D environment.</p>
                                     </div>
                                 )}
                             </div>
@@ -373,58 +381,58 @@ export function EMR({ userRole, setActiveTab, theme }: { userRole: UserRole; set
                     )}
 
                     {emrTab === 'history' && (
-                        <div className={`p-10 rounded-[3rem] border shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
-                            <h3 className="text-2xl font-sans font-bold mb-10 flex items-center gap-4">
-                                <HistoryIcon size={32} className="text-primary" />
-                                Patient Longitudinal History
+                        <div className={`p-6 rounded-3xl border shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
+                            <h3 className="text-xl font-bold mb-8 flex items-center gap-3">
+                                <HistoryIcon size={24} className="text-primary" />
+                                Patient Story
                             </h3>
-                            <div className="space-y-6 relative before:absolute before:left-8 before:top-4 before:bottom-0 before:w-px before:bg-slate-100/10">
+                            <div className="space-y-4 relative before:absolute before:left-6 before:top-4 before:bottom-0 before:w-px before:bg-slate-100/10">
                                 {patientHistory.length > 0 ? patientHistory.map((h, i) => (
-                                    <div key={i} className={`ml-20 p-8 rounded-[2rem] border relative group transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
-                                        <div className="absolute -left-[3.25rem] top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-primary border-4 border-slate-950 shadow-neon" />
-                                        <div className="flex justify-between items-start mb-4">
+                                    <div key={i} className={`ml-12 p-6 rounded-2xl border relative group transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-slate-50 border-slate-100 hover:bg-slate-100'}`}>
+                                        <div className="absolute -left-[2.1rem] top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-primary border-2 border-slate-950 shadow-neon" />
+                                        <div className="flex justify-between items-start mb-2">
                                             <div>
-                                                <h4 className="text-xl font-bold mb-1">{h.treatment}</h4>
-                                                <p className="text-[10px] font-extrabold text-primary uppercase tracking-widest">{h.date}</p>
+                                                <h4 className="text-base font-bold mb-0.5">{h.treatment}</h4>
+                                                <p className="text-[9px] font-bold text-primary uppercase tracking-wider">{h.date}</p>
                                             </div>
-                                            <span className="text-[10px] font-extrabold px-3 py-1 bg-emerald-500/10 text-emerald-500 rounded-lg border border-emerald-500/20 uppercase tracking-widest">Verified</span>
+                                            <span className="text-[8px] font-bold px-2 py-0.5 bg-emerald-500/10 text-emerald-500 rounded-md border border-emerald-500/20 uppercase tracking-wider">Verified</span>
                                         </div>
-                                        <p className="text-sm text-slate-400 font-medium leading-relaxed italic">"{h.notes}"</p>
+                                        <p className="text-xs text-slate-400 font-medium leading-relaxed italic">"{h.notes}"</p>
                                     </div>
                                 )) : (
-                                    <div className="py-20 text-center text-slate-500 italic font-medium">No historical clinical data found on decentralized chain.</div>
+                                    <div className="py-12 text-center text-xs text-slate-500 italic font-medium">No historical clinical data found.</div>
                                 )}
                             </div>
                         </div>
                     )}
 
                     {emrTab === 'ai' && (
-                        <div className={`p-10 rounded-[3rem] border shadow-2xl transition-all ${theme === 'dark' ? 'bg-slate-950 border-white/10' : 'bg-white border-slate-100 shadow-sm'}`}>
-                            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-12">
+                        <div className={`p-6 rounded-3xl border shadow-xl transition-all ${theme === 'dark' ? 'bg-slate-950 border-white/10' : 'bg-white border-slate-100 shadow-sm'}`}>
+                            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8">
                                 <div>
-                                    <h3 className="text-3xl font-sans font-bold flex items-center gap-4 text-primary">
-                                        <Sparkles size={36} /> Dentora AI Diagnostics
+                                    <h3 className="text-xl font-bold flex items-center gap-3 text-primary">
+                                        <Sparkles size={24} /> Dentora AI Diagnostics
                                     </h3>
-                                    <p className="text-slate-400 font-medium mt-1">Real-time clinical inference and treatment optimization.</p>
+                                    <p className="text-xs text-slate-400 font-medium mt-1">Real-time clinical inference.</p>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                                <div className="space-y-8">
-                                    <div className={`p-8 rounded-[2.5rem] border ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-100'}`}>
-                                        <label className="text-[10px] font-extrabold text-slate-500 mb-4 block uppercase tracking-widest">Analysis Matrix</label>
-                                        <div className="flex gap-3">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <div className="space-y-6">
+                                    <div className={`p-6 rounded-2xl border ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-100'}`}>
+                                        <label className="text-[9px] font-bold text-slate-500 mb-3 block uppercase tracking-wider">Analysis Matrix</label>
+                                        <div className="flex gap-2">
                                             <input
                                                 value={aiQuery}
                                                 onChange={e => setAiQuery(e.target.value)}
                                                 placeholder="Synthesize current clinical data..."
-                                                className={`flex-1 rounded-2xl px-6 py-4 font-bold outline-none transition-all border ${theme === 'dark' ? 'bg-transparent border-white/10 text-white focus:border-primary/50' : 'bg-white border-slate-200 text-slate-900 focus:border-primary'}`}
+                                                className={`flex-1 rounded-xl px-4 py-3 text-xs font-bold outline-none transition-all border ${theme === 'dark' ? 'bg-transparent border-white/10 text-white focus:border-primary/50' : 'bg-white border-slate-200 text-slate-900 focus:border-primary'}`}
                                             />
-                                            <button onClick={handleAIQuery} disabled={isAIAnalyzing} className="px-8 bg-primary hover:bg-primary-hover text-white rounded-2xl font-bold transition-all active:scale-95 disabled:opacity-50">
-                                                {isAIAnalyzing ? <Activity size={20} className="animate-spin" /> : 'Run Sync'}
+                                            <button onClick={handleAIQuery} disabled={isAIAnalyzing} className="px-6 bg-primary hover:bg-primary-hover text-white rounded-xl font-bold text-xs transition-all active:scale-95 disabled:opacity-50">
+                                                {isAIAnalyzing ? <Activity size={16} className="animate-spin" /> : 'Run Sync'}
                                             </button>
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-1 gap-4">
+                                    <div className="grid grid-cols-1 gap-3">
                                         {selectedPatient && (
                                             <DentalRiskScore
                                                 patient={selectedPatient}
@@ -433,16 +441,15 @@ export function EMR({ userRole, setActiveTab, theme }: { userRole: UserRole; set
                                                 theme={theme}
                                             />
                                         )}
-                                        <div className={`p-6 rounded-[2rem] border ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-100'}`}>
-                                            <p className="text-[10px] font-extrabold text-slate-500 mb-2 uppercase tracking-widest">Sync Tokens</p>
-                                            <p className="text-xl font-bold text-primary">12 / 100</p>
+                                        <div className={`p-4 rounded-xl border ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-100'}`}>
+                                            <p className="text-[8px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Sync Tokens</p>
+                                            <p className="text-lg font-bold text-primary">12 / 100</p>
                                         </div>
                                     </div>
                                 </div>
-                                <div className={`p-10 rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col min-h-[500px] max-h-[600px] overflow-y-auto ${theme === 'dark' ? 'bg-slate-900 border border-white/10' : 'bg-slate-900 text-white'}`}>
-                                    <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none"><Sparkles size={80} /></div>
-                                    <h4 className="text-xs font-extrabold tracking-[0.2em] uppercase text-primary mb-8 sticky top-0 z-10 bg-slate-900 pb-4">AI Inference Result Tracker</h4>
-
+                                <div className={`p-6 rounded-2xl shadow-xl relative overflow-hidden flex flex-col min-h-[400px] max-h-[500px] overflow-y-auto ${theme === 'dark' ? 'bg-slate-900 border border-white/10' : 'bg-slate-900 text-white'}`}>
+                                    <div className="absolute top-0 right-0 p-6 opacity-10 pointer-events-none"><Sparkles size={60} /></div>
+                                    <h4 className="text-[10px] font-black tracking-widest uppercase text-primary mb-6 sticky top-0 z-10 bg-slate-900 pb-3">AI Inference Tracker</h4>
                                     {aiMessages.length > 0 ? (
                                         <div className="flex-1 flex flex-col gap-6 animate-slide-up pb-8">
                                             {aiMessages.map((msg, i) => (
@@ -480,66 +487,70 @@ export function EMR({ userRole, setActiveTab, theme }: { userRole: UserRole; set
                         </div>
                     )}
 
-                    {emrTab === 'imaging' && selectedPatient && (
-                        <PhotoGallery patientId={selectedPatient.id} theme={theme} />
-                    )}
-
-                    {emrTab === 'clinical-notes' && selectedPatient && (
+                    {emrTab === 'soap' && selectedPatient && (
                         <ClinicalNotes patientId={selectedPatient.id} theme={theme} />
                     )}
 
+                    {emrTab === 'vitals' && selectedPatient && (
+                        <VitalSignsPanel patient={selectedPatient} theme={theme} />
+                    )}
+
+                    {emrTab === 'gallery' && selectedPatient && (
+                        <PhotoGallery patientId={selectedPatient.id} theme={theme} />
+                    )}
+
                     {emrTab === 'files' && (
-                        <div className="space-y-8 pb-12">
-                            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-                                <div className={`xl:col-span-2 p-10 rounded-[3rem] border transition-all ${theme === 'dark' ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
-                                    <div className="flex justify-between items-center mb-10">
-                                        <h4 className="text-2xl font-sans font-bold flex items-center gap-4">
-                                            <ImageIcon size={32} className="text-primary" /> Imaging Vault
+                        <div className="space-y-6 pb-12">
+                            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                                <div className={`xl:col-span-2 p-6 rounded-3xl border transition-all ${theme === 'dark' ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
+                                    <div className="flex justify-between items-center mb-8">
+                                        <h4 className="text-xl font-bold flex items-center gap-3">
+                                            <ImageIcon size={24} className="text-primary" /> Imaging Vault
                                         </h4>
-                                        <span className="text-[10px] font-extrabold text-slate-400 border border-slate-100/10 px-4 py-2 rounded-xl uppercase tracking-widest">Total: {patientFiles.length} Scans</span>
+                                        <span className="text-[9px] font-bold text-slate-400 border border-slate-100/10 px-3 py-1.5 rounded-xl uppercase tracking-wider">Total: {patientFiles.length} Scans</span>
                                     </div>
-                                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
+                                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                                         {patientFiles.length > 0 ? patientFiles.map((file, i) => (
-                                            <div key={i} className={`group aspect-square rounded-[2rem] border overflow-hidden relative transition-all hover:scale-[1.02] cursor-pointer ${theme === 'dark' ? 'bg-white/5 border-white/10 hover:border-primary/50' : 'bg-slate-50 border-slate-100'}`}>
+                                            <div key={i} className={`group aspect-square rounded-2xl border overflow-hidden relative transition-all hover:scale-[1.01] cursor-pointer ${theme === 'dark' ? 'bg-white/5 border-white/10 hover:border-primary/50' : 'bg-slate-50 border-slate-100'}`}>
                                                 <div className="absolute inset-0 bg-slate-900 flex items-center justify-center">
-                                                    <Database size={40} className="text-primary/10 group-hover:text-primary/30 transition-all" />
+                                                    <Database size={32} className="text-primary/10 group-hover:text-primary/30 transition-all" />
                                                 </div>
-                                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-6 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <p className="text-xs font-bold text-white truncate mb-1">{file.name}</p>
-                                                    <p className="text-[8px] text-white/50 font-extrabold uppercase tracking-widest">{(file.metadata?.size / 1024 / 1024).toFixed(2)} MB • Sync Ready</p>
+                                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <p className="text-[10px] font-bold text-white truncate mb-0.5">{file.name}</p>
+                                                    <p className="text-[7px] text-white/50 font-bold uppercase tracking-wider">{(file.metadata?.size / 1024 / 1024).toFixed(2)} MB • Sync Ready</p>
                                                 </div>
                                             </div>
                                         )) : (
-                                            <div className="col-span-full py-32 text-center text-slate-500 italic font-medium">No imaging artifacts detected in patient vault.</div>
+                                            <div className="col-span-full py-20 text-center text-xs text-slate-500 italic font-medium">No imaging artifacts detected.</div>
                                         )}
                                     </div>
                                 </div>
-                                <div className="space-y-8">
-                                    <div className={`p-10 rounded-[3rem] border text-center relative group transition-all ${theme === 'dark' ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
+                                <div className="space-y-6">
+                                    <div className={`p-8 rounded-3xl border text-center relative group transition-all ${theme === 'dark' ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
                                         <input type="file" id="clinical-upload" className="hidden" onChange={handleFileUpload} />
                                         <label htmlFor="clinical-upload" className="cursor-pointer block">
-                                            <div className={`w-24 h-24 rounded-[2rem] flex items-center justify-center mx-auto mb-8 transition-all ${isUploading ? 'bg-primary animate-pulse' : 'bg-primary/5 group-hover:bg-primary/10 group-hover:scale-110'}`}>
-                                                {isUploading ? <Activity className="text-white" size={40} /> : <Plus className="text-primary" size={40} />}
+                                            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 transition-all ${isUploading ? 'bg-primary animate-pulse' : 'bg-primary/5 group-hover:bg-primary/10 group-hover:scale-105'}`}>
+                                                {isUploading ? <Activity className="text-white" size={28} /> : <Plus className="text-primary" size={28} />}
                                             </div>
-                                            <h4 className="text-xl font-bold mb-3">Sync Static Imagery</h4>
-                                            <p className="text-sm text-slate-400 font-medium mb-10 px-6 leading-relaxed">Commit OPG, RVG or clinical snapshots to the patient node.</p>
-                                            <div className="py-4 border-2 border-dashed border-slate-100/10 rounded-[2rem] text-[10px] font-extrabold text-slate-400 group-hover:border-primary group-hover:text-primary uppercase tracking-[0.2em] transition-all">Select Payload</div>
+                                            <h4 className="text-lg font-bold mb-2">Sync Imaging</h4>
+                                            <p className="text-xs text-slate-400 font-medium mb-8 px-4 leading-relaxed">Commit OPG, RVG or clinical snapshots.</p>
+                                            <div className="py-3 border-2 border-dashed border-slate-100/10 rounded-xl text-[8px] font-bold text-slate-400 group-hover:border-primary group-hover:text-primary uppercase tracking-widest transition-all">Select Payload</div>
                                         </label>
                                     </div>
-                                    <div className={`p-10 rounded-[3rem] border ${theme === 'dark' ? 'bg-slate-950 border-white/5 shadow-2xl' : 'bg-slate-900 text-white'}`}>
-                                        <h4 className="text-xs font-extrabold tracking-[0.2em] uppercase text-slate-500 mb-8">Vault Logic Status</h4>
-                                        <div className="space-y-6">
-                                            <div className="flex justify-between items-center pb-4 border-b border-white/5">
-                                                <span className="text-xs font-bold text-slate-400">Node Sync</span>
-                                                <span className="text-emerald-500 text-xs font-extrabold">ACTIVE</span>
+                                    <div className={`p-8 rounded-3xl border ${theme === 'dark' ? 'bg-slate-950 border-white/5 shadow-xl' : 'bg-slate-900 text-white'}`}>
+                                        <h4 className="text-[10px] font-bold tracking-widest uppercase text-slate-500 mb-6">Vault Status</h4>
+                                        <div className="space-y-4">
+                                            <div className="flex justify-between items-center pb-3 border-b border-white/5">
+                                                <span className="text-[10px] font-bold text-slate-400">Node Sync</span>
+                                                <span className="text-emerald-500 text-[10px] font-bold">ACTIVE</span>
                                             </div>
-                                            <div className="flex justify-between items-center pb-4 border-b border-white/5">
-                                                <span className="text-xs font-bold text-slate-400">Encryption</span>
-                                                <span className="text-blue-500 text-xs font-extrabold">AES-256-GCM</span>
+                                            <div className="flex justify-between items-center pb-3 border-b border-white/5">
+                                                <span className="text-[10px] font-bold text-slate-400">Encryption</span>
+                                                <span className="text-blue-500 text-[10px] font-bold">AES-256</span>
                                             </div>
                                             <div className="flex justify-between items-center">
-                                                <span className="text-xs font-bold text-slate-400">Storage Cluster</span>
-                                                <span className="text-xs font-bold">Region S3-HYD</span>
+                                                <span className="text-[10px] font-bold text-slate-400">Region</span>
+                                                <span className="text-[10px] font-bold">S3-HYD</span>
                                             </div>
                                         </div>
                                     </div>

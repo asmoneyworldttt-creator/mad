@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { ClipboardCheck, FileSignature, Plus, Download, CheckCircle, Eye, Printer } from 'lucide-react';
 import { supabase } from '../../supabase';
 import { useToast } from '../Toast';
+import { SkeletonList } from '../SkeletonLoader';
+import { EmptyState } from '../EmptyState';
 
 const CONSENT_TEMPLATES = [
     {
@@ -69,6 +71,7 @@ export function ConsentForms({ userRole, theme }: { userRole: string; theme?: 'l
     const [doctorName, setDoctorName] = useState('Dr. S. Jenkins');
     const [customBody, setCustomBody] = useState('');
     const [signatureConfirmed, setSignatureConfirmed] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
     const [previewMode, setPreviewMode] = useState(false);
 
     useEffect(() => {
@@ -80,11 +83,13 @@ export function ConsentForms({ userRole, theme }: { userRole: string; theme?: 'l
     }, [selectedTemplate, doctorName]);
 
     const fetchForms = async () => {
+        setIsLoading(true);
         const { data } = await supabase
             .from('consent_forms')
             .select('*, patients(name)')
             .order('created_at', { ascending: false });
         if (data) setForms(data);
+        setIsLoading(false);
     };
 
     const searchPatients = async (q: string) => {
@@ -155,8 +160,8 @@ export function ConsentForms({ userRole, theme }: { userRole: string; theme?: 'l
         <div className="animate-slide-up space-y-8">
             <div className="flex justify-between items-center">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Consent Forms</h2>
-                    <p className={`text-sm font-medium mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    <h2 className="text-3xl font-bold tracking-tight" style={{ color: 'var(--text-dark)' }}>Consent Forms</h2>
+                    <p className="text-sm font-medium mt-1" style={{ color: 'var(--text-muted)' }}>
                         Digital informed consent with audit trail
                     </p>
                 </div>
@@ -261,31 +266,38 @@ export function ConsentForms({ userRole, theme }: { userRole: string; theme?: 'l
 
             {/* Forms List */}
             <div className="space-y-4">
-                {forms.map(form => (
-                    <div key={form.id} className={`p-6 rounded-[2rem] border flex items-center justify-between gap-4 transition-all group ${isDark ? 'bg-slate-900 border-white/5 hover:border-white/10' : 'bg-white border-slate-100 shadow-sm hover:shadow-md'}`}>
+                {isLoading ? (
+                    <SkeletonList rows={5} />
+                ) : forms.length > 0 ? forms.map(form => (
+                    <div key={form.id} className="p-6 rounded-[2rem] border flex items-center justify-between gap-4 transition-all group"
+                        style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
                         <div className="flex items-center gap-4">
-                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isDark ? 'bg-primary/10 text-primary' : 'bg-blue-50 text-blue-600'}`}>
+                            <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
+                                style={{ background: 'var(--primary-soft)', color: 'var(--primary)' }}>
                                 <FileSignature size={20} />
                             </div>
                             <div>
-                                <h4 className="font-bold text-sm">{form.title}</h4>
+                                <h4 className="font-bold text-sm" style={{ color: 'var(--text-main)' }}>{form.title}</h4>
                                 <div className="flex items-center gap-3 mt-0.5">
-                                    <p className={`text-[10px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{form.patients?.name}</p>
-                                    <span className="text-[9px] font-extrabold px-2.5 py-0.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-full uppercase tracking-widest">✓ {form.status}</span>
-                                    <p className={`text-[9px] font-medium ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{new Date(form.signed_at || form.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                                    <p className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>{form.patients?.name}</p>
+                                    <span className="text-[9px] font-extrabold px-2.5 py-0.5 bg-success/10 text-success border border-success/20 rounded-full uppercase tracking-widest">✓ {form.status}</span>
+                                    <p className="text-[9px] font-medium" style={{ color: 'var(--text-muted)' }}>{new Date(form.signed_at || form.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                                 </div>
                             </div>
                         </div>
-                        <button onClick={() => printForm(form)} className={`p-3 rounded-xl border transition-all hover:scale-105 active:scale-95 ${isDark ? 'bg-white/5 border-white/10 text-slate-300 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-400 hover:bg-primary/5 hover:text-primary hover:border-primary/20'}`} title="Print / Export PDF">
+                        <button onClick={() => printForm(form)} className="p-3 rounded-xl border transition-all hover:scale-105 active:scale-95"
+                            style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)', color: 'var(--text-muted)' }} title="Print / Export PDF">
                             <Printer size={16} />
                         </button>
                     </div>
-                ))}
-                {forms.length === 0 && (
-                    <div className={`py-20 text-center rounded-[2rem] border-2 border-dashed ${isDark ? 'border-white/5 text-slate-600' : 'border-slate-200 text-slate-400'}`}>
-                        <ClipboardCheck size={40} className="mx-auto mb-4 opacity-30" />
-                        <p className="font-medium">No consent forms yet. Click "New Form" to start.</p>
-                    </div>
+                )) : (
+                    <EmptyState
+                        icon={ClipboardCheck}
+                        title="No Forms Registered"
+                        description="You haven't generated any digital consent forms yet. All legal documentation will appear here."
+                        actionLabel="Generate First Form"
+                        onAction={() => setShowCreate(true)}
+                    />
                 )}
             </div>
         </div>

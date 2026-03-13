@@ -4,8 +4,11 @@ import { Plus, Search, ArrowRightLeft, ShoppingCart, Archive, ChevronLeft, Packa
 import { Modal } from '../../components/Modal';
 import { useToast } from '../../components/Toast';
 import { supabase } from '../../supabase';
+import { SkeletonList } from '../SkeletonLoader';
+import { EmptyState } from '../EmptyState';
+import { CustomSelect } from '../ui/CustomControls';
 
-type UserRole = 'admin' | 'staff' | 'doctor' | 'patient';
+type UserRole = 'master' | 'admin' | 'staff' | 'patient';
 
 export function Inventory({ userRole, theme }: { userRole: UserRole; theme?: 'light' | 'dark' }) {
     const [activeTab, setActiveTab] = useState<'stock' | 'transactions' | 'orders'>('stock');
@@ -120,103 +123,97 @@ export function Inventory({ userRole, theme }: { userRole: UserRole; theme?: 'li
     if (view === 'add_transaction' || view === 'add_order') {
         const isTransaction = view === 'add_transaction';
         return (
-            <div className="animate-slide-up space-y-8 pb-10">
+            <div className="animate-slide-up space-y-4 pb-10">
                 <div className="flex items-center gap-4">
-                    <button onClick={() => setView('list')} className={`p-3 border rounded-2xl transition-all shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-white/10 text-slate-400 hover:text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                    <button onClick={() => setView('list')} className={`p-2.5 border rounded-xl transition-all shadow-lg hover:scale-105 active:scale-95`} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }}>
                         <ChevronLeft size={20} />
                     </button>
                     <div>
-                        <h2 className={`text-3xl font-sans font-bold tracking-tight ${theme === 'dark' ? 'text-white' : 'text-text-dark'}`}>
-                            {isTransaction ? 'Log Stock Flux' : 'Initialize Smart Procurement'}
+                        <h2 className="text-xl font-bold tracking-tight" style={{ color: 'var(--text-dark)' }}>
+                            {isTransaction ? 'Log Movement' : 'New Procurement'}
                         </h2>
-                        <p className="text-slate-500 font-medium">{isTransaction ? 'Record inward/outward movement of medical supplies.' : 'AI-assisted ordering system for clinic inventory.'}</p>
+                        <p className="text-[10px] font-bold" style={{ color: 'var(--text-muted)' }}>{isTransaction ? 'Inward/outward movement' : 'AI-assisted ordering system'}</p>
                     </div>
                 </div>
 
-                <div className={`rounded-[2.5rem] shadow-sm p-10 border ${theme === 'dark' ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-100'}`}>
-                    <form onSubmit={isTransaction ? handleSaveTransaction : handleSaveOrder} className="space-y-8">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                            <div className="space-y-6">
+                <div className={`rounded-2xl shadow-xl p-6 border transition-all`} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
+                    <form onSubmit={isTransaction ? handleSaveTransaction : handleSaveOrder} className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-4">
                                 <div>
-                                    <label className="text-xs font-bold text-slate-500 mb-2 block uppercase tracking-widest">Select Product / Item</label>
-                                    <div className="relative">
-                                        <Package className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                                        <select
-                                            className={`w-full border rounded-2xl pl-12 pr-4 py-4 text-sm font-bold outline-none appearance-none transition-all focus:ring-4 ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white focus:border-primary/50 focus:ring-primary/10' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-primary focus:ring-primary/10'}`}
-                                            defaultValue=""
-                                        >
-                                            <option value="" disabled>Choose Item...</option>
-                                            {stock.map(s => <option key={s.id} value={s.id}>{s.product_name}</option>)}
-                                            {!isTransaction && (
-                                                <>
-                                                    <option>Latex Gloves (Blue)</option>
-                                                    <option>Composite Resin A2</option>
-                                                    <option>Sterilization Pouches</option>
-                                                </>
-                                            )}
-                                        </select>
-                                    </div>
+                                    <label className="text-[9px] font-black text-slate-400 mb-1.5 block uppercase tracking-widest">Item Selection</label>
+                                    <CustomSelect
+                                        options={[
+                                            ...stock.map(s => ({ value: s.id, label: s.product_name })),
+                                            ...(isTransaction ? [] : [
+                                                { value: 'gloves', label: 'Latex Gloves (Blue)' },
+                                                { value: 'resin', label: 'Composite Resin A2' },
+                                                { value: 'pouches', label: 'Sterilization Pouches' }
+                                            ])
+                                        ]}
+                                        value={transactionForm.productId}
+                                        onChange={(val) => setTransactionForm({ ...transactionForm, productId: val })}
+                                        placeholder="Choose Item..."
+                                    />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="text-xs font-bold text-slate-500 mb-2 block uppercase tracking-widest">Quantity</label>
+                                        <label className="text-[9px] font-black text-slate-400 mb-1.5 block uppercase tracking-widest">Quantity</label>
                                         <input
                                             type="number"
-                                            placeholder="0.00"
-                                            className={`w-full border rounded-xl px-4 py-4 text-sm font-bold outline-none transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
+                                            placeholder="0"
+                                            className={`w-full border rounded-xl px-3 py-2 text-xs font-bold outline-none transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
                                         />
                                     </div>
                                     <div>
-                                        <label className="text-xs font-bold text-slate-500 mb-2 block uppercase tracking-widest">Type / Urgency</label>
-                                        <select className={`w-full border rounded-xl px-4 py-4 text-sm font-bold outline-none transition-all appearance-none ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}>
-                                            {isTransaction ? (
-                                                <>
-                                                    <option>Restock (In)</option>
-                                                    <option>Consumption (Out)</option>
-                                                    <option>Adjustment</option>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <option>Normal</option>
-                                                    <option>Urgent</option>
-                                                    <option>Priority</option>
-                                                </>
-                                            )}
-                                        </select>
+                                        <label className="text-[9px] font-black text-slate-400 mb-1.5 block uppercase tracking-widest">Velocity / Context</label>
+                                        <CustomSelect
+                                            options={isTransaction ? [
+                                                { value: 'in', label: 'Restock (In)' },
+                                                { value: 'out', label: 'Consumption (Out)' },
+                                                { value: 'adj', label: 'Adjustment' }
+                                            ] : [
+                                                { value: 'Normal', label: 'Normal' },
+                                                { value: 'Urgent', label: 'Urgent' },
+                                                { value: 'Priority', label: 'Priority' }
+                                            ]}
+                                            value={isTransaction ? transactionForm.type : orderForm.urgency}
+                                            onChange={(val) => isTransaction ? setTransactionForm({ ...transactionForm, type: val }) : setOrderForm({ ...orderForm, urgency: val })}
+                                        />
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="space-y-6">
+                            <div className="space-y-4">
                                 <div>
-                                    <label className="text-xs font-bold text-slate-500 mb-2 block uppercase tracking-widest">Log Date</label>
+                                    <label className="text-[9px] font-black text-slate-400 mb-1.5 block uppercase tracking-widest">Log Date</label>
                                     <div className="relative">
-                                        <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                                         <input
                                             type="date"
                                             defaultValue={new Date().toISOString().split('T')[0]}
-                                            className={`w-full border rounded-2xl pl-12 pr-4 py-4 text-sm font-bold outline-none transition-all focus:ring-4 ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white focus:border-primary/50 focus:ring-primary/10' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-primary focus:ring-primary/10'}`}
+                                            className={`w-full border rounded-xl pl-10 pr-4 py-2 text-xs font-bold outline-none transition-all focus:ring-4 ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white focus:border-primary/50' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-primary'}`}
                                         />
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="text-xs font-bold text-slate-500 mb-2 block uppercase tracking-widest">{isTransaction ? 'Flux Remarks' : 'Supplier / Lab Entity'}</label>
+                                    <label className="text-[9px] font-black text-slate-400 mb-1.5 block uppercase tracking-widest">{isTransaction ? 'Flux Remarks' : 'Entity'}</label>
                                     <div className="relative">
-                                        {isTransaction ? <FileText className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} /> : <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />}
+                                        {isTransaction ? <FileText className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} /> : <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />}
                                         <input
                                             type="text"
-                                            placeholder={isTransaction ? "e.g. Broken seal, Monthly consumption" : "e.g. DentalPro Suppliers, Star Lab"}
-                                            className={`w-full border rounded-2xl pl-12 pr-4 py-4 text-sm font-bold transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
+                                            placeholder={isTransaction ? "Reason..." : "Supplier..."}
+                                            className={`w-full border rounded-xl pl-10 pr-4 py-2 text-xs font-bold transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
                                         />
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="flex gap-4 mt-8 justify-end">
-                            <button type="button" onClick={() => setView('list')} className={`px-10 py-4 rounded-2xl border font-bold transition-all active:scale-95 ${theme === 'dark' ? 'border-white/10 text-slate-400 hover:bg-white/5' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>Cancel Operation</button>
-                            <button type="submit" className="px-12 py-4 rounded-2xl bg-primary text-white font-bold hover:bg-primary-hover shadow-premium shadow-primary/20 transition-all active:scale-95">
-                                {isTransaction ? 'Apply Flux' : 'Initialize Protocol'}
+                        <div className="flex gap-3 justify-end">
+                            <button type="button" onClick={() => setView('list')} className={`px-6 py-2.5 rounded-xl border text-[11px] font-bold transition-all active:scale-95 ${theme === 'dark' ? 'border-white/10 text-slate-400 hover:bg-white/5' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>Dismiss</button>
+                            <button type="submit" className="px-8 py-2.5 rounded-xl bg-primary text-white text-[11px] font-bold hover:bg-primary-hover shadow-lg shadow-primary/20 transition-all active:scale-95">
+                                {isTransaction ? 'Commit Flux' : 'Deploy Order'}
                             </button>
                         </div>
                     </form>
@@ -226,138 +223,157 @@ export function Inventory({ userRole, theme }: { userRole: UserRole; theme?: 'li
     }
 
     return (
-        <div className="animate-slide-up space-y-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h2 className={`text-3xl font-sans font-bold tracking-tight ${theme === 'dark' ? 'text-white' : 'text-text-dark'}`}>Supply Infrastructure</h2>
-                    <p className="text-text-muted font-medium">Monitoring stock levels, movements, and procurement cycles.</p>
-                </div>
-                <div className="flex gap-3 w-full md:w-auto">
-                    {activeTab === 'transactions' && (
-                        <button
-                            onClick={() => setView('add_transaction')}
-                            className="bg-primary hover:bg-primary-hover text-white px-6 py-3.5 rounded-2xl text-xs font-extrabold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-premium shadow-primary/20 w-full md:w-auto"
-                        >
-                            <Plus size={18} /> Add Movement
-                        </button>
-                    )}
-                    {activeTab === 'orders' && (
-                        <button
-                            onClick={() => setView('add_order')}
-                            className="bg-primary hover:bg-primary-hover text-white px-6 py-3.5 rounded-2xl text-xs font-extrabold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-premium shadow-primary/20 w-full md:w-auto"
-                        >
-                            <Plus size={18} /> Smart Order
-                        </button>
-                    )}
+        <div className="animate-slide-up space-y-4">
+            <div className={`p-6 rounded-2xl border shadow-xl transition-all relative overflow-hidden`} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
+                <div className="absolute top-0 right-0 p-6 opacity-5 pointer-events-none transition-transform group-hover:rotate-12 duration-700"><Archive size={80} /></div>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
+                    <div>
+                        <h2 className="text-xl font-bold tracking-tight" style={{ color: 'var(--text-dark)' }}>Supply Chain</h2>
+                        <p className="text-[10px] font-bold" style={{ color: 'var(--text-muted)' }}>Monitoring stock levels and procurement cycles.</p>
+                    </div>
+                    <div className="flex gap-3 w-full md:w-auto">
+                        {activeTab === 'transactions' && (
+                            <button
+                                onClick={() => setView('add_transaction')}
+                                className="bg-primary hover:scale-105 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-primary/20 w-full md:w-auto"
+                            >
+                                <Plus size={16} /> Add Movement
+                            </button>
+                        )}
+                        {activeTab === 'orders' && (
+                            <button
+                                onClick={() => setView('add_order')}
+                                className="bg-primary hover:scale-105 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-primary/20 w-full md:w-auto"
+                            >
+                                <Plus size={16} /> Smart Order
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
 
-            <div className={`flex p-1 rounded-2xl shadow-sm w-max border overflow-x-auto max-w-full ${theme === 'dark' ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'}`}>
+            <div className={`flex p-1 rounded-2xl shadow-lg w-max border overflow-x-auto max-w-full`} style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)' }}>
                 <button
                     onClick={() => setActiveTab('stock')}
-                    className={`flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${activeTab === 'stock' ? 'bg-primary text-white shadow-lg' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                    className={`flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'stock' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-400 hover:text-primary hover:bg-primary/5'
                         }`}
                 >
-                    <Archive size={18} /> Available Stock
+                    <Archive size={14} /> Vault
                 </button>
                 <button
                     onClick={() => setActiveTab('transactions')}
-                    className={`flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${activeTab === 'transactions' ? 'bg-primary text-white shadow-lg' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                    className={`flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'transactions' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-400 hover:text-primary hover:bg-primary/5'
                         }`}
                 >
-                    <ArrowRightLeft size={18} /> Transactions
+                    <ArrowRightLeft size={14} /> Flux
                 </button>
                 <button
                     onClick={() => setActiveTab('orders')}
-                    className={`flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${activeTab === 'orders' ? 'bg-primary text-white shadow-lg' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                    className={`flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'orders' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-400 hover:text-primary hover:bg-primary/5'
                         }`}
                 >
-                    <ShoppingCart size={18} /> Purchase Orders
+                    <ShoppingCart size={14} /> Chain
                 </button>
             </div>
 
-            <div className={`rounded-[2rem] border shadow-sm overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-100'}`}>
+            <div className={`rounded-2xl border overflow-hidden shadow-xl transition-all`} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className={`text-[10px] font-extrabold uppercase tracking-widest border-b ${theme === 'dark' ? 'bg-white/5 border-white/10 text-slate-400' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
-                                <th className="px-8 py-5">Item Identity</th>
-                                <th className="px-8 py-5">Context / Info</th>
-                                <th className="px-8 py-5">Current Volume</th>
-                                <th className="px-8 py-5 text-right">Status / Logic</th>
+                            <tr className={`text-[9px] font-black uppercase tracking-widest border-b`} style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)', color: 'var(--text-muted)' }}>
+                                <th className="px-5 py-3">Item Identity</th>
+                                <th className="px-5 py-3">Metadata</th>
+                                <th className="px-5 py-3">Volume</th>
+                                <th className="px-5 py-3 text-right">Logic</th>
                             </tr>
                         </thead>
                         <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-50'}`}>
                             {isLoading ? (
                                 <tr>
-                                    <td colSpan={4} className="px-8 py-20 text-center">
-                                        <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto"></div>
+                                    <td colSpan={4} className="px-8 py-10">
+                                        <SkeletonList rows={5} />
                                     </td>
                                 </tr>
                             ) : activeTab === 'stock' ? (
                                 stock.length > 0 ? stock.map((item) => (
-                                    <tr key={item.id} className={`group transition-colors ${theme === 'dark' ? 'hover:bg-white/5' : 'hover:bg-slate-50'}`}>
-                                        <td className="px-8 py-6">
-                                            <p className={`font-bold text-sm ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>{item.product_name}</p>
-                                            <p className="text-[10px] text-slate-400 font-extrabold mt-1 tracking-wider uppercase">SKU: {item.product_id || 'PROD-' + item.id}</p>
+                                    <tr key={item.id} className="group transition-colors hover:bg-slate-50/50" style={{ background: 'var(--card-bg)' }}>
+                                        <td className="px-5 py-3.5">
+                                            <p className="font-bold text-xs" style={{ color: 'var(--text-main)' }}>{item.product_name}</p>
+                                            <p className="text-[8px] text-slate-400 font-bold mt-0.5 tracking-widest uppercase">SKU: {item.product_id || 'PROD-' + item.id}</p>
                                         </td>
-                                        <td className="px-8 py-6">
-                                            <p className="text-xs text-slate-500 font-medium">Updated: {new Date(item.updated_at || item.created_at).toLocaleDateString()}</p>
+                                        <td className="px-5 py-3.5">
+                                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Update: {new Date(item.updated_at || item.created_at).toLocaleDateString()}</p>
                                         </td>
-                                        <td className="px-8 py-6">
-                                            <div className="flex items-center gap-3">
-                                                <span className={`text-lg font-bold ${item.quantity <= (item.min_quantity || 10) ? 'text-red-500' : theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>{item.quantity}</span>
-                                                <span className="text-[10px] font-extrabold text-slate-400">UNITS</span>
+                                        <td className="px-5 py-3.5">
+                                            <div className="flex items-center gap-2">
+                                                <span className={`text-base font-black ${item.quantity <= (item.min_quantity || 10) ? 'text-rose-500' : 'text-slate-700'}`} style={{ color: item.quantity <= (item.min_quantity || 10) ? '#f43f5e' : 'var(--text-main)' }}>{item.quantity}</span>
+                                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Units</span>
                                             </div>
                                         </td>
-                                        <td className="px-8 py-6 text-right">
-                                            <span className={`px-4 py-1.5 rounded-full text-[10px] font-extrabold border ${item.quantity <= (item.min_quantity || 10) ? 'bg-red-50 text-red-600 border-red-100 animate-pulse' : 'bg-green-50 text-green-600 border-green-100'}`}>
-                                                {item.quantity <= (item.min_quantity || 10) ? 'CRITICAL DEPLETION' : 'OPTIMAL STOCK'}
+                                        <td className="px-5 py-3.5 text-right">
+                                            <span className={`px-3 py-1 rounded-lg text-[8px] font-black border uppercase tracking-widest ${item.quantity <= (item.min_quantity || 10) ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
+                                                {item.quantity <= (item.min_quantity || 10) ? 'Critical' : 'Optimal'}
                                             </span>
                                         </td>
                                     </tr>
-                                )) : (
+                                )) : !isLoading && (
                                     <tr>
-                                        <td colSpan={4} className="px-8 py-20 text-center text-slate-300 font-bold italic">No inventory nodes registered.</td>
+                                        <td colSpan={4} className="px-8 py-20">
+                                            <EmptyState
+                                                icon={Archive}
+                                                title="Stock Vault Empty"
+                                                description="No medical supplies have been registered in the system yet."
+                                                actionLabel="Register Item"
+                                                onAction={() => showToast('Redirecting to master item list...', 'info')}
+                                            />
+                                        </td>
                                     </tr>
                                 )
                             ) : activeTab === 'transactions' ? (
                                 transactions.length > 0 ? transactions.map((t) => (
-                                    <tr key={t.id} className={`group transition-colors ${theme === 'dark' ? 'hover:bg-white/5' : 'hover:bg-slate-50'}`}>
-                                        <td className="px-8 py-6">
-                                            <p className={`font-bold text-sm ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>{t.inventory_stock?.product_name || 'Legacy Product'}</p>
-                                            <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-widest">{t.date}</p>
+                                    <tr key={t.id} className="group transition-colors hover:bg-slate-50/50" style={{ background: 'var(--card-bg)' }}>
+                                        <td className="px-5 py-3.5">
+                                            <p className="font-bold text-xs" style={{ color: 'var(--text-main)' }}>{t.inventory_stock?.product_name || 'Legacy Product'}</p>
+                                            <p className="text-[8px] text-slate-400 font-bold mt-0.5 uppercase tracking-widest">{t.date}</p>
                                         </td>
-                                        <td className="px-8 py-6">
-                                            <p className="text-xs text-slate-500 font-medium italic">"{t.remarks || 'Standard consumption'}"</p>
+                                        <td className="px-5 py-3.5">
+                                            <p className="text-[10px] text-slate-500 font-bold italic">"{t.remarks || 'Supply flux'}"</p>
                                         </td>
-                                        <td className="px-8 py-6">
-                                            <p className={`font-bold text-sm ${t.type === 'in' ? 'text-green-500' : 'text-red-500'}`}>{t.type === 'in' ? '+' : '-'}{t.quantity} Units</p>
+                                        <td className="px-5 py-3.5">
+                                            <p className={`font-black text-xs ${t.type === 'in' ? 'text-emerald-500' : 'text-rose-500'}`}>{t.type === 'in' ? '+' : '-'}{t.quantity}</p>
                                         </td>
-                                        <td className="px-8 py-6 text-right">
-                                            <span className={`px-4 py-1.5 rounded-full text-[10px] font-extrabold border ${t.type === 'in' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-slate-50 text-slate-500 border-slate-100'}`}>
-                                                {t.type === 'in' ? 'RESTOCK' : 'EXPENDITURE'}
+                                        <td className="px-5 py-3.5 text-right">
+                                            <span className={`px-3 py-1 rounded-lg text-[8px] font-black border uppercase tracking-widest ${t.type === 'in' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-500 border-slate-100'}`}>
+                                                {t.type === 'in' ? 'Restock' : 'Usage'}
                                             </span>
                                         </td>
                                     </tr>
-                                )) : (
+                                )) : !isLoading && (
                                     <tr>
-                                        <td colSpan={4} className="px-8 py-20 text-center text-slate-300 font-bold italic">No supply flux recorded.</td>
+                                        <td colSpan={4} className="px-8 py-20">
+                                            <EmptyState
+                                                icon={ArrowRightLeft}
+                                                title="No Movement Logs"
+                                                description="Capture inward and outward supply flux to maintain clinical accuracy."
+                                                actionLabel="Log Flux"
+                                                onAction={() => setView('add_transaction')}
+                                            />
+                                        </td>
                                     </tr>
                                 )
                             ) : (
                                 orders.length > 0 ? orders.map((o) => (
-                                    <tr key={o.id} className={`group transition-colors ${theme === 'dark' ? 'hover:bg-white/5' : 'hover:bg-slate-50'}`}>
+                                    <tr key={o.id} className="group transition-colors hover:bg-slate-50/50" style={{ background: 'var(--card-bg)' }}>
                                         <td className="px-8 py-6">
-                                            <p className={`font-bold text-sm ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>{o.type || 'Custom Item'}</p>
+                                            <p className="font-bold text-sm" style={{ color: 'var(--text-main)' }}>{o.type || 'Custom Item'}</p>
                                             <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-widest">ORDER #{o.id}</p>
                                         </td>
                                         <td className="px-8 py-6">
-                                            <p className="text-xs text-slate-500 font-bold">Patient: <span className={theme === 'dark' ? 'text-white' : 'text-slate-700'}>{o.patients?.name || 'In-House'}</span></p>
+                                            <p className="text-xs text-slate-500 font-bold">Patient: <span style={{ color: 'var(--text-main)' }}>{o.patients?.name || 'In-House'}</span></p>
                                             <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-widest">{o.date}</p>
                                         </td>
                                         <td className="px-8 py-6">
-                                            <p className={`font-bold text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>PO-REQ-{o.id}</p>
+                                            <p className="font-bold text-sm" style={{ color: 'var(--text-muted)' }}>PO-REQ-{o.id}</p>
                                         </td>
                                         <td className="px-8 py-6 text-right">
                                             <span className="px-4 py-1.5 rounded-full text-[10px] font-extrabold border bg-primary/5 text-primary border-primary/20">
@@ -365,9 +381,17 @@ export function Inventory({ userRole, theme }: { userRole: UserRole; theme?: 'li
                                             </span>
                                         </td>
                                     </tr>
-                                )) : (
+                                )) : !isLoading && (
                                     <tr>
-                                        <td colSpan={4} className="px-8 py-20 text-center text-slate-300 font-bold italic">No procurement cycles active.</td>
+                                        <td colSpan={4} className="px-8 py-20">
+                                            <EmptyState
+                                                icon={ShoppingCart}
+                                                title="Procurement Cycle Clear"
+                                                description="All supply orders have been fulfilled or none are pending."
+                                                actionLabel="Create Smart Order"
+                                                onAction={() => setView('add_order')}
+                                            />
+                                        </td>
                                     </tr>
                                 )
                             )}

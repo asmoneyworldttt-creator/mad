@@ -4,8 +4,9 @@ import { Plus, ArrowDownLeft, ArrowUpRight, ChevronLeft, DollarSign, Tag, Calend
 import { Modal } from '../../components/Modal';
 import { useToast } from '../../components/Toast';
 import { supabase } from '../../supabase';
+import { CustomSelect } from '../ui/CustomControls';
 
-type UserRole = 'admin' | 'staff' | 'doctor' | 'patient';
+type UserRole = 'master' | 'admin' | 'staff' | 'patient';
 
 export function Accounts({ userRole, theme }: { userRole: UserRole; theme?: 'light' | 'dark' }) {
     const [activeTab, setActiveTab] = useState<'income' | 'expenses'>('income');
@@ -92,23 +93,20 @@ export function Accounts({ userRole, theme }: { userRole: UserRole; theme?: 'lig
                             <div className="space-y-6">
                                 <div>
                                     <label className="text-xs font-bold text-slate-500 mb-2 block uppercase tracking-widest">Financial Category</label>
-                                    <div className="relative">
-                                        <Tag className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                                        <select
-                                            value={form.category}
-                                            onChange={e => setForm({ ...form, category: e.target.value })}
-                                            className={`w-full border rounded-2xl pl-12 pr-4 py-4 text-sm font-bold outline-none appearance-none transition-all focus:ring-4 ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white focus:border-primary/50 focus:ring-primary/10' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-primary focus:ring-primary/10'}`}
-                                        >
-                                            <option>Hospital Visits</option>
-                                            <option>Consultations</option>
-                                            <option>Pharmacy Sales</option>
-                                            <option>Lab Services</option>
-                                            <option>Rent/Utilities</option>
-                                            <option>Salary/Payroll</option>
-                                            <option>Supplies/Maintenance</option>
-                                            <option>Marketing</option>
-                                        </select>
-                                    </div>
+                                    <CustomSelect
+                                        options={[
+                                            { value: 'Hospital Visits', label: 'Hospital Visits' },
+                                            { value: 'Consultations', label: 'Consultations' },
+                                            { value: 'Pharmacy Sales', label: 'Pharmacy Sales' },
+                                            { value: 'Lab Services', label: 'Lab Services' },
+                                            { value: 'Rent/Utilities', label: 'Rent/Utilities' },
+                                            { value: 'Salary/Payroll', label: 'Salary/Payroll' },
+                                            { value: 'Supplies/Maintenance', label: 'Supplies/Maintenance' },
+                                            { value: 'Marketing', label: 'Marketing' }
+                                        ]}
+                                        value={form.category}
+                                        onChange={(val) => setForm({ ...form, category: val })}
+                                    />
                                 </div>
                                 <div>
                                     <label className="text-xs font-bold text-slate-500 mb-2 block uppercase tracking-widest">Transaction Date</label>
@@ -178,8 +176,8 @@ export function Accounts({ userRole, theme }: { userRole: UserRole; theme?: 'lig
         <div className="animate-slide-up space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h2 className={`text-3xl font-sans font-bold tracking-tight ${theme === 'dark' ? 'text-white' : 'text-text-dark'}`}>Financial Accounts</h2>
-                    <p className="text-text-muted font-medium">Manage clinic income and expenditure streams.</p>
+                    <h2 className={`text-3xl font-sans font-bold tracking-tight`} style={{ color: 'var(--text-dark)' }}>Financial Accounts</h2>
+                    <p className="font-medium" style={{ color: 'var(--text-muted)' }}>Manage clinic income and expenditure streams.</p>
                 </div>
                 <button
                     onClick={() => setView('add')}
@@ -189,28 +187,28 @@ export function Accounts({ userRole, theme }: { userRole: UserRole; theme?: 'lig
                 </button>
             </div>
 
-            <div className={`flex p-1 rounded-2xl shadow-sm w-max border ${theme === 'dark' ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'}`}>
+            <div className={`flex p-1 rounded-2xl shadow-sm w-max border`} style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)' }}>
                 <button
                     onClick={() => setActiveTab('income')}
-                    className={`flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'income' ? 'bg-primary text-white shadow-lg' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                    className={`flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'income' ? 'bg-primary text-white shadow-lg' : 'text-slate-500 hover:text-primary hover:bg-primary/5'
                         }`}
                 >
                     <ArrowDownLeft size={18} /> Income
                 </button>
                 <button
                     onClick={() => setActiveTab('expenses')}
-                    className={`flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'expenses' ? 'bg-primary text-white shadow-lg' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                    className={`flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'expenses' ? 'bg-primary text-white shadow-lg' : 'text-slate-500 hover:text-primary hover:bg-primary/5'
                         }`}
                 >
                     <ArrowUpRight size={18} /> Expenses
                 </button>
             </div>
 
-            <div className={`rounded-[2rem] border shadow-sm overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-100'}`}>
+            <div className={`rounded-[2rem] border overflow-hidden`} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)', boxShadow: '0 4px 20px var(--glass-shadow)' }}>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className={`text-[10px] font-extrabold uppercase tracking-widest border-b ${theme === 'dark' ? 'bg-white/5 border-white/10 text-slate-400' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
+                            <tr className={`text-[10px] font-extrabold uppercase tracking-widest border-b`} style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)', color: 'var(--text-muted)' }}>
                                 <th className="px-8 py-5">Accounting Period</th>
                                 <th className="px-8 py-5">Category & Remark</th>
                                 <th className="px-8 py-5">Base Amount</th>

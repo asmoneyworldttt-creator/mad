@@ -1,11 +1,13 @@
-import { FileText, Download, Share2, Plus, Search, Printer, AlertCircle } from 'lucide-react';
+import { FileText, Download, Plus, Search, Printer, AlertCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useToast } from '../Toast';
 import { supabase } from '../../supabase';
 import { Modal } from '../../components/Modal';
 import { DrugInteractionChecker } from './DrugInteractionChecker';
+import { CustomSelect } from '../ui/CustomControls';
+import { downloadPrescriptionPDF } from '../../utils/pdfExport';
 
-type UserRole = 'admin' | 'staff' | 'doctor' | 'patient';
+type UserRole = 'master' | 'admin' | 'staff' | 'patient';
 
 interface Drug {
     name: string;
@@ -170,30 +172,31 @@ ${rx.medication_data?.notes ? `<div class="notes"><strong>Special Instructions:<
 
     return (
         <>
-            <div className="animate-slide-up space-y-6">
+            <div className="animate-slide-up space-y-4">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
-                        <h2 className={`text-3xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>e-Prescriptions</h2>
-                        <p className={`font-medium text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Draft, print and track digital prescriptions with drug safety checks.</p>
+                        <h2 className={`text-xl font-bold tracking-tight`} style={{ color: 'var(--text-dark)' }}>Prescription Hub</h2>
+                        <p className="text-[10px] font-bold mt-0.5" style={{ color: 'var(--text-muted)' }}>Digital pharmacological records</p>
                     </div>
                     <button
                         onClick={() => setIsPrescModalOpen(true)}
-                        className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 px-6 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 w-full md:w-auto"
+                        className="bg-primary hover:scale-105 active:scale-95 text-white shadow-lg shadow-primary/20 px-4 py-2 rounded-xl font-bold text-xs transition-all w-full md:w-auto flex items-center justify-center gap-2"
                     >
-                        <Plus size={18} /> New Prescription
+                        <Plus size={16} /> New Prescription
                     </button>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                     <div className="lg:col-span-2 space-y-4">
                         <div className="relative">
-                            <Search size={16} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
                             <input
                                 type="text"
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
-                                placeholder="Search by patient name..."
-                                className={`w-full rounded-2xl py-4 pl-12 pr-6 font-bold text-sm outline-none border transition-all ${isDark ? 'bg-white/5 border-white/10 text-white focus:border-primary/50' : 'bg-white border-slate-200 focus:border-primary shadow-sm'}`}
+                                placeholder="Lookup patients..."
+                                className={`w-full rounded-xl py-2 pl-12 pr-4 font-bold text-xs outline-none border transition-all focus:ring-4 focus:ring-primary/10`}
+                                style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }}
                             />
                         </div>
 
@@ -204,37 +207,58 @@ ${rx.medication_data?.notes ? `<div class="notes"><strong>Special Instructions:<
                                 const hasAllergyConflict = allergies.length > 0 && drugs.some(d => allergies.some(a => d.name.toLowerCase().includes(a.toLowerCase())));
 
                                 return (
-                                    <div key={rx.id || idx} className={`p-6 rounded-[2rem] border transition-all group ${hasAllergyConflict ? 'border-rose-500/30 bg-rose-500/3' : isDark ? 'bg-slate-900 border-white/5 hover:border-white/10' : 'bg-white border-slate-200 hover:shadow-md shadow-sm'}`}>
-                                        <div className="flex items-center justify-between gap-4">
-                                            <div className="flex gap-4 items-center">
-                                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isDark ? 'bg-primary/10 text-primary' : 'bg-blue-50 text-blue-600'}`}>
-                                                    <FileText size={20} />
+                                    <div key={rx.id || idx} 
+                                        className={`p-4 md:p-5 rounded-2xl border transition-all duration-300 relative overflow-hidden group hover:shadow-xl ${hasAllergyConflict ? 'ring-2 ring-rose-500/30' : ''}`}
+                                        style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)', boxShadow: '0 4px 20px var(--glass-shadow)' }}>
+                                        <div className="flex items-center justify-between gap-4 relative z-10">
+                                            <div className="flex gap-3 items-center">
+                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110`}
+                                                    style={{ background: 'var(--primary-soft)', color: 'var(--primary)' }}>
+                                                    <FileText size={18} />
                                                 </div>
                                                 <div>
-                                                    <p className="font-bold text-base">{rx.patients?.name || 'Manual Entry'}</p>
-                                                    <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                        {drugs.length} drug(s) · {new Date(rx.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                    <p className="font-bold text-sm" style={{ color: 'var(--text-dark)' }}>{rx.patients?.name || 'Walk-in Patient'}</p>
+                                                    <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
+                                                        {drugs.length} items • {new Date(rx.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                                                     </p>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-2 shrink-0">
+                                            <div className="flex items-center gap-1.5 shrink-0">
                                                 {hasAllergyConflict && (
-                                                    <span className="flex items-center gap-1 text-[9px] font-extrabold px-3 py-1 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-full uppercase tracking-widest">
-                                                        <AlertCircle size={10} /> Allergy Risk
+                                                    <span className="flex items-center gap-1 text-[8px] font-black px-2 py-0.5 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-lg uppercase tracking-widest">
+                                                        <AlertCircle size={10} /> Conflict
                                                     </span>
                                                 )}
                                                 <button
-                                                    onClick={() => printPrescription(rx)}
-                                                    className={`p-2.5 rounded-xl border transition-all hover:scale-105 active:scale-95 ${isDark ? 'bg-white/5 border-white/10 text-slate-300 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-primary/5 hover:text-primary hover:border-primary'}`}
-                                                    title="Print / Export PDF"
+                                                    onClick={() => {
+                                                        downloadPrescriptionPDF({
+                                                            patientName: rx.patients?.name || 'Patient',
+                                                            patientPhone: rx.patients?.phone,
+                                                            patientAllergies: rx.patients?.allergies || '',
+                                                            doctorName: rx.medication_data?.doctorName || 'Attending Doctor',
+                                                            clinicName: rx.medication_data?.clinicName || 'DentiSphere Clinic',
+                                                            date: rx.created_at,
+                                                            drugs: rx.medication_data?.drugs || [],
+                                                            notes: rx.medication_data?.notes,
+                                                            rxId: rx.id,
+                                                        });
+                                                        showToast('PDF Exported', 'success');
+                                                    }}
+                                                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border transition-all hover:scale-105 active:scale-95 text-[10px] font-bold ${isDark ? 'bg-primary/10 border-primary/20 text-primary hover:bg-primary/20' : 'bg-primary/5 border-primary/20 text-primary hover:bg-primary/10'}`}
                                                 >
-                                                    <Printer size={16} />
+                                                    <Download size={12} /> PDF
                                                 </button>
                                                 <button
-                                                    onClick={() => showToast('WhatsApp share opened', 'success')}
-                                                    className={`p-2.5 rounded-xl border transition-all hover:scale-105 active:scale-95 ${isDark ? 'bg-white/5 border-white/10 text-slate-300 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-primary/5 hover:text-primary hover:border-primary'}`}
+                                                    onClick={() => {
+                                                        const drugs: Drug[] = rx.medication_data?.drugs || [];
+                                                        const msg = `Hello ${rx.patients?.name || 'Patient'},\n\nYour prescription from DentiSphere:\n${drugs.map(d => `• ${d.name} ${d.dosage} — ${d.frequency} for ${d.duration}`).join('\n')}\n\nPlease follow as directed.`;
+                                                        const phone = rx.patients?.phone?.replace(/\D/g, '');
+                                                        window.open(`https://wa.me/${phone ? '91' + phone : ''}?text=${encodeURIComponent(msg)}`, '_blank');
+                                                        showToast('Opening WhatsApp', 'success');
+                                                    }}
+                                                    className={`p-1.5 rounded-lg border transition-all hover:scale-105 active:scale-95 ${isDark ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100'}`}
                                                 >
-                                                    <Share2 size={16} />
+                                                    <Printer size={14} />
                                                 </button>
                                             </div>
                                         </div>
@@ -250,30 +274,30 @@ ${rx.medication_data?.notes ? `<div class="notes"><strong>Special Instructions:<
                         </div>
                     </div>
 
-                    <div className="space-y-6">
-                        <div className={`p-6 rounded-[2rem] border ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-200 shadow-sm'}`}>
-                            <h3 className="font-bold text-lg mb-4">Quick Templates</h3>
-                            <div className="space-y-3">
+                    <div className="space-y-4">
+                        <div className={`p-5 rounded-2xl border ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-200 shadow-sm'}`}>
+                            <h3 className="font-bold text-sm mb-3">Quick Templates</h3>
+                            <div className="space-y-2">
                                 {QUICK_TEMPLATES.map((tmpl, i) => (
                                     <button
                                         key={i}
                                         onClick={() => { setNewPresc({ ...newPresc, drugs: tmpl.drugs }); setIsPrescModalOpen(true); }}
-                                        className={`w-full p-4 border rounded-2xl text-left transition-all group hover:border-primary hover:bg-primary/5 ${isDark ? 'border-white/10 bg-white/3' : 'border-slate-200 bg-slate-50'}`}
+                                        className={`w-full p-3 border rounded-xl text-left transition-all group hover:border-primary hover:bg-primary/5 ${isDark ? 'border-white/10 bg-white/3' : 'border-slate-200 bg-slate-50'}`}
                                     >
-                                        <p className="font-bold text-sm group-hover:text-primary transition-colors">{tmpl.label}</p>
-                                        <p className={`text-[10px] font-medium mt-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{tmpl.drugs.length} drugs</p>
+                                        <p className="font-bold text-xs group-hover:text-primary transition-colors">{tmpl.label}</p>
+                                        <p className={`text-[9px] font-bold uppercase tracking-widest mt-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{tmpl.drugs.length} drugs</p>
                                     </button>
                                 ))}
                             </div>
                         </div>
 
-                        <div className={`p-6 rounded-[2rem] border ${isDark ? 'bg-amber-500/5 border-amber-500/20' : 'bg-amber-50 border-amber-200'}`}>
-                            <div className="flex items-center gap-3 mb-3">
-                                <AlertCircle size={18} className="text-amber-500" />
-                                <h3 className="font-bold text-amber-500">Drug Safety</h3>
+                        <div className={`p-5 rounded-2xl border ${isDark ? 'bg-amber-500/5 border-amber-500/20' : 'bg-amber-50 border-amber-200'}`}>
+                            <div className="flex items-center gap-2 mb-2">
+                                <AlertCircle size={16} className="text-amber-500" />
+                                <h3 className="font-bold text-xs text-amber-500">Drug Safety</h3>
                             </div>
-                            <p className={`text-sm font-medium mb-3 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                                Drug interaction checking is powered by the free OpenFDA API. Allergy conflicts auto-detected from patient records.
+                            <p className={`text-[10px] font-bold leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                                Interaction checking powered by OpenFDA API. Conflicts detected automatically.
                             </p>
                         </div>
                     </div>
@@ -281,61 +305,62 @@ ${rx.medication_data?.notes ? `<div class="notes"><strong>Special Instructions:<
             </div>
 
             <Modal isOpen={isPrescModalOpen} onClose={() => setIsPrescModalOpen(false)} title="Write New Prescription">
-                <div className="space-y-5 max-h-[75vh] overflow-y-auto pr-1">
-                    <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+                    <div className="grid grid-cols-2 gap-2">
                         <input type="text" placeholder="Patient Name..." value={newPresc.patientName} onChange={e => setNewPresc({ ...newPresc, patientName: e.target.value })}
-                            className="col-span-2 w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-700 font-bold focus:border-primary outline-none" />
+                            className="col-span-2 w-full rounded-xl px-3 py-2 text-xs font-bold outline-none border" style={{ background: 'var(--bg-page)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }} />
                         <input type="text" placeholder="Doctor Name..." value={newPresc.doctorName} onChange={e => setNewPresc({ ...newPresc, doctorName: e.target.value })}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-700 font-medium focus:border-primary outline-none" />
+                            className="w-full rounded-xl px-3 py-2 text-[11px] font-medium outline-none border" style={{ background: 'var(--bg-page)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }} />
                         <input type="text" placeholder="Clinic Name..." value={newPresc.clinicName} onChange={e => setNewPresc({ ...newPresc, clinicName: e.target.value })}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-700 font-medium focus:border-primary outline-none" />
+                            className="w-full rounded-xl px-3 py-2 text-[11px] font-medium outline-none border" style={{ background: 'var(--bg-page)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }} />
                     </div>
 
                     <div>
-                        <p className="text-xs font-extrabold text-slate-500 uppercase tracking-widest mb-3">Medications</p>
-                        <div className="space-y-3">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Medications</p>
+                        <div className="space-y-2">
                             {newPresc.drugs.map((drug, i) => (
-                                <div key={i} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+                                <div key={i} className="p-3 rounded-xl space-y-2" style={{ background: 'var(--card-bg-alt)', border: '1px solid var(--border-color)' }}>
                                     <div className="flex gap-2">
                                         <div className="flex-1">
                                             <input type="text" placeholder="Drug name..." value={drug.name} onChange={e => updateDrug(i, 'name', e.target.value)}
-                                                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold focus:border-primary outline-none" />
+                                                className="w-full rounded-lg px-2 py-1.5 text-xs font-bold outline-none border" style={{ background: 'var(--bg-page)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }} />
                                             <DrugInteractionChecker drugName={drug.name} patientAllergies={[]} theme={theme} />
                                         </div>
                                         <input type="text" placeholder="Dosage" value={drug.dosage} onChange={e => updateDrug(i, 'dosage', e.target.value)}
-                                            className="w-24 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-medium focus:border-primary outline-none" />
+                                            className="w-20 rounded-lg px-2 py-1.5 text-[10px] font-medium outline-none border" style={{ background: 'var(--bg-page)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }} />
                                         {newPresc.drugs.length > 1 && (
-                                            <button onClick={() => removeDrug(i)} className="p-2 text-rose-400 hover:bg-rose-50 rounded-xl transition-all">✕</button>
+                                            <button onClick={() => removeDrug(i)} className="p-1 px-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all text-xs font-bold">×</button>
                                         )}
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
-                                        <select value={drug.frequency} onChange={e => updateDrug(i, 'frequency', e.target.value)}
-                                            className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-medium focus:border-primary outline-none">
-                                            <option>Once daily</option>
-                                            <option>Twice daily</option>
-                                            <option>Thrice daily</option>
-                                            <option>Four times daily</option>
-                                            <option>SOS</option>
-                                        </select>
+                                        <CustomSelect 
+                                            value={drug.frequency} 
+                                            onChange={val => updateDrug(i, 'frequency', val)}
+                                            options={[
+                                                'Once daily',
+                                                'Twice daily',
+                                                'Thrice daily',
+                                                'Four times daily',
+                                                'SOS'
+                                            ]}
+                                        />
                                         <input type="text" placeholder="Duration..." value={drug.duration} onChange={e => updateDrug(i, 'duration', e.target.value)}
-                                            className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-medium focus:border-primary outline-none" />
+                                            className="rounded-lg px-2 py-1.5 text-[10px] font-medium outline-none border" style={{ background: 'var(--bg-page)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }} />
                                     </div>
                                 </div>
                             ))}
                         </div>
-                        <button onClick={addDrug} className="mt-3 flex items-center gap-2 text-xs font-bold text-primary hover:underline">
-                            <Plus size={14} /> Add another drug
+                        <button onClick={addDrug} className="mt-2 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-primary hover:underline px-1">
+                            <Plus size={12} /> Add drug
                         </button>
                     </div>
 
-                    <textarea placeholder="Special instructions / notes..." value={newPresc.notes} onChange={e => setNewPresc({ ...newPresc, notes: e.target.value })}
-                        className="w-full h-20 bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm text-slate-600 font-medium focus:border-primary outline-none resize-none" />
+                    <textarea placeholder="Special instructions..." value={newPresc.notes} onChange={e => setNewPresc({ ...newPresc, notes: e.target.value })}
+                        className="w-full h-16 rounded-xl p-3 text-xs font-medium outline-none border resize-none" style={{ background: 'var(--bg-page)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }} />
 
-                    <div className="flex gap-2">
-                        <button onClick={handleSavePrescription} className="flex-1 py-3 bg-primary text-white rounded-xl font-bold shadow-md hover:bg-primary/90 active:scale-95 transition-all">
-                            Save Prescription
-                        </button>
-                    </div>
+                    <button onClick={handleSavePrescription} className="w-full py-2.5 bg-primary text-white rounded-xl font-bold text-xs shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all">
+                        Save Prescription
+                    </button>
                 </div>
             </Modal>
         </>

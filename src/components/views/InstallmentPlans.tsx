@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { CreditCard, Plus, Calendar, CheckCircle, AlertCircle, DollarSign, Trash2 } from 'lucide-react';
 import { supabase } from '../../supabase';
 import { useToast } from '../Toast';
+import { CustomSelect } from '../ui/CustomControls';
 
 export function InstallmentPlans({ userRole, theme }: { userRole: string; theme?: 'light' | 'dark' }) {
     const { showToast } = useToast();
@@ -105,9 +106,9 @@ export function InstallmentPlans({ userRole, theme }: { userRole: string; theme?
             {/* Header */}
             <div className="flex justify-between items-center">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Treatment Installments</h2>
+                    <h2 className={`text-3xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>Payment Plans</h2>
                     <p className={`text-sm font-medium mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                        Manage payment plans and track outstanding balances
+                        Manage treatment installments and payment tracking.
                     </p>
                 </div>
                 <button onClick={() => setShowForm(true)}
@@ -163,11 +164,12 @@ export function InstallmentPlans({ userRole, theme }: { userRole: string; theme?
                                 className={`w-full rounded-2xl px-6 py-4 font-bold outline-none border text-sm transition-all ${isDark ? 'bg-white/5 border-white/10 text-white focus:border-primary/50' : 'bg-slate-50 border-slate-200 focus:border-primary'}`} />
                         </div>
                         <div>
-                            <label className={`text-[9px] font-extrabold uppercase tracking-widest block mb-2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Number of Installments</label>
-                            <select value={form.installments} onChange={e => setForm({ ...form, installments: e.target.value })}
-                                className={`w-full rounded-2xl px-6 py-4 font-bold outline-none border text-sm ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200'}`}>
-                                {[2, 3, 4, 6, 9, 12].map(n => <option key={n} value={n}>{n} months</option>)}
-                            </select>
+                            <label className={`text-[9px] font-extrabold uppercase tracking-widest block mb-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Number of Installments</label>
+                            <CustomSelect 
+                                value={form.installments} 
+                                onChange={val => setForm({ ...form, installments: val })}
+                                options={['2', '3', '4', '6', '9', '12']}
+                            />
                         </div>
                         <div>
                             <label className={`text-[9px] font-extrabold uppercase tracking-widest block mb-2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Start Date</label>

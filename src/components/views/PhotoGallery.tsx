@@ -94,14 +94,14 @@ export function PhotoGallery({ patientId, theme }: PhotoGalleryProps) {
 
     return (
         <div className="space-y-6">
-            <div className={`p-8 rounded-[2.5rem] border ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
-                <div className="flex justify-between items-center mb-10">
+            <div className={`p-4 rounded-2xl border ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
+                <div className="flex justify-between items-center mb-6">
                     <div>
-                        <h3 className="text-2xl font-bold flex items-center gap-3">
-                            <Camera className="text-primary" />
+                        <h3 className="text-sm font-bold flex items-center gap-2">
+                            <Camera size={16} className="text-primary" />
                             Clinical Resource Vault
                         </h3>
-                        <p className={`text-sm font-medium mt-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Before/After comparisons and diagnostic imaging</p>
+                        <p className={`text-[10px] font-medium mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Captured comparisons and snapshots</p>
                     </div>
 
                     <div className="flex items-center gap-3">

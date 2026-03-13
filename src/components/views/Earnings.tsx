@@ -6,7 +6,7 @@ import { useToast } from '../Toast';
 import { supabase } from '../../supabase';
 import { Modal } from '../Modal';
 
-type UserRole = 'admin' | 'staff' | 'doctor' | 'patient';
+type UserRole = 'master' | 'admin' | 'staff' | 'patient';
 
 const COLORS = ['#135bec', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
@@ -148,49 +148,57 @@ export function Earnings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
     return (
         <div className={`animate-slide-up space-y-8 pb-10 ${isDark ? 'text-white' : 'text-slate-900'}`}>
             {/* Header */}
-            <div className={`p-8 rounded-[2.5rem] border flex flex-col md:flex-row justify-between items-center gap-6 ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
-                <div>
-                    <h2 className="text-3xl font-sans font-bold tracking-tight">Financial Hub</h2>
-                    <p className="text-slate-400 font-medium mt-1">Live revenue & payroll analytics — synced from database.</p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <div className={`p-1 rounded-2xl border flex gap-1 ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
-                        <button onClick={() => setActiveTab('Revenue')} className={`px-8 py-3 rounded-xl font-bold text-xs uppercase tracking-widest transition-all ${activeTab === 'Revenue' ? 'bg-primary text-white shadow-lg' : 'text-slate-400 hover:text-primary'}`}>Revenue</button>
-                        <button onClick={() => setActiveTab('Payroll')} className={`px-8 py-3 rounded-xl font-bold text-xs uppercase tracking-widest transition-all ${activeTab === 'Payroll' ? 'bg-primary text-white shadow-lg' : 'text-slate-400 hover:text-primary'}`}>Payroll</button>
+            {/* Header */}
+            <div className={`p-10 rounded-[3rem] border shadow-2xl transition-all relative overflow-hidden`} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
+                <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none"><DollarSign size={120} /></div>
+                <div className="flex flex-col md:flex-row justify-between items-center gap-8 relative z-10">
+                    <div>
+                        <h2 className="text-3xl font-black tracking-tight" style={{ color: 'var(--text-dark)' }}>Financial Repository</h2>
+                        <p className="text-sm font-medium mt-1" style={{ color: 'var(--text-muted)' }}>Live revenue & payroll analytics — synced from clinical nodes.</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <div className={`p-1.5 rounded-[2rem] border flex gap-1.5`} style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)' }}>
+                            <button onClick={() => setActiveTab('Revenue')} className={`px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${activeTab === 'Revenue' ? 'bg-primary text-white shadow-xl shadow-primary/30' : 'text-slate-400 hover:text-primary'}`}>Revenue</button>
+                            <button onClick={() => setActiveTab('Payroll')} className={`px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${activeTab === 'Payroll' ? 'bg-primary text-white shadow-xl shadow-primary/30' : 'text-slate-400 hover:text-primary'}`}>Payroll</button>
+                        </div>
                     </div>
                 </div>
             </div>
 
             {/* Controls */}
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full lg:w-auto">
                     {[
-                        { label: 'Total Revenue', value: formatINR(totalRevenue), color: 'text-emerald-500', icon: TrendingUp },
-                        { label: 'Avg Ticket', value: formatINR(avgTicket), color: 'text-primary', icon: DollarSign },
-                        { label: 'Conversion', value: `${conversionRate}%`, color: 'text-amber-500', icon: CheckCircle2 },
-                        { label: 'Total Payroll', value: formatINR(totalPayroll), color: 'text-rose-500', icon: Users },
-                    ].map(({ label, value, color, icon: Icon }) => (
-                        <div key={label} className={`p-5 rounded-[2rem] border ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
-                            <div className="flex items-center gap-2 mb-2">
-                                <Icon size={14} className={color} />
-                                <p className="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest">{label}</p>
+                        { label: 'Total Revenue', value: formatINR(totalRevenue), color: 'text-emerald-500', icon: TrendingUp, bg: 'bg-emerald-500/10' },
+                        { label: 'Avg Ticket', value: formatINR(avgTicket), color: 'text-primary', icon: DollarSign, bg: 'bg-primary/10' },
+                        { label: 'Collection Rate', value: `${conversionRate}%`, color: 'text-amber-500', icon: CheckCircle2, bg: 'bg-amber-500/10' },
+                        { label: 'Total Payroll', value: formatINR(totalPayroll), color: 'text-rose-500', icon: Users, bg: 'bg-rose-500/10' },
+                    ].map(({ label, value, color, icon: Icon, bg }) => (
+                        <div key={label} className={`p-6 rounded-[2.5rem] border shadow-xl transition-all hover:scale-105`} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
+                            <div className="flex items-center gap-3 mb-3">
+                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${bg}`}>
+                                    <Icon size={16} className={color} />
+                                </div>
+                                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{label}</p>
                             </div>
-                            <h3 className={`text-xl font-sans font-bold ${color}`}>{value}</h3>
+                            <h3 className={`text-2xl font-black tracking-tight ${color}`}>{value}</h3>
                         </div>
                     ))}
                 </div>
-                <div className="flex gap-3">
-                    <select value={filterRange} onChange={e => setFilterRange(e.target.value)} className={`px-5 py-3.5 rounded-2xl font-bold text-xs outline-none border ${isDark ? 'bg-slate-900 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700'}`}>
+                <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+                    <select value={filterRange} onChange={e => setFilterRange(e.target.value)} 
+                        className={`px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest outline-none border transition-all shadow-inner`}
+                        style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }}>
                         <option>Today</option>
                         <option>This Week</option>
                         <option>This Month</option>
                         <option>Last 3 Months</option>
                         <option>This Year</option>
                     </select>
-                    <div className={`flex gap-1 p-1 rounded-2xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-100 border-slate-200'}`}>
-                        <button onClick={() => handleExport(activeTab.toLowerCase() as any, 'xls')} className="px-4 py-2.5 rounded-xl bg-emerald-500 text-white font-extrabold text-[10px] uppercase flex items-center gap-2 active:scale-95"><Table size={12} /> XLS</button>
-                        <button onClick={() => handleExport(activeTab.toLowerCase() as any, 'pdf')} className="px-4 py-2.5 rounded-xl bg-rose-500 text-white font-extrabold text-[10px] uppercase flex items-center gap-2 active:scale-95"><FileText size={12} /> PDF</button>
-                        <button onClick={() => handleExport(activeTab.toLowerCase() as any, 'csv')} className="px-4 py-2.5 rounded-xl bg-slate-900 text-white font-extrabold text-[10px] uppercase flex items-center gap-2 active:scale-95"><Download size={12} /> CSV</button>
+                    <div className={`flex gap-1.5 p-1.5 rounded-[2rem] border transition-all`} style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)' }}>
+                        <button onClick={() => handleExport(activeTab.toLowerCase() as any, 'xls')} className="px-5 py-3 rounded-2xl bg-emerald-500 text-white font-black text-[9px] uppercase tracking-widest flex items-center gap-2 active:scale-95 transition-all shadow-lg shadow-emerald-500/20"><Table size={14} /> XLS</button>
+                        <button onClick={() => handleExport(activeTab.toLowerCase() as any, 'pdf')} className="px-5 py-3 rounded-2xl bg-rose-500 text-white font-black text-[9px] uppercase tracking-widest flex items-center gap-2 active:scale-95 transition-all shadow-lg shadow-rose-500/20"><FileText size={14} /> PDF</button>
+                        <button onClick={() => handleExport(activeTab.toLowerCase() as any, 'csv')} className="px-5 py-3 rounded-2xl bg-slate-900 text-white font-black text-[9px] uppercase tracking-widest flex items-center gap-2 active:scale-95 transition-all shadow-lg shadow-black/20"><Download size={14} /> CSV</button>
                     </div>
                 </div>
             </div>

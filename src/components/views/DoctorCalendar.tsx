@@ -14,7 +14,7 @@ const TIME_SLOTS = [
     '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00'
 ];
 
-export function DoctorCalendar({ theme }: { theme?: 'light' | 'dark' }) {
+export function DoctorCalendar({ theme, setActiveTab }: { theme?: 'light' | 'dark'; setActiveTab?: (t: string) => void }) {
     const { showToast } = useToast();
     const isDark = theme === 'dark';
     const today = new Date().toISOString().split('T')[0];
@@ -81,56 +81,62 @@ export function DoctorCalendar({ theme }: { theme?: 'light' | 'dark' }) {
         );
     };
 
+    const handleAddSession = (doc: any, time: string) => {
+        showToast(`Redirecting to book session for ${doc.name} at ${time}`, 'success');
+        if (setActiveTab) {
+            setActiveTab('appointments');
+        }
+    };
+
     return (
         <div className="animate-slide-up space-y-6 pb-20">
             {/* Header */}
-            <div className={`p-8 rounded-[2.5rem] border flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
+            <div className={`p-5 md:p-6 rounded-2xl border flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
                 <div>
-                    <h2 className="text-3xl font-sans font-bold tracking-tight">Multi-Doctor Timeline</h2>
-                    <p className={`text-sm font-medium mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                        Visualizing patient flow across clinical workspaces for <span className="text-primary font-bold">{date === today ? 'Today' : date}</span>
+                    <h2 className="text-lg font-bold tracking-tight">Doctor Schedule</h2>
+                    <p className={`text-[10px] font-bold uppercase tracking-wider mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        Patient flow for {date === today ? 'Today' : date}
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <div className={`flex items-center p-1.5 rounded-2xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
-                        <button onClick={prevDay} className="p-2.5 rounded-xl hover:bg-primary/10 hover:text-primary transition-all text-slate-400"><ChevronLeft size={20} /></button>
-                        <div className="px-6 flex flex-col items-center">
-                            <span className="text-xs font-extrabold uppercase tracking-widest text-slate-500 mb-0.5">{new Date(date).toLocaleDateString('en-IN', { month: 'short' })}</span>
-                            <span className="text-lg font-bold leading-none">{new Date(date).getDate()}</span>
+                    <div className={`flex items-center p-1 rounded-xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
+                        <button onClick={prevDay} className="p-2 rounded-lg hover:bg-primary/10 hover:text-primary transition-all text-slate-400"><ChevronLeft size={18} /></button>
+                        <div className="px-4 flex flex-col items-center">
+                            <span className="text-[10px] font-bold text-slate-500 mb-0.5">{new Date(date).toLocaleDateString('en-IN', { month: 'short' })}</span>
+                            <span className="text-base font-bold leading-none">{new Date(date).getDate()}</span>
                         </div>
-                        <button onClick={nextDay} className="p-2.5 rounded-xl hover:bg-primary/10 hover:text-primary transition-all text-slate-400"><ChevronRight size={20} /></button>
+                        <button onClick={nextDay} className="p-2 rounded-lg hover:bg-primary/10 hover:text-primary transition-all text-slate-400"><ChevronRight size={18} /></button>
                     </div>
-                    <button onClick={fetchInitialData} className={`p-4 rounded-2xl border ${isDark ? 'bg-white/5 border-white/10 text-slate-400 hover:text-white' : 'bg-white border-slate-200 text-slate-500'}`}><RefreshCw size={20} /></button>
-                    <button className="bg-primary text-white px-8 py-4 rounded-2xl font-bold shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all text-sm flex items-center gap-2">
-                        <Plus size={18} /> New Session
+                    <button onClick={fetchInitialData} className={`p-3 rounded-xl border ${isDark ? 'bg-white/5 border-white/10 text-slate-400 hover:text-white' : 'bg-white border-slate-200 text-slate-500'}`}><RefreshCw size={18} /></button>
+                    <button className="bg-primary text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all text-xs flex items-center gap-2">
+                        <Plus size={16} /> New Session
                     </button>
                 </div>
             </div>
 
             {/* Calendar Grid */}
-            <div className={`rounded-[3rem] border overflow-hidden ${isDark ? 'bg-slate-900/50 border-white/10' : 'bg-white border-slate-200 shadow-xl'}`}>
+            <div className={`rounded-3xl border overflow-hidden ${isDark ? 'bg-slate-900/50 border-white/10' : 'bg-white border-slate-200 shadow-xl'}`}>
                 <div className="overflow-x-auto">
                     <table className="w-full border-collapse" style={{ minWidth: doctors.length * 200 + 100 }}>
                         <thead>
                             <tr className={`${isDark ? 'bg-white/5' : 'bg-slate-50'}`}>
-                                <th className={`p-8 text-center border-b border-r sticky left-0 z-30 w-32 ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100'}`}>
+                                <th className={`p-5 text-center border-b border-r sticky left-0 z-30 w-28 ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100'}`}>
                                     <div className="flex flex-col items-center gap-1">
-                                        <Clock size={16} className="text-primary" />
-                                        <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500">Timeline</span>
+                                        <Clock size={14} className="text-primary" />
+                                        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Time</span>
                                     </div>
                                 </th>
                                 {doctors.map((doc, i) => (
-                                    <th key={doc.id || i} className={`p-8 text-center border-b ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
-                                        <div className="flex flex-col items-center gap-3">
+                                    <th key={doc.id || i} className={`p-4 md:p-5 text-center border-b ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
+                                        <div className="flex flex-col items-center gap-2">
                                             <div className="relative">
-                                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-xl shadow-lg ${isDark ? 'bg-white/10 text-white' : 'bg-primary/10 text-primary'}`}>
+                                                <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center font-bold text-base shadow-md ${isDark ? 'bg-white/10 text-white' : 'bg-primary/10 text-primary'}`}>
                                                     {doc.name?.charAt(0) || 'D'}
                                                 </div>
-                                                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full border-2 border-slate-900" />
                                             </div>
                                             <div>
-                                                <h4 className="font-bold text-base tracking-tight">{doc.name}</h4>
-                                                <p className="text-[9px] font-extrabold text-slate-500 uppercase tracking-[0.2em]">{doc.role || 'Clinician'}</p>
+                                                <h4 className="font-bold text-xs md:text-sm tracking-tight">{doc.name}</h4>
+                                                <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">{doc.role || 'Doctor'}</p>
                                             </div>
                                         </div>
                                     </th>
@@ -140,8 +146,8 @@ export function DoctorCalendar({ theme }: { theme?: 'light' | 'dark' }) {
                         <tbody className="divide-y divide-white/5">
                             {TIME_SLOTS.map((time, rowIdx) => (
                                 <tr key={time} className="group transition-all hover:bg-white/[0.01]">
-                                    <td className={`p-8 sticky left-0 z-20 transition-all border-r ${isDark ? 'bg-slate-900/95 group-hover:bg-slate-900 border-white/5' : 'bg-white group-hover:bg-slate-50 border-slate-100'}`}>
-                                        <span className="text-sm font-bold text-slate-400">{time}</span>
+                                    <td className={`p-4 sticky left-0 z-20 transition-all border-r ${isDark ? 'bg-slate-900/95 group-hover:bg-slate-900 border-white/5' : 'bg-white group-hover:bg-slate-50 border-slate-100'}`}>
+                                        <span className="text-xs font-bold text-slate-400">{time}</span>
                                     </td>
                                     {doctors.map((doc, colIdx) => {
                                         const appt = getApptAt(doc.id, doc.name, time);
@@ -151,13 +157,13 @@ export function DoctorCalendar({ theme }: { theme?: 'light' | 'dark' }) {
                                                     <motion.div
                                                         initial={{ opacity: 0, scale: 0.95 }}
                                                         animate={{ opacity: 1, scale: 1 }}
-                                                        className={`p-4 rounded-2xl border shadow-sm transition-all hover:scale-[1.02] cursor-pointer group/card ${appt.status === 'Confirmed' ? (isDark ? 'bg-primary/10 border-primary/30' : 'bg-primary/5 border-primary/20') :
+                                                        className={`p-3 rounded-xl border shadow-sm transition-all hover:scale-[1.02] cursor-pointer group/card ${appt.status === 'Confirmed' ? (isDark ? 'bg-primary/10 border-primary/30' : 'bg-primary/5 border-primary/20') :
                                                                 appt.status === 'Visited' ? (isDark ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-emerald-500/5 border-emerald-500/20') :
                                                                     (isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200')
                                                             }`}
                                                     >
-                                                        <div className="flex justify-between items-start mb-2">
-                                                            <span className={`text-[9px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-lg ${appt.status === 'Confirmed' ? 'text-primary bg-primary/10' :
+                                                        <div className="flex justify-between items-start mb-1.5">
+                                                            <span className={`text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md ${appt.status === 'Confirmed' ? 'text-primary bg-primary/10' :
                                                                     appt.status === 'Visited' ? 'text-emerald-500 bg-emerald-500/10' :
                                                                         'text-slate-400 bg-white/10'
                                                                 }`}>
@@ -174,9 +180,16 @@ export function DoctorCalendar({ theme }: { theme?: 'light' | 'dark' }) {
                                                         </div>
                                                     </motion.div>
                                                 ) : (
-                                                    <button className={`w-full h-14 rounded-2xl flex items-center justify-center border border-dashed text-slate-500 opacity-5 hover:opacity-100 hover:border-primary hover:text-primary transition-all active:scale-95 ${isDark ? 'border-white/20' : 'border-slate-300'}`}>
-                                                        <Plus size={16} />
+                                                    <button 
+                                                        onClick={() => handleAddSession(doc, time)}
+                                                        className={`w-full h-10 rounded-xl flex items-center justify-center border border-dashed transition-all active:scale-95 text-slate-400 opacity-60 hover:opacity-100 hover:border-primary hover:text-primary hover:bg-primary/5 ${isDark ? 'border-white/20' : 'border-slate-300'}`}
+                                                    >
+                                                        <div className="flex items-center gap-1">
+                                                            <Plus size={14} />
+                                                            <span className="text-[10px] font-bold">Add</span>
+                                                        </div>
                                                     </button>
+
                                                 )}
                                             </td>
                                         );
@@ -191,14 +204,14 @@ export function DoctorCalendar({ theme }: { theme?: 'light' | 'dark' }) {
             {/* Legend */}
             <div className="flex flex-wrap gap-6 justify-center mt-4">
                 {[
-                    { label: 'Confirmed Booking', color: 'bg-primary' },
-                    { label: 'Session Completed', color: 'bg-emerald-500' },
-                    { label: 'Cancelled / Missed', color: 'bg-rose-500' },
-                    { label: 'Consultation Zone', color: 'bg-slate-400' }
+                    { label: 'Confirmed', color: 'bg-primary' },
+                    { label: 'Visited', color: 'bg-emerald-500' },
+                    { label: 'Cancelled', color: 'bg-rose-500' },
+                    { label: 'Manual', color: 'bg-slate-400' }
                 ].map((item, i) => (
                     <div key={i} className="flex items-center gap-2">
-                        <span className={`w-2.5 h-2.5 rounded-full ${item.color} shadow-[0_0_8px_currentColor]`} />
-                        <span className={`text-[10px] font-extrabold uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{item.label}</span>
+                        <span className={`w-2 h-2 rounded-full ${item.color}`} />
+                        <span className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{item.label}</span>
                     </div>
                 ))}
             </div>

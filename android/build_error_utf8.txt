@@ -1,0 +1,100 @@
+﻿ultWorkerServer.execute(DefaultWorke
+rServer.java:68)
+	at org.gradle.workers.internal.NoIs
+olationWorkerFactory$1$1.create(NoIs
+olationWorkerFactory.java:66)
+	at org.gradle.workers.internal.NoIs
+olationWorkerFactory$1$1.create(NoIs
+olationWorkerFactory.java:62)
+	at org.gradle.internal.classloader.
+ClassLoaderUtils.executeInClassloade
+r(ClassLoaderUtils.java:100)
+	at org.gradle.workers.internal.NoIs
+olationWorkerFactory$1.lambda$execut
+e$0(NoIsolationWorkerFactory.java:62
+)
+	at org.gradle.workers.internal.Abst
+ractWorker$1.call(AbstractWorker.jav
+a:44)
+	at org.gradle.workers.internal.Abst
+ractWorker$1.call(AbstractWorker.jav
+a:41)
+	at org.gradle.internal.operations.D
+efaultBuildOperationRunner$CallableB
+uildOperationWorker.execute(DefaultB
+uildOperationRunner.java:209)
+	at org.gradle.internal.operations.D
+efaultBuildOperationRunner$CallableB
+uildOperationWorker.execute(DefaultB
+uildOperationRunner.java:204)
+	at org.gradle.internal.operations.D
+efaultBuildOperationRunner$2.execute
+(DefaultBuildOperationRunner.java:66
+)
+	at org.gradle.internal.operations.D
+efaultBuildOperationRunner$2.execute
+(DefaultBuildOperationRunner.java:59
+)
+	at org.gradle.internal.operations.D
+efaultBuildOperationRunner.execute(D
+efaultBuildOperationRunner.java:166)
+	at org.gradle.internal.operations.D
+efaultBuildOperationRunner.execute(D
+efaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.D
+efaultBuildOperationRunner.call(Defa
+ultBuildOperationRunner.java:53)
+	at org.gradle.workers.internal.Abst
+ractWorker.executeWrappedInBuildOper
+ation(AbstractWorker.java:41)
+	at org.gradle.workers.internal.NoIs
+olationWorkerFactory$1.execute(NoIso
+lationWorkerFactory.java:59)
+	at org.gradle.workers.internal.Defa
+ultWorkerExecutor.lambda$submitWork$
+0(DefaultWorkerExecutor.java:176)
+	at java.base/java.util.concurrent.F
+utureTask.run(FutureTask.java:264)
+	at org.gradle.internal.work.Default
+ConditionalExecutionQueue$ExecutionR
+unner.runExecution(DefaultConditiona
+lExecutionQueue.java:194)
+	at org.gradle.internal.work.Default
+ConditionalExecutionQueue$ExecutionR
+unner.access$700(DefaultConditionalE
+xecutionQueue.java:127)
+	at org.gradle.internal.work.Default
+ConditionalExecutionQueue$ExecutionR
+unner$1.run(DefaultConditionalExecut
+ionQueue.java:169)
+	at org.gradle.internal.Factories$1.
+create(Factories.java:31)
+	at org.gradle.internal.work.Default
+WorkerLeaseService.withLocks(Default
+WorkerLeaseService.java:263)
+	at org.gradle.internal.work.Default
+WorkerLeaseService.runAsWorkerThread
+(DefaultWorkerLeaseService.java:127)
+	at org.gradle.internal.work.Default
+WorkerLeaseService.runAsWorkerThread
+(DefaultWorkerLeaseService.java:132)
+	at org.gradle.internal.work.Default
+ConditionalExecutionQueue$ExecutionR
+unner.runBatch(DefaultConditionalExe
+cutionQueue.java:164)
+	at org.gradle.internal.work.Default
+ConditionalExecutionQueue$ExecutionR
+unner.run(DefaultConditionalExecutio
+nQueue.java:133)
+	at java.base/java.util.concurrent.E
+xecutors$RunnableAdapter.call(Execut
+ors.java:539)
+	at java.base/java.util.concurrent.F
+utureTask.run(FutureTask.java:264)
+	... 5 more
+
+====================================
+====================================
+======
+
+BUILD FAILED in 10s

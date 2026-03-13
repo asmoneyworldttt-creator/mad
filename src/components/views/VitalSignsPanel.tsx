@@ -76,33 +76,33 @@ export function VitalSignsPanel({ patient, theme }: VitalSignsPanelProps) {
         <div className={`rounded-[2rem] border transition-all mb-6 overflow-hidden ${hasWarning ? 'border-rose-500/50 shadow-lg shadow-rose-500/10' : isDark ? 'border-white/10' : 'border-slate-200'} ${isDark ? 'bg-slate-900/80' : 'bg-white'}`}>
             {/* Header */}
             <div
-                className={`flex items-center justify-between px-8 py-5 cursor-pointer ${isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'} transition-all`}
+                className={`flex items-center justify-between px-5 py-3.5 cursor-pointer ${isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'} transition-all`}
                 onClick={() => setCollapsed(!collapsed)}
             >
-                <div className="flex items-center gap-4">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${hasWarning ? 'bg-rose-500/20 text-rose-400' : 'bg-emerald-500/10 text-emerald-500'}`}>
-                        <Heart size={20} className={hasWarning ? 'animate-pulse' : ''} />
+                <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${hasWarning ? 'bg-rose-500/20 text-rose-400' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                        <Heart size={16} className={hasWarning ? 'animate-pulse' : ''} />
                     </div>
                     <div>
-                        <h4 className="font-bold text-sm tracking-wide">Safety Card & Vitals</h4>
-                        {latest && <p className="text-xs text-slate-500 font-medium">
-                            Last: BP {latest.bp_systolic}/{latest.bp_diastolic} mmHg · Pulse {latest.pulse} bpm · SpO2 {latest.spo2}% · {new Date(latest.recorded_at).toLocaleDateString()}
+                        <h4 className="font-bold text-xs tracking-wide">Safety Card & Vitals</h4>
+                        {latest && <p className="text-[10px] text-slate-500 font-medium">
+                            BP {latest.bp_systolic}/{latest.bp_diastolic} mmHg • Pulse {latest.pulse} bpm • SpO2 {latest.spo2}%
                         </p>}
                     </div>
                     {hasWarning && (
-                        <span className="flex items-center gap-1 text-[9px] font-extrabold px-3 py-1 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-full uppercase tracking-widest animate-pulse">
-                            <AlertTriangle size={10} /> Alert
+                        <span className="flex items-center gap-1 text-[8px] font-extrabold px-2 py-0.5 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-full uppercase tracking-widest animate-pulse">
+                            <AlertTriangle size={8} /> Alert
                         </span>
                     )}
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                     <button
                         onClick={(e) => { e.stopPropagation(); setShowLogForm(!showLogForm); setCollapsed(false); }}
-                        className="flex items-center gap-2 text-[10px] font-extrabold px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-xl uppercase tracking-widest hover:bg-primary/20 transition-all"
+                        className="flex items-center gap-1.5 text-[9px] font-extrabold px-3 py-1.5 bg-primary/10 text-primary border border-primary/20 rounded-lg uppercase tracking-widest hover:bg-primary/20 transition-all"
                     >
-                        <Plus size={12} /> Log Vitals
+                        <Plus size={10} /> Log
                     </button>
-                    {collapsed ? <ChevronDown size={18} className="text-slate-400" /> : <ChevronUp size={18} className="text-slate-400" />}
+                    {collapsed ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronUp size={14} className="text-slate-400" />}
                 </div>
             </div>
 

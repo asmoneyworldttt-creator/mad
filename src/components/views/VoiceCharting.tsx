@@ -84,7 +84,7 @@ export function VoiceCharting({ onTranscript, currentText, theme, disabled }: Vo
                 onClick={toggleListening}
                 disabled={disabled}
                 title={isListening ? 'Stop voice charting' : 'Start voice charting'}
-                className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all active:scale-95 disabled:opacity-50 ${isListening
+                className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-[10px] transition-all active:scale-95 disabled:opacity-50 ${isListening
                         ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/30 hover:bg-rose-600'
                         : isDark
                             ? 'bg-white/10 text-slate-300 border border-white/10 hover:bg-white/20 hover:text-white'
@@ -93,13 +93,13 @@ export function VoiceCharting({ onTranscript, currentText, theme, disabled }: Vo
             >
                 {isListening ? (
                     <>
-                        <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                        <MicOff size={14} />
+                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                        <MicOff size={12} />
                         Stop
                     </>
                 ) : (
                     <>
-                        <Mic size={14} />
+                        <Mic size={12} />
                         Voice
                     </>
                 )}

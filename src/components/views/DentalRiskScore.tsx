@@ -121,20 +121,20 @@ export function DentalRiskScore({ patient, toothChartData, vitals, theme }: Risk
     const style = riskStyles[riskLevel];
 
     return (
-        <div className={`p-8 rounded-[2rem] border transition-all ${isDark ? `bg-slate-900 ${style.border}` : `bg-white border-slate-100 shadow-sm`}`}>
-            <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${style.badge}`}>
-                        <Shield size={20} />
+        <div className={`p-5 rounded-2xl border transition-all ${isDark ? `bg-slate-900 ${style.border}` : `bg-white border-slate-100 shadow-sm`}`}>
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${style.badge}`}>
+                        <Shield size={16} />
                     </div>
                     <div>
-                        <h4 className="font-bold text-sm">Dental Risk Score</h4>
-                        <p className={`text-[10px] font-extrabold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>AI-computed patient safety profile</p>
+                        <h4 className="font-bold text-xs">Dental Risk Score</h4>
+                        <p className={`text-[8px] font-extrabold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>AI-computed safety profile</p>
                     </div>
                 </div>
                 <div className="text-right">
-                    <p className={`text-3xl font-bold ${style.color}`}>{totalScore}<span className="text-sm font-medium opacity-50">/100</span></p>
-                    <span className={`text-[9px] font-extrabold px-3 py-1 rounded-full border uppercase tracking-widest ${style.badge}`}>
+                    <p className={`text-xl font-bold ${style.color}`}>{totalScore}<span className="text-[10px] font-medium opacity-50">/100</span></p>
+                    <span className={`text-[7px] font-extrabold px-1.5 py-0.5 rounded-full border uppercase tracking-widest ${style.badge}`}>
                         {riskLevel} Risk
                     </span>
                 </div>

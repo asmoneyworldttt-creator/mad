@@ -18,6 +18,16 @@ export function GlobalAIAssistant({ activeTab }: { activeTab: string }) {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
 
+    // Allow external triggers (e.g. DoctorPanel "Launch Engine" button)
+    useEffect(() => {
+        const handleOpenAI = () => {
+            setIsOpen(true);
+            setIsMinimized(false);
+        };
+        window.addEventListener('dentora:open-ai', handleOpenAI);
+        return () => window.removeEventListener('dentora:open-ai', handleOpenAI);
+    }, []);
+
     useEffect(() => {
         scrollToBottom();
     }, [messages, isTyping]);

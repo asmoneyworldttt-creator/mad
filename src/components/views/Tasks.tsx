@@ -5,6 +5,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Plus, GripVertical, CheckCircle2, AlertCircle, Clock, User, Calendar, Tag } from 'lucide-react';
 import { supabase } from '../../supabase';
 import { useToast } from '../Toast';
+import { CustomSelect } from '../ui/CustomControls';
 
 type TaskStatus = 'todo' | 'in_progress' | 'done';
 type Priority = 'Low' | 'Normal' | 'High' | 'Urgent';
@@ -35,10 +36,10 @@ export function Tasks({ userRole, theme }: { userRole: string; theme?: 'light' |
     ];
 
     const PRIORITY_STYLES: Record<Priority, string> = {
-        Low: 'bg-slate-100 text-slate-500',
-        Normal: 'bg-blue-50 text-blue-500',
-        High: 'bg-amber-50 text-amber-600',
-        Urgent: 'bg-rose-50 text-rose-600'
+        Low: 'bg-slate-100/10 text-slate-500 border-slate-200/20',
+        Normal: 'bg-primary/10 text-primary border-primary/20',
+        High: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+        Urgent: 'bg-rose-500/10 text-rose-500 border-rose-500/20'
     };
 
     const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
@@ -95,16 +96,16 @@ export function Tasks({ userRole, theme }: { userRole: string; theme?: 'light' |
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-                        Clinic Taskboard
+                    <h2 className={`text-3xl font-bold tracking-tight flex items-center gap-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                        Task Board
                         {overdueCount > 0 && (
-                            <span className="text-xs font-extrabold px-3 py-1 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-full uppercase tracking-widest animate-pulse">
+                            <span className="text-[10px] font-extrabold px-3 py-1 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-full uppercase tracking-widest animate-pulse">
                                 {overdueCount} Overdue
                             </span>
                         )}
                     </h2>
                     <p className={`font-medium text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                        Manage internal tasks and follow-ups with drag-and-drop
+                        Manage internal tasks and follow-ups.
                     </p>
                 </div>
                 <button
@@ -118,7 +119,7 @@ export function Tasks({ userRole, theme }: { userRole: string; theme?: 'light' |
             {/* New Task Form */}
             {showForm && (
                 <div className={`p-8 rounded-[2rem] border animate-slide-up ${isDark ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200 shadow-sm'}`}>
-                    <h3 className="font-bold text-lg mb-6">Create New Task</h3>
+                    <h3 className={`font-bold text-lg mb-6 ${isDark ? 'text-white' : 'text-slate-900'}`}>Add New Task</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="md:col-span-2">
                             <input
@@ -135,16 +136,11 @@ export function Tasks({ userRole, theme }: { userRole: string; theme?: 'light' |
                             className={`rounded-2xl px-6 py-4 font-medium text-sm outline-none border resize-none h-24 transition-all ${isDark ? 'bg-white/5 border-white/10 text-white focus:border-primary/50' : 'bg-slate-50 border-slate-200 focus:border-primary'}`}
                         />
                         <div className="space-y-4">
-                            <select
-                                value={newTask.priority}
-                                onChange={e => setNewTask({ ...newTask, priority: e.target.value as Priority })}
-                                className={`w-full rounded-2xl px-6 py-4 font-bold outline-none border transition-all ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200'}`}
-                            >
-                                <option>Low</option>
-                                <option>Normal</option>
-                                <option>High</option>
-                                <option>Urgent</option>
-                            </select>
+                            <CustomSelect 
+                                value={newTask.priority} 
+                                onChange={val => setNewTask({ ...newTask, priority: val as Priority })}
+                                options={['Low', 'Normal', 'High', 'Urgent']}
+                            />
                             <input
                                 type="date"
                                 value={newTask.due_date}
@@ -170,7 +166,7 @@ export function Tasks({ userRole, theme }: { userRole: string; theme?: 'light' |
                     {COLUMNS.map(col => {
                         const colTasks = tasks.filter(t => t.status === col.id);
                         return (
-                            <div key={col.id} className={`rounded-[2rem] border p-6 min-h-[500px] ${isDark ? 'bg-slate-900/60 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
+                            <div key={col.id} className={`rounded-[2rem] border p-6 min-h-[500px] ${isDark ? 'bg-slate-900/60 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
                                 <div className="flex items-center justify-between mb-6">
                                     <div className="flex items-center gap-3">
                                         <col.icon size={18} className={col.color} />
@@ -223,12 +219,12 @@ function SortableTaskCard({ task, columnId, isDark, priorityStyles }: { task: Ta
             {...listeners}
         >
             <div className="flex justify-between items-start mb-2">
-                <span className={`text-[9px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-widest ${priorityStyles[task.priority]}`}>
+                <span className={`text-[9px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-widest border ${priorityStyles[task.priority]}`}>
                     {task.priority}
                 </span>
                 {isOverdue && <span className="text-[9px] font-extrabold text-rose-400 uppercase tracking-widest">Overdue</span>}
             </div>
-            <h4 className="font-bold text-sm mb-1 mt-2">{task.title}</h4>
+            <h4 className={`font-bold text-sm mb-1 mt-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>{task.title}</h4>
             {task.description && <p className={`text-xs line-clamp-2 mb-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{task.description}</p>}
             {task.due_date && (
                 <div className={`flex items-center gap-1 text-[10px] font-bold ${isOverdue ? 'text-rose-400' : isDark ? 'text-slate-500' : 'text-slate-400'}`}>

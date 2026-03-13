@@ -1,24 +1,25 @@
 
 import { useState, useEffect } from 'react';
-import { Plus, ChevronRight, CheckCircle2, Clock, XCircle, Trash2, Save, ArrowLeft, Search } from 'lucide-react';
+import { Plus, ChevronRight, CheckCircle2, Clock, XCircle, Trash2, Save, ArrowLeft, Search, Calendar } from 'lucide-react';
 import { supabase } from '../../supabase';
 import { useToast } from '../Toast';
 import { Modal } from '../Modal';
+import { CustomSelect } from '../ui/CustomControls';
 
-type UserRole = 'admin' | 'staff' | 'doctor' | 'patient';
+type UserRole = 'master' | 'admin' | 'staff' | 'patient';
 const formatINR = (v: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(v);
 
 const STATUS_CONFIG: any = {
-    Draft: { color: 'text-slate-500 bg-slate-100 border-slate-200' },
+    Draft: { color: 'text-slate-500 bg-slate-100/10 border-slate-200/20' },
     Active: { color: 'text-primary bg-primary/10 border-primary/20' },
-    Completed: { color: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
-    Cancelled: { color: 'text-rose-500 bg-rose-50 border-rose-200' },
+    Completed: { color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20' },
+    Cancelled: { color: 'text-rose-500 bg-rose-500/10 border-rose-500/20' },
 };
 
 const ITEM_STATUS_CONFIG: any = {
-    Pending: { icon: Clock, color: 'text-amber-500 bg-amber-50 border-amber-100' },
-    'In Progress': { icon: ChevronRight, color: 'text-blue-500 bg-blue-50 border-blue-100' },
-    Done: { icon: CheckCircle2, color: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
+    Pending: { icon: Clock, color: 'text-amber-500 bg-amber-500/10 border-amber-500/20' },
+    'In Progress': { icon: ChevronRight, color: 'text-blue-500 bg-blue-500/10 border-blue-500/20' },
+    Done: { icon: CheckCircle2, color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20' },
 };
 
 const TREATMENTS = [
@@ -28,7 +29,7 @@ const TREATMENTS = [
     'Gum Treatment (Flap Surgery)', 'Night Guard', 'Bleaching Tray', 'Veneer', 'Bridge (PFM)'
 ];
 
-export function TreatmentPlans({ userRole, theme }: { userRole: UserRole; theme?: 'light' | 'dark' }) {
+export function TreatmentPlans({ userRole, theme, setActiveTab }: { userRole: UserRole; theme?: 'light' | 'dark'; setActiveTab?: (tab: string) => void }) {
     const { showToast } = useToast();
     const isDark = theme === 'dark';
 
@@ -147,15 +148,26 @@ export function TreatmentPlans({ userRole, theme }: { userRole: UserRole; theme?
         return (
             <div className="animate-slide-up space-y-6 pb-10">
                 <div className="flex items-center gap-4">
-                    <button onClick={() => setView('list')} className={`p-3 rounded-2xl border transition-all ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`}><ArrowLeft size={20} /></button>
+                    <button onClick={() => setView('list')} className={`p-3 rounded-2xl border transition-all ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`} aria-label="Back to plans list"><ArrowLeft size={20} /></button>
                     <div className="flex-1">
                         <h2 className={`text-2xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>{selectedPlan.title}</h2>
                         <p className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{selectedPlan.patients?.name} · {selectedPlan.patients?.phone}</p>
                     </div>
-                    <select value={selectedPlan.status} onChange={e => handleUpdatePlanStatus(selectedPlan.id, e.target.value)} className={`px-4 py-2 rounded-xl font-bold text-sm border outline-none ${STATUS_CONFIG[selectedPlan.status]?.color || 'bg-slate-100 text-slate-600'}`}>
-                        <option>Draft</option><option>Active</option><option>Completed</option><option>Cancelled</option>
-                    </select>
-                    <button onClick={() => { setPlanToDelete(selectedPlan.id); setShowDeleteModal(true); }} className="p-3 rounded-2xl border border-rose-200 bg-rose-50 text-rose-500 hover:bg-rose-100 transition-all"><Trash2 size={18} /></button>
+                    <button
+                        onClick={() => setActiveTab?.('appointments')}
+                        className="px-5 py-2.5 rounded-2xl text-sm font-bold flex items-center gap-2 text-white transition-all hover:scale-105"
+                        style={{ background: 'var(--primary)', boxShadow: '0 4px 16px var(--primary-glow)' }}
+                        aria-label="Schedule appointment for this patient"
+                    >
+                        <Calendar size={16} aria-hidden="true" /> Schedule Appointment
+                    </button>
+                    <CustomSelect 
+                        value={selectedPlan.status} 
+                        onChange={val => handleUpdatePlanStatus(selectedPlan.id, val)}
+                        options={['Draft', 'Active', 'Completed', 'Cancelled']}
+                        className="w-40"
+                    />
+                    <button onClick={() => { setPlanToDelete(selectedPlan.id); setShowDeleteModal(true); }} className="p-3 rounded-2xl border transition-all" style={{ background: 'var(--red-soft)', borderColor: 'var(--red-subtle)', color: 'var(--error)' }} aria-label="Delete treatment plan"><Trash2 size={18} /></button>
                 </div>
 
                 {/* Progress Cards */}
@@ -380,7 +392,7 @@ export function TreatmentPlans({ userRole, theme }: { userRole: UserRole; theme?
             <div className={`p-6 rounded-[2.5rem] border flex flex-col md:flex-row justify-between items-center gap-4 ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
                 <div>
                     <h2 className={`text-2xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>Treatment Plans</h2>
-                    <p className={`text-sm font-medium mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Build, track, and manage comprehensive dental treatment roadmaps.</p>
+                    <p className={`text-sm font-medium mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Create and track treatment plans for your patients.</p>
                 </div>
                 <button onClick={() => setView('new')} className="flex items-center gap-2 px-6 py-3.5 bg-primary text-white rounded-2xl font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 active:scale-95 transition-all">
                     <Plus size={18} /> New Plan

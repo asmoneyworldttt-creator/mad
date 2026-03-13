@@ -1,7 +1,7 @@
 import { MapPin, Phone, Mail, Award, Edit3, Image as ImageIcon } from 'lucide-react';
 import { useToast } from '../Toast';
 
-type UserRole = 'admin' | 'staff' | 'doctor' | 'patient';
+type UserRole = 'master' | 'admin' | 'staff' | 'patient';
 
 export function Profile({ userRole, theme }: { userRole: UserRole; theme?: 'light' | 'dark' }) {
     const { showToast } = useToast();

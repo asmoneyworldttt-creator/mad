@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { supabase } from '../supabase';
 
 
-type UserRole = 'admin' | 'staff' | 'doctor' | 'patient';
+type UserRole = 'master' | 'admin' | 'staff' | 'patient';
 
 interface HeaderProps {
     toggleMenu: () => void;
@@ -107,41 +107,58 @@ export function Header({ toggleMenu, userRole, setUserRole, setActiveTab, setGlo
     };
 
     return (
-        <div className={`h-20 ${theme === 'dark' ? 'border-primary/10 bg-surface/80' : 'border-slate-200 bg-slate-50 shadow-sm'} backdrop-blur-3xl sticky top-0 z-40 flex items-center justify-between px-4 md:px-8 transition-all duration-500 ease-fluid border-b border-primary/10`}>
+        <div className="h-16 sticky top-0 z-40 flex items-center justify-between px-4 md:px-5 transition-all duration-300"
+            style={{
+                background: 'var(--card-bg)',
+                backdropFilter: 'blur(15px)',
+                borderBottom: '1px solid var(--border-color)',
+                boxShadow: '0 1px 12px var(--glass-shadow)',
+            }}>
             <div className="flex items-center gap-4 flex-1">
                 <button onClick={toggleMenu} className={`lg:hidden p-2.5 rounded-xl transition-all duration-300 ease-fluid active:scale-90 hover:scale-105 ${theme === 'dark' ? 'text-primary/70 hover:text-primary hover:bg-primary/10 hover:shadow-neon' : 'text-slate-600 hover:bg-slate-100'}`}>
                     <Menu size={24} />
                 </button>
 
-                {['admin', 'staff', 'doctor'].includes(userRole) && (
-                    <div ref={searchRef} className="relative w-full max-w-md hidden md:block group">
-                        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-primary transition-colors duration-300" />
+                {['master', 'admin', 'staff'].includes(userRole) && (
+                    <div ref={searchRef} className="relative w-full max-w-sm hidden md:block group">
+                        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-300" style={{ color: 'var(--text-muted)' }} />
                         <input
                             id="global-search-input"
                             type="text"
                             value={searchQuery}
                             onChange={handleSearchChange}
                             onKeyDown={handleSearch}
-                            placeholder="Global Search (Name, Patient ID, Phone)..."
-                            className={`w-full ${theme === 'dark' ? 'bg-background-dark/50 border-primary/20 shadow-inner hover:border-primary/40 focus:shadow-neon focus:ring-primary/20' : 'bg-slate-50 border-slate-200 focus:bg-white focus:ring-blue-500/20'} border rounded-full py-2.5 pl-11 pr-4 text-sm focus:outline-none focus:border-primary/60 transition-all duration-300 ease-fluid text-text-main placeholder-slate-500 font-sans tracking-wide`}
+                            placeholder="Global Search..."
+                            className="w-full rounded-full py-1.5 pl-10 pr-4 text-xs focus:outline-none transition-all duration-300 font-sans tracking-wide"
+                            style={{
+                                background: 'var(--card-bg-alt)',
+                                border: '1px solid var(--border-color)',
+                                color: 'var(--text-main)',
+                            }}
                         />
                         {liveResults.length > 0 && (
-                            <div className={`absolute top-full left-0 w-full mt-3 rounded-2xl overflow-hidden z-50 animate-slide-up transform-gpu ${theme === 'dark' ? 'bg-surface/95 border border-primary/20 shadow-neon backdrop-blur-xl' : 'bg-white border border-slate-200 shadow-premium'}`}>
-                                <div className={`p-3 border-b text-[11px] font-display tracking-widest text-center ${theme === 'dark' ? 'border-primary/10 bg-primary/5 text-primary' : 'border-slate-100 bg-slate-50/50 text-slate-400 font-bold'}`}>
+                            <div className="absolute top-full left-0 w-full mt-3 rounded-2xl overflow-hidden z-50 animate-slide-up"
+                                style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)', boxShadow: '0 12px 40px var(--glass-shadow)' }}>
+                                <div className="p-3 border-b text-[11px] font-black tracking-widest text-center uppercase"
+                                    style={{ borderColor: 'var(--border-color)', color: 'var(--primary)', background: 'var(--primary-soft)' }}>
                                     Live Results — Quick Access
                                 </div>
                                 {liveResults.map(p => (
                                     <div
                                         key={p.id}
                                         onClick={() => handleSelectPatient(p)}
-                                        className={`p-3.5 cursor-pointer transition-all duration-300 ease-fluid flex items-center gap-3 border-b last:border-0 hover:pl-5 group/item ${theme === 'dark' ? 'border-primary/5 hover:bg-primary/10' : 'border-slate-50 hover:bg-primary/5'}`}
+                                        className="p-3.5 cursor-pointer transition-all duration-200 flex items-center gap-3 border-b last:border-0 hover:pl-5"
+                                        style={{ borderColor: 'var(--border-subtle)' }}
+                                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--primary-soft)')}
+                                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                                     >
-                                        <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-display font-medium text-lg shadow-inner group-hover/item:bg-primary group-hover/item:text-background transition-all duration-300 group-hover/item:shadow-neon">
+                                        <div className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg transition-all"
+                                            style={{ background: 'var(--primary-soft)', color: 'var(--primary)' }}>
                                             {p.name.charAt(0)}
                                         </div>
                                         <div className="flex-1">
-                                            <p className="font-sans text-sm text-text-main group-hover/item:text-primary transition-colors duration-300">{p.name}</p>
-                                            <p className="font-sans text-[11px] text-text-muted opacity-70">{p.id} • {p.phone}</p>
+                                            <p className="font-bold text-sm" style={{ color: 'var(--text-main)' }}>{p.name}</p>
+                                            <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{p.id} • {p.phone}</p>
                                         </div>
                                     </div>
                                 ))}
@@ -153,16 +170,19 @@ export function Header({ toggleMenu, userRole, setUserRole, setActiveTab, setGlo
 
             <div className="flex items-center gap-3 md:gap-4 text-slate-400">
                 {/* Manual role switcher hidden in production, used only by admin for development */}
-                {userRole === 'admin' && (
-                    <div className={`hidden xl:flex items-center gap-2 p-1.5 border rounded-full transition-all duration-500 ease-fluid ${theme === 'dark' ? 'bg-surface/60 border-primary/10 shadow-inner backdrop-blur-md' : 'bg-slate-100 border-slate-200 shadow-sm'}`}>
-                        {(['admin', 'staff', 'doctor', 'patient'] as UserRole[]).map((r) => (
+                {userRole === 'master' && (
+                    <div className="hidden xl:flex items-center gap-2 p-1.5 border rounded-full transition-all duration-500"
+                        style={{ background: 'var(--card-bg-alt)', border: '1px solid var(--border-color)' }}>
+                        {(['master', 'admin', 'staff', 'patient'] as UserRole[]).map((r) => (
                             <button
                                 key={r}
                                 onClick={() => setUserRole(r)}
-                                className={`px-4 py-1.5 rounded-full text-[11px] font-display tracking-wide font-medium transition-all duration-300 ease-fluid capitalize ${userRole === r
-                                    ? theme === 'dark' ? 'bg-primary/20 text-primary shadow-[0_0_10px_rgba(0,240,255,0.4)] scale-105 border border-primary/40' : 'bg-white text-blue-600 shadow-md border-slate-200 font-bold'
-                                    : 'text-text-muted hover:text-primary hover:scale-105'
-                                    }`}
+                                className="px-4 py-1.5 rounded-full text-[11px] font-black tracking-wide transition-all duration-300 capitalize hover:scale-105"
+                                style={{
+                                    background: userRole === r ? 'var(--primary)' : 'transparent',
+                                    color: userRole === r ? '#fff' : 'var(--text-muted)',
+                                    boxShadow: userRole === r ? '0 2px 12px var(--primary-glow)' : 'none',
+                                }}
                             >
                                 {r}
                             </button>
@@ -170,39 +190,34 @@ export function Header({ toggleMenu, userRole, setUserRole, setActiveTab, setGlo
                     </div>
                 )}
 
-                {['admin', 'staff', 'doctor'].includes(userRole) && waitingCount > 0 && (
-                    <div className={`hidden lg:flex items-center gap-3 px-4 py-2 rounded-full border transition-all duration-300 ${theme === 'dark'
-                        ? 'bg-alert/5 border-alert/20 animate-pulse shadow-[0_0_15px_rgba(245,166,35,0.15)]'
-                        : 'bg-orange-50 border-orange-200 shadow-sm'
-                        }`}>
-                        <div className={`w-2 h-2 rounded-full animate-ring-pulse ${theme === 'dark' ? 'bg-alert' : 'bg-orange-500'}`} />
-                        <span className={`font-display text-[11px] tracking-widest font-medium ${theme === 'dark' ? 'text-alert' : 'text-orange-700 font-bold'}`}>
-                            {waitingCount} {waitingCount === 1 ? 'Patient' : 'Patients'} Waiting
+                {['master', 'admin', 'staff'].includes(userRole) && waitingCount > 0 && (
+                    <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full border"
+                        style={{ background: 'var(--warning-soft)', borderColor: 'var(--warning)', color: 'var(--warning)' }}>
+                        <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--warning)' }} />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">
+                            {waitingCount} {waitingCount === 1 ? 'Waiting' : 'Waiting'}
                         </span>
                     </div>
                 )}
 
-                <button onClick={() => setActiveTab('notifications')} className={`relative transition-all duration-300 ease-fluid p-2.5 rounded-xl border border-transparent hover:scale-105 active:scale-90 ${theme === 'dark'
-                    ? 'text-primary/60 hover:text-primary hover:bg-primary/10 hover:border-primary/20 hover:shadow-neon'
-                    : 'text-slate-600 hover:bg-slate-100'
-                    }`}>
+                <button onClick={() => setActiveTab('notifications')} className="relative transition-all duration-300 p-2.5 rounded-xl hover:scale-105 active:scale-90"
+                    style={{ color: 'var(--text-muted)' }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--primary-soft)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                     <Bell size={20} />
-                    <span className={`absolute top-2 right-2 w-2 h-2 rounded-full border transition-all ${theme === 'dark'
-                        ? 'bg-primary border-surface shadow-neon animate-pulse'
-                        : 'bg-red-500 border-white'
-                        }`} />
+                    <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-500 border-2" style={{ borderColor: 'var(--card-bg)' }} />
                 </button>
 
                 <button
                     onClick={() => {
                         const newTheme = theme === 'dark' ? 'light' : 'dark';
                         setTheme(newTheme);
-                        showToast(`Initiating ${newTheme.charAt(0).toUpperCase() + newTheme.slice(1)} Protocol`, 'success');
+                        showToast(`Switched to ${newTheme} mode`, 'success');
                     }}
-                    className={`p-2.5 rounded-xl border border-transparent transition-all duration-300 ease-fluid hover:scale-105 active:scale-90 ${theme === 'dark'
-                        ? 'text-primary/60 hover:text-primary hover:bg-primary/10 hover:border-primary/20 hover:shadow-neon'
-                        : 'text-slate-500 hover:text-primary hover:bg-slate-100 hover:border-slate-200'
-                        }`}
+                    className="p-2.5 rounded-xl transition-all duration-300 hover:scale-105 active:scale-90"
+                    style={{ color: 'var(--text-muted)' }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--primary-soft)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
                     {theme === 'dark' ? <Moon size={20} /> : <Sun size={20} />}
                 </button>
@@ -210,22 +225,20 @@ export function Header({ toggleMenu, userRole, setUserRole, setActiveTab, setGlo
                 {onLogout && (
                     <button
                         onClick={onLogout}
-                        className={`p-2.5 rounded-xl border border-transparent transition-all duration-300 ease-fluid hover:scale-105 active:scale-90 ${theme === 'dark'
-                            ? 'text-danger/70 hover:text-danger hover:bg-danger/10 hover:border-danger/20 hover:shadow-[0_0_15px_rgba(255,76,76,0.2)]'
-                            : 'text-slate-500 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200'
-                            }`}
-                        title="Disconnect Clinical Node"
+                        className="p-2.5 rounded-xl transition-all duration-300 hover:scale-105 active:scale-90 text-rose-500"
+                        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(220,38,38,0.08)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                        title="Sign Out"
                     >
                         <LogOut size={20} />
                     </button>
                 )}
 
-                {['admin', 'staff', 'doctor'].includes(userRole) && (
-                    <button onClick={() => setActiveTab('patient-registration')} className="bg-transparent hover:bg-primary/10 text-primary shadow-none hover:shadow-neon px-5 py-2.5 rounded-full flex items-center gap-2 transition-all duration-300 ease-fluid hover:-translate-y-0.5 active:scale-95 group border border-primary/50 relative overflow-hidden">
-                        {/* Glow Sweep Effect */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/20 to-transparent -translate-x-[150%] outline-offset-0 group-hover:transition-all group-hover:duration-700 group-hover:ease-fluid group-hover:translate-x-[150%]"></div>
-                        <UserPlus size={18} className="transition-transform duration-300 ease-expo group-hover:rotate-12 group-hover:scale-110 relative z-10" />
-                        <span className="hidden xl:inline font-display text-[12px] font-medium tracking-wide relative z-10">New Node</span>
+                {['master', 'admin', 'staff'].includes(userRole) && (
+                    <button onClick={() => setActiveTab('patient-registration')} className="px-4 py-2 rounded-full flex items-center gap-2 transition-all duration-300 hover:-translate-y-0.5 active:scale-95 group font-bold text-[10px] uppercase tracking-wider text-white"
+                        style={{ background: 'var(--primary)', boxShadow: '0 2px 8px var(--primary-glow)' }}>
+                        <UserPlus size={16} />
+                        <span className="hidden xl:inline">New Patient</span>
                     </button>
                 )}
             </div>

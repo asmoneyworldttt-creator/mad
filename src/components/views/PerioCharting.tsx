@@ -24,33 +24,33 @@ export function PerioCharting({ theme, patientId }: { theme?: 'light' | 'dark', 
     return (
         <div className="animate-slide-up space-y-8 pb-20">
             {/* Header */}
-            <div className={`p-8 rounded-[2.5rem] border flex flex-col md:flex-row justify-between items-start md:items-center gap-6 ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
+            <div className={`p-4 rounded-2xl border flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
                 <div>
-                    <h2 className="text-3xl font-sans font-bold tracking-tight flex items-center gap-3">
-                        <TrendingUp className="text-primary" />
+                    <h2 className="text-xl font-sans font-bold tracking-tight flex items-center gap-2">
+                        <TrendingUp className="text-primary" size={18} />
                         Perio-Diagnostic Engine
                     </h2>
-                    <p className={`text-sm font-medium mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                        Tracking gingival biotypes and periodontal attachment levels over time
+                    <p className={`text-[10px] font-medium mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        Gingival biotypes & attachment level tracking
                     </p>
                 </div>
-                <div className="flex items-center gap-3">
-                    <div className={`flex items-center p-1 rounded-2xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
+                <div className="flex items-center gap-2">
+                    <div className={`flex items-center p-1 rounded-xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
                         <button
                             onClick={() => setActiveView('chart')}
-                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeView === 'chart' ? 'bg-white shadow-sm text-primary' : 'text-slate-500'}`}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${activeView === 'chart' ? 'bg-white shadow-sm text-primary' : 'text-slate-500'}`}
                         >
                             Active Chart
                         </button>
                         <button
                             onClick={() => setActiveView('trends')}
-                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeView === 'trends' ? 'bg-white shadow-sm text-primary' : 'text-slate-500'}`}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${activeView === 'trends' ? 'bg-white shadow-sm text-primary' : 'text-slate-500'}`}
                         >
-                            Historical Trends
+                            Trends
                         </button>
                     </div>
-                    <button className="bg-primary text-white px-8 py-4 rounded-2xl font-bold shadow-lg shadow-primary/20 flex items-center gap-2 hover:scale-105 transition-all text-sm">
-                        <Save size={18} /> Commit Record
+                    <button className="bg-primary text-white px-5 py-2.5 rounded-xl font-bold shadow-lg shadow-primary/20 flex items-center gap-1.5 hover:scale-105 transition-all text-[11px]">
+                        <Save size={14} /> Commit
                     </button>
                 </div>
             </div>
@@ -58,8 +58,8 @@ export function PerioCharting({ theme, patientId }: { theme?: 'light' | 'dark', 
             {activeView === 'chart' ? (
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                     {/* Tooth Grid */}
-                    <div className={`lg:col-span-3 p-10 rounded-[3rem] border ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
-                        <div className="grid grid-cols-8 md:grid-cols-16 gap-3 mb-12">
+                    <div className={`lg:col-span-3 p-5 rounded-3xl border ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
+                        <div className="grid grid-cols-8 md:grid-cols-16 gap-2 mb-8">
                             {TOOTH_NUMBERS.map(num => (
                                 <button
                                     key={num}
@@ -78,15 +78,15 @@ export function PerioCharting({ theme, patientId }: { theme?: 'light' | 'dark', 
 
                         {selectedTooth ? (
                             <motion.div
-                                initial={{ opacity: 0, y: 20 }}
+                                initial={{ opacity: 0, y: 15 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className={`p-8 rounded-[2.5rem] border ${isDark ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-100'}`}
+                                className={`p-5 rounded-2xl border ${isDark ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-100'}`}
                             >
-                                <div className="flex items-center justify-between mb-8">
-                                    <h4 className="text-xl font-bold flex items-center gap-3">
-                                        <Plus className="text-primary" /> Tooth #{selectedTooth} Biometrics
+                                <div className="flex items-center justify-between mb-5">
+                                    <h4 className="text-base font-bold flex items-center gap-2">
+                                        <Plus className="text-primary" size={16} /> Tooth #{selectedTooth} Biometrics
                                     </h4>
-                                    <button onClick={() => setSelectedTooth(null)} className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest hover:text-primary transition-colors">Deselect</button>
+                                    <button onClick={() => setSelectedTooth(null)} className="text-[8px] font-extrabold text-slate-500 uppercase tracking-widest hover:text-primary transition-colors">Deselect</button>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

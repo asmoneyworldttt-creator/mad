@@ -4,7 +4,7 @@ import { Bell, Send, Phone, MessageCircle, Calendar, CheckCircle2, Clock, Refres
 import { supabase } from '../../supabase';
 import { useToast } from '../Toast';
 
-type UserRole = 'admin' | 'staff' | 'doctor' | 'patient';
+type UserRole = 'master' | 'admin' | 'staff' | 'patient';
 
 const STATUS_COLOR: any = {
     Sent: 'text-emerald-600 bg-emerald-50 border-emerald-200',
