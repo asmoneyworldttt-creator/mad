@@ -325,12 +325,12 @@ export function Dashboard({ setActiveTab, userRole, theme }: { setActiveTab?: (t
                 </div>
                 <div className="flex flex-wrap justify-center md:justify-end gap-2 relative z-10 w-full md:w-auto">
                     <button onClick={() => {
-                        window.open('https://github.com/asmoneyworldttt-creator/mad/releases', '_blank');
-                        showToast('Opening Releases...', 'success');
+                        window.open('https://github.com/asmoneyworldttt-creator/mad/releases/latest/download/DentiSphere-Android-APK.apk', '_blank');
+                        showToast('Starting Direct Download...', 'success');
                     }}
                         className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[9px] font-bold transition-all bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 hover:bg-emerald-500/20 shadow-sm active:scale-95"
                     >
-                        <Smartphone size={12} /> Get App
+                        <Smartphone size={12} /> Direct APK
                     </button>
                     <button onClick={fetchAll}
                         className="w-9 h-9 rounded-lg flex items-center justify-center transition-all bg-white/5 hover:bg-white/10 active:scale-95 shadow-sm duration-500"
