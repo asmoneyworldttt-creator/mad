@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Search, Plus, Save, IndianRupee, ArrowLeft, FlaskConical, SearchX } from 'lucide-react';
+import { Search, Plus, Save, IndianRupee, ArrowLeft, FlaskConical, SearchX, Download } from 'lucide-react';
 import { useToast } from '../../components/Toast';
 import { supabase } from '../../supabase';
 import { SkeletonList } from '../SkeletonLoader';
 import { EmptyState } from '../EmptyState';
 import { CustomSelect } from '../ui/CustomControls';
+import { downloadLabOrderPDF } from '../../utils/pdfExport';
 
 type UserRole = 'master' | 'admin' | 'staff' | 'patient';
 
@@ -84,25 +85,87 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
     };
 
     const handleSaveOrder = async () => {
+        if (!selectedPatient && !formData.patientSearch) return showToast('Please select a patient', 'error');
+        
         const totalAmount = (formData.financial.qty * formData.financial.rate) + formData.financial.tax - formData.financial.discount;
 
-        const { error } = await supabase.from('lab_orders').insert({
+        const { data: insertedData, error } = await supabase.from('lab_orders').insert({
             patient_id: selectedPatient?.id,
-            vendor_name: formData.vendor,
-            order_status: 'Pending',
+            vendor_name: formData.vendor || 'Unknown Lab',
+            order_status: formData.financial.status || 'Pending',
             order_date: formData.orderDate,
-            patient_name: selectedPatient?.name || formData.patientSearch
-        });
+            metadata: {
+                time: formData.time,
+                doctor: formData.doctor,
+                selectedTeeth: formData.selectedTeeth,
+                preOp: formData.preOp,
+                prosthesis: formData.prosthesis,
+                surfaceCluster: formData.surfaceCluster,
+                ponticType: formData.ponticType,
+                shades: formData.shades,
+                delivery: formData.delivery,
+                financial: formData.financial,
+                totalAmount,
+                patient_name: selectedPatient?.name || formData.patientSearch
+            }
+        }).select().single();
 
         if (error) {
-            showToast('Error saving lab order', 'error');
+            showToast('Error saving lab order: ' + error.message, 'error');
         } else {
+            // Sync to general patient history
+            await supabase.from('patient_history').insert({
+                patient_id: selectedPatient?.id,
+                date: formData.orderDate,
+                treatment: 'Lab Order Placed',
+                notes: `Vendor: ${formData.vendor || 'Unknown'}. Status: ${formData.financial.status}`,
+                category: 'Clinical',
+                doctor_name: formData.doctor
+            });
+
             showToast('Lab Order created successfully!', 'success');
+            
+            // Auto-download PDF
+            handleDownloadPDF({
+                ...insertedData,
+                patients: selectedPatient
+            });
+
             setView('list');
             setSelectedPatient(null);
+            setFormData({
+                ...formData,
+                patientSearch: '',
+                selectedTeeth: [],
+                preOp: [],
+                prosthesis: [],
+                vendor: ''
+            });
             fetchLabOrders();
         }
     };
+
+    const handleDownloadPDF = (o: any) => {
+        const meta = o.metadata || {};
+        downloadLabOrderPDF({
+            orderId: o.id,
+            date: o.order_date,
+            patientName: o.patients?.name || meta.patient_name || 'Patient',
+            patientPhone: o.patients?.phone || '',
+            doctorName: meta.doctor || 'Dr. Sarah Jenkins',
+            vendorName: o.vendor_name,
+            teeth: meta.selectedTeeth?.join(', ') || 'N/A',
+            details: `Prosthesis: ${meta.prosthesis?.join(', ') || 'N/A'}\nSurface: ${meta.surfaceCluster || 'N/A'}\nPontic: ${meta.ponticType || 'N/A'}\nNotes: ${meta.delivery?.notes || 'N/A'}`,
+            status: o.order_status,
+            deliveryDates: {
+                trial: meta.delivery?.trial || meta.delivery?.metal,
+                bisque: meta.delivery?.bisque,
+                final: meta.delivery?.final
+            }
+        });
+        showToast('Lab Order PDF downloaded!', 'success');
+    };
+
 
     // Tooth Map config
     const upperTeeth = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
@@ -449,7 +512,10 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                                     <td className="p-4 text-right">
                                         <p className="text-sm font-bold text-primary">—</p>
                                     </td>
-                                    <td className="p-4 text-right">
+                                    <td className="p-4 text-right flex items-center justify-end gap-2">
+                                        <button onClick={() => handleDownloadPDF(o)} className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 transition-all text-slate-600">
+                                            <Download size={16} />
+                                        </button>
                                         <button className="text-xs font-bold text-primary hover:text-primary-hover px-3 py-1.5 rounded bg-primary/5 hover:bg-primary/10 transition-colors">
                                             View/Edit
                                         </button>

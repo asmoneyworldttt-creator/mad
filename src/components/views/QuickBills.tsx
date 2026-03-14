@@ -41,7 +41,7 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
 
     useEffect(() => {
         if (searchQuery.length > 2) {
-            supabase.from('patients').select('*').or(`name.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%`).limit(5)
+            supabase.from('patients').select('*').or(`name.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%,id.ilike.%${searchQuery}%`).limit(5)
                 .then(({ data }) => setSearchResults(data || []));
         } else setSearchResults([]);
     }, [searchQuery]);
@@ -73,9 +73,9 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
         const date = clinicInfo.date;
         const invoiceNo = getInvoiceNumber();
 
-        const { error: billError } = await supabase.from('bills').insert({
-            id: invoiceNo,
+        const { data: billData, error: billError } = await supabase.from('bills').insert({
             patient_id: patientId,
+            patient_name: patientInfo.name,
             amount: totalPayable,
             status: billingInfo.paymentStatus.toLowerCase(),
             date,
@@ -87,16 +87,17 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
             notes: treatmentInfo.observationNotes,
             doctor_name: clinicInfo.doctor,
             invoice_number: invoiceNo,
-        });
+        }).select().single();
 
+        // Also sync to general patient history for the Overview tab
         await supabase.from('patient_history').insert({
-            id: `HST-${Math.floor(Math.random() * 100000)}`,
             patient_id: patientId,
             date,
-            treatment: treatmentInfo.treatmentDone || 'General Consultation',
-            category: 'General',
+            treatment: `Bill Generated: ${invoiceNo}`,
+            category: 'Financial',
             cost: totalPayable,
-            notes: treatmentInfo.observationNotes,
+            notes: `Treatment: ${treatmentInfo.treatmentDone || 'General Consultation'}. Method: ${billingInfo.paymentMethod}`,
+            doctor_name: clinicInfo.doctor
         });
 
         if (followUpInfo.followUpDate) {

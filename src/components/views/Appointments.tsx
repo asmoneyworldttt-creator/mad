@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Modal } from '../../components/Modal';
 import { useToast } from '../../components/Toast';
 import { supabase } from '../../supabase';
@@ -8,33 +8,52 @@ import {
     Calendar as CalendarIcon,
     Plus,
     ChevronLeft,
-    ChevronRight,
     Clock,
     User,
-    MoreVertical,
-    AlertCircle,
     Search,
     Filter,
     Edit3,
-    Trash2
+    Trash2,
+    Stethoscope,
+    Building2,
+    CalendarDays,
+    Users,
+    CheckCircle2,
+    X,
+    MoreHorizontal
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 type UserRole = 'master' | 'admin' | 'staff' | 'patient';
 
-export function Appointments({ userRole, setActiveTab, theme }: { userRole: UserRole; setActiveTab: (tab: string) => void; theme?: 'light' | 'dark' }) {
+const formatTime = (time: string) => {
+    try {
+        const [h, m] = time.split(':');
+        const hr = parseInt(h);
+        const ampm = hr >= 12 ? 'PM' : 'AM';
+        const h12 = hr % 12 || 12;
+        return `${h12}:${m} ${ampm}`;
+    } catch (e) {
+        return time;
+    }
+};
+
+export function Appointments({ userRole, theme, setActiveTab }: { userRole: UserRole; theme?: 'light' | 'dark'; setActiveTab?: (tab: string) => void }) {
     const today = new Date().toISOString().split('T')[0];
     const [view, setView] = useState<'list' | 'add' | 'edit'>('list');
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
     const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
     const [appointments, setAppointments] = useState<any[]>([]);
+    const [doctors, setDoctors] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedDate, setSelectedDate] = useState(today);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
+    const [doctorFilter, setDoctorFilter] = useState('All');
     const { showToast } = useToast();
+    const dateStripRef = useRef<HTMLDivElement>(null);
 
-    // Form State for Add/Edit
+    // Form State
     const [formData, setFormData] = useState({
         name: '',
         date: today,
@@ -42,11 +61,21 @@ export function Appointments({ userRole, setActiveTab, theme }: { userRole: User
         type: 'Consultation',
         purpose: '',
         status: 'Confirmed',
-        toothId: ''
+        toothId: '',
+        doctorId: '',
+        doctorName: '',
+        patientId: ''
     });
+
+    // Patient Search in Form
+    const [patientSearch, setPatientSearch] = useState('');
+    const [patientResults, setPatientResults] = useState<any[]>([]);
+    const [isSearchingPatients, setIsSearchingPatients] = useState(false);
+    const [showPatientResults, setShowPatientResults] = useState(false);
 
     useEffect(() => {
         fetchAppointments();
+        fetchDoctors();
 
         const channel = supabase
             .channel('appointments_realtime')
@@ -58,11 +87,40 @@ export function Appointments({ userRole, setActiveTab, theme }: { userRole: User
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [selectedDate, statusFilter]);
+    }, [selectedDate, statusFilter, doctorFilter]);
+
+    useEffect(() => {
+        const searchTimer = setTimeout(async () => {
+            if (patientSearch.length >= 2) {
+                setIsSearchingPatients(true);
+                // Search by name, phone, or ID
+                const { data, error } = await supabase
+                    .from('patients')
+                    .select('id, name, last_name, phone')
+                    .or(`name.ilike.%${patientSearch}%,phone.ilike.%${patientSearch}%,id.ilike.%${patientSearch}%`)
+                    .limit(5);
+                
+                if (!error && data) {
+                    setPatientResults(data);
+                    setShowPatientResults(true);
+                }
+                setIsSearchingPatients(false);
+            } else {
+                setPatientResults([]);
+                setShowPatientResults(false);
+            }
+        }, 300);
+
+        return () => clearTimeout(searchTimer);
+    }, [patientSearch]);
+
+    const fetchDoctors = async () => {
+        const { data } = await supabase.from('staff').select('id, name').order('name');
+        if (data) setDoctors(data);
+    };
 
     const fetchAppointments = async () => {
         setIsLoading(true);
-
         let query = supabase
             .from('appointments')
             .select('*')
@@ -70,15 +128,19 @@ export function Appointments({ userRole, setActiveTab, theme }: { userRole: User
             .order('time', { ascending: true });
 
         if (statusFilter !== 'All') {
-            const mappedStatus = statusFilter === 'Finished' ? 'Visited' : statusFilter;
+            const mappedStatus = statusFilter === 'Completed' ? 'Visited' : statusFilter;
             query = query.eq('status', mappedStatus);
+        }
+
+        if (doctorFilter !== 'All') {
+            query = query.eq('doctor_name', doctorFilter);
         }
 
         const { data } = await query;
         if (data) {
             setAppointments(data.map(a => ({
                 ...a,
-                status: a.status === 'Visited' ? 'Finished' : a.status
+                status: a.status === 'Visited' ? 'Completed' : a.status
             })));
         }
         setIsLoading(false);
@@ -86,24 +148,7 @@ export function Appointments({ userRole, setActiveTab, theme }: { userRole: User
 
     const handleSaveAppointment = async () => {
         if (!formData.name) return showToast('Patient name is required', 'error');
-
-        // CLINICAL CONFLICT LOGIC: Extraction vs Implant on same day/tooth
-        if (formData.toothId && (formData.type === 'Extraction' || formData.type === 'Implant')) {
-            const { data: conflicts } = await supabase
-                .from('appointments')
-                .select('type')
-                .eq('date', formData.date)
-                .eq('tooth_id', formData.toothId)
-                .neq('id', selectedAppointment?.id || 0);
-
-            const hasExtraction = conflicts?.some(c => c.type === 'Extraction');
-            const hasImplant = conflicts?.some(c => c.type === 'Implant');
-
-            if ((formData.type === 'Extraction' && hasImplant) || (formData.type === 'Implant' && hasExtraction)) {
-                showToast('Clinical Conflict Warning: Extraction and Implant cannot occur on the same tooth on the same day!', 'error');
-                return;
-            }
-        }
+        if (!formData.doctorName) return showToast('Please select a doctor', 'error');
 
         const apptData = {
             name: formData.name,
@@ -111,58 +156,39 @@ export function Appointments({ userRole, setActiveTab, theme }: { userRole: User
             time: formData.time,
             type: formData.type,
             notes: formData.purpose,
-            status: formData.status === 'Finished' ? 'Visited' : formData.status,
-            tooth_id: formData.toothId || null
+            status: formData.status === 'Completed' ? 'Visited' : formData.status,
+            tooth_id: formData.toothId || null,
+            doctor_name: formData.doctorName,
+            doctor_id: formData.doctorId || null,
+            patient_id: formData.patientId || null
         };
 
         if (view === 'edit') {
             const { error } = await supabase.from('appointments').update(apptData).eq('id', selectedAppointment.id);
-            if (!error) showToast('Appointment updated successfully', 'success');
+            if (!error) showToast('Appointment updated', 'success');
         } else {
             const { error } = await supabase.from('appointments').insert(apptData);
-            if (!error) showToast('New appointment scheduled', 'success');
+            if (!error) showToast('Appointment scheduled', 'success');
         }
 
         setView('list');
         fetchAppointments();
     };
 
-    const handleDetailsClick = (apt: any) => {
-        setSelectedAppointment({ ...apt });
-        setIsDetailsModalOpen(true);
-    };
-
-    const handleEditClick = (apt: any) => {
-        setSelectedAppointment(apt);
-        setFormData({
-            name: apt.patient_name || apt.name || '',
-            date: apt.date || today,
-            time: apt.time || '10:00',
-            type: apt.type || 'Consultation',
-            purpose: apt.notes || '',
-            status: apt.status || 'Confirmed',
-            toothId: apt.tooth_id || ''
-        });
-        setView('edit');
-    };
-
-
-
-
     const handleUpdateStatus = async (id: number, status: string) => {
-        const mappedStatus = status === 'Finished' ? 'Visited' : status;
+        const mappedStatus = status === 'Completed' ? 'Visited' : status;
         const { error } = await supabase.from('appointments').update({ status: mappedStatus }).eq('id', id);
         if (error) {
             showToast('Error updating status', 'error');
         } else {
-            showToast(`Appointment marked as ${status}`, 'success');
+            showToast(`Status updated to ${status}`, 'success');
             setIsDetailsModalOpen(false);
             fetchAppointments();
         }
     };
 
     const handleDeleteAppointment = async (id: number) => {
-        if (confirm('Are you sure you want to delete this session?')) {
+        if (confirm('Delete this appointment?')) {
             const { error } = await supabase.from('appointments').delete().eq('id', id);
             if (!error) {
                 showToast('Appointment deleted', 'success');
@@ -171,410 +197,279 @@ export function Appointments({ userRole, setActiveTab, theme }: { userRole: User
         }
     };
 
-    const PROCEDURE_COLORS: Record<string, { bg: string, border: string, text: string }> = {
-        'Consultation': { bg: 'bg-indigo-50/50', border: 'border-l-indigo-500', text: 'text-indigo-600' },
-        'Extraction': { bg: 'bg-rose-50/50', border: 'border-l-rose-500', text: 'text-rose-600' },
-        'Root Canal': { bg: 'bg-amber-50/50', border: 'border-l-amber-500', text: 'text-amber-600' },
-        'Implant': { bg: 'bg-purple-50/50', border: 'border-l-purple-500', text: 'text-purple-600' },
-        'Scaling': { bg: 'bg-teal-50/50', border: 'border-l-teal-500', text: 'text-teal-600' },
-        'Fillings': { bg: 'bg-emerald-50/50', border: 'border-l-emerald-500', text: 'text-emerald-600' },
-        'Emergency': { bg: 'bg-red-50/50', border: 'border-l-red-600', text: 'text-red-700' },
+    const handleEditClick = (apt: any) => {
+        setSelectedAppointment(apt);
+        setFormData({
+            name: apt.name || '',
+            date: apt.date || today,
+            time: apt.time || '10:00',
+            type: apt.type || 'Consultation',
+            purpose: apt.notes || '',
+            status: apt.status || 'Confirmed',
+            toothId: apt.tooth_id || '',
+            doctorId: apt.doctor_id || '',
+            doctorName: apt.doctor_name || '',
+            patientId: apt.patient_id || ''
+        });
+        setPatientSearch(apt.name || '');
+        setView('edit');
     };
 
-    const getColorsForType = (type: string) => PROCEDURE_COLORS[type] || { bg: 'bg-slate-50/50', border: 'border-l-slate-300', text: 'text-slate-500' };
+    const getDates = () => {
+        const dates = [];
+        const base = new Date(selectedDate);
+        for (let i = -7; i <= 7; i++) {
+            const d = new Date(base);
+            d.setDate(d.getDate() + i);
+            dates.push(d);
+        }
+        return dates;
+    };
 
-    const renderAppointmentCard = (apt: any) => {
-        const colors = getColorsForType(apt.type);
+    const renderDateStrip = () => {
+        const dates = getDates();
         return (
-            <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                key={apt.id}
-                className={`p-7 rounded-[2.5rem] border shadow-sm group hover:-translate-y-1 border-l-[6px] transition-all flex items-center justify-between cursor-pointer ${theme === 'dark' ? `bg-slate-900 border-white/5 ${colors.border}` : `bg-white ${colors.border} border-y-slate-100 border-r-slate-100`}`}
-            >
-                <div>
-                    <div className="flex items-center gap-3 mb-2.5">
-                        <span className={`text-sm font-bold px-3 py-1.5 rounded-xl ${colors.bg} ${colors.text}`}>
-                            {apt.time}
-                        </span>
-                        <span className={`text-base font-bold ${colors.text}`}>{apt.type}</span>
-                    </div>
-                    <h4 className="text-xl font-bold mb-1">{apt.patient_name || apt.name}</h4>
-                    <p className="text-sm text-slate-500 font-medium italic">"{apt.purpose || apt.notes}"</p>
-                </div>
-                <div className="flex items-center gap-6">
-                    <span className={`text-xs font-bold px-4 py-2 rounded-full border shadow-sm ${apt.status === 'Confirmed' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                        apt.status === 'Pending' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                            'bg-slate-500/10 text-slate-500 border-slate-500/20'
-                        }`}>
-                        {apt.status}
-                    </span>
-                    <button onClick={() => handleDetailsClick(apt)} className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-sm ${theme === 'dark' ? 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10' : 'bg-slate-50 text-slate-400 hover:text-slate-900 hover:bg-slate-100'}`}>
-                        <MoreVertical size={20} />
-                    </button>
-                </div>
-            </motion.div>
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-2 custom-scrollbar-hide snap-x no-scrollbar" ref={dateStripRef}>
+                {dates.map((date, idx) => {
+                    const dateStr = date.toISOString().split('T')[0];
+                    const isSelected = dateStr === selectedDate;
+                    const isToday = dateStr === today;
+                    return (
+                        <button
+                            key={idx}
+                            onClick={() => setSelectedDate(dateStr)}
+                            className={`flex flex-col items-center min-w-[48px] p-1.5 rounded-lg transition-all border snap-center ${
+                                isSelected 
+                                ? 'bg-primary border-primary text-white shadow-sm' 
+                                : `bg-slate-50 dark:bg-white/5 border-transparent text-slate-500`
+                            }`}
+                        >
+                            <span className="text-[8px] font-bold uppercase">{date.toLocaleDateString('en-US', { weekday: 'short' })}</span>
+                            <span className="text-sm font-bold">{date.getDate()}</span>
+                            {isToday && !isSelected && <div className="w-1 h-1 bg-primary rounded-full mt-0.5" />}
+                        </button>
+                    );
+                })}
+            </div>
         );
     };
 
-    const prevDay = () => {
-        const d = new Date(selectedDate);
-        d.setDate(d.getDate() - 1);
-        setSelectedDate(d.toISOString().split('T')[0]);
-    };
-
-    const nextDay = () => {
-        const d = new Date(selectedDate);
-        d.setDate(d.getDate() + 1);
-        setSelectedDate(d.toISOString().split('T')[0]);
+    const renderTimelineItem = (apt: any) => {
+        const isCancelled = apt.status === 'Cancelled';
+        return (
+            <div key={apt.id} className="relative ps-12 sm:ps-16 pb-4 group">
+                <div className="absolute left-[19px] sm:left-[27px] top-3 bottom-0 w-px bg-slate-100 dark:bg-white/5 group-last:hidden" />
+                <div className="absolute left-0 top-0 w-8 sm:w-10 text-center">
+                    <p className={`text-[10px] font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{formatTime(apt.time)}</p>
+                </div>
+                <div className={`absolute left-[16px] sm:left-[24px] top-1.5 w-2 h-2 rounded-full border z-10 ${
+                    apt.status === 'Confirmed' ? 'bg-emerald-500 border-white dark:border-slate-900' :
+                    apt.status === 'Completed' ? 'bg-primary border-white dark:border-slate-900' :
+                    apt.status === 'Cancelled' ? 'bg-rose-500 border-white dark:border-slate-900' : 'bg-slate-300 border-white dark:border-slate-900'
+                }`} />
+                <div 
+                    onClick={() => { setSelectedAppointment(apt); setIsDetailsModalOpen(true); }}
+                    className={`p-2.5 sm:p-3 rounded-lg border cursor-pointer hover:shadow-sm transition-all active:scale-[0.99] ${
+                        theme === 'dark' ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100'
+                    }`}
+                >
+                    <div className="flex justify-between items-center gap-3">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-8 h-8 rounded-md bg-primary/5 flex items-center justify-center text-primary font-bold text-xs shrink-0">{apt.name.charAt(0)}</div>
+                            <div className="min-w-0">
+                                <h4 className={`text-xs sm:text-sm font-bold truncate ${isCancelled ? 'line-through opacity-50' : ''} ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>{apt.name}</h4>
+                                <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                                    <span className="text-[9px] sm:text-[10px] text-slate-500 flex items-center gap-1"><Stethoscope size={10} /> {apt.doctor_name || 'Assign Doctor'}</span>
+                                    <span className="hidden sm:inline text-[9px] text-slate-400 bg-slate-50 dark:bg-white/5 px-1 py-0.5 rounded">{apt.type}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded border uppercase shrink-0 ${
+                            apt.status === 'Confirmed' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                            apt.status === 'Completed' ? 'bg-primary/5 text-primary border-primary/10' :
+                            apt.status === 'Cancelled' ? 'bg-rose-50 text-rose-500 border-rose-100' : 'bg-slate-50 text-slate-400'
+                        }`}>{apt.status}</span>
+                    </div>
+                </div>
+            </div>
+        );
     };
 
     if (view === 'add' || view === 'edit') {
         return (
-            <div className="animate-slide-up space-y-6">
-                <div className="flex items-center gap-3">
-                    <button onClick={() => setView('list')} className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-all shadow-sm">
-                        <ChevronLeft size={18} />
-                    </button>
-                    <div>
-                        <h2 className={`text-xl md:text-2xl font-bold tracking-tight ${theme === 'dark' ? 'text-white' : 'text-text-dark'}`}>{view === 'edit' ? 'Reschedule' : 'New Appointment'}</h2>
-                        <p className="text-sm font-medium text-slate-500">Enter patient session details</p>
-                    </div>
+            <div className="animate-slide-up space-y-3 max-w-xl mx-auto px-2">
+                <div className="flex items-center gap-2">
+                    <button onClick={() => setView('list')} className="p-1.5 rounded-lg border bg-white dark:bg-white/5"><ChevronLeft size={16} /></button>
+                    <h2 className="text-lg font-bold">{view === 'edit' ? 'Edit Appointment' : 'New Appointment'}</h2>
                 </div>
-
-                <div className={`rounded-2xl shadow-sm p-6 border ${theme === 'dark' ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-100'}`}>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-4">
-                             <div>
-                                 <label className="text-base font-bold text-slate-500 mb-2.5 block">Patient Full Name</label>
-                                <div className="relative">
-                                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                                    <input
-                                        type="text"
-                                        placeholder="Enter full name..."
-                                        value={formData.name}
-                                        onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                        className={`w-full border rounded-2xl pl-12 pr-5 py-4 text-sm font-bold outline-none transition-all focus:ring-4 ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white focus:border-primary/50' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-primary shadow-inner'}`}
-                                    />
-                                </div>
+                <div className={`p-4 rounded-xl border ${theme === 'dark' ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
+                    <div className="space-y-3">
+                        <div className="space-y-1 relative">
+                            <label className="text-[10px] font-bold text-slate-500 uppercase">Patient Name or ID</label>
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                                <input
+                                    type="text"
+                                    placeholder="Search by Name, ID or Phone..."
+                                    value={patientSearch}
+                                    onChange={e => { setPatientSearch(e.target.value); setFormData({ ...formData, name: e.target.value, patientId: '' }); }}
+                                    className={`w-full border rounded-lg pl-9 pr-4 py-2 text-xs font-medium outline-none ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`}
+                                />
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-xs font-bold text-slate-500 mb-1.5 block">Date</label>
-                                    <input
-                                        type="date"
-                                        value={formData.date}
-                                        onChange={e => setFormData({ ...formData, date: e.target.value })}
-                                        className={`w-full border rounded-lg px-2.5 py-2 text-xs font-bold outline-none transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900 shadow-inner'}`}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-bold text-slate-500 mb-1.5 block">Time</label>
-                                    <input
-                                        type="time"
-                                        value={formData.time}
-                                        onChange={e => setFormData({ ...formData, time: e.target.value })}
-                                        className={`w-full border rounded-lg px-2.5 py-2 text-xs font-bold outline-none transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900 shadow-inner'}`}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="space-y-3">
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="text-[9px] font-black text-slate-400 mb-1.5 block uppercase tracking-widest">Treatment</label>
-                                    <CustomSelect 
-                                        value={formData.type} 
-                                        onChange={val => setFormData({ ...formData, type: val })}
-                                        options={[
-                                            'Consultation', 'Scaling', 'Root Canal', 'Fillings', 
-                                            'Follow-up', 'Extraction', 'Implant', 'Procedure', 
-                                            'Surgery', 'Emergency'
-                                        ]}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-[9px] font-black text-slate-400 mb-1.5 block uppercase tracking-widest">Tooth #</label>
-                                    <input
-                                        type="text"
-                                        placeholder="ISO/FDI #"
-                                        value={formData.toothId}
-                                        onChange={e => setFormData({ ...formData, toothId: e.target.value })}
-                                        className={`w-full border rounded-lg px-2.5 py-1.5 text-xs font-bold outline-none transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
-                                    />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="text-xs font-bold text-slate-500 mb-1.5 block">Status</label>
-                                <div className="flex flex-wrap gap-2">
-                                    {['Confirmed', 'Finished', 'Cancelled', 'Missed'].map(s => (
-                                        <button
-                                            key={s}
-                                            onClick={() => setFormData({ ...formData, status: s })}
-                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${formData.status === s ? 'bg-primary text-white border-primary shadow-md' : theme === 'dark' ? 'bg-white/5 border-white/10 text-slate-400 hover:border-white/30' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'}`}
-                                        >
-                                            {s}
+                            {showPatientResults && (
+                                <div className="absolute left-0 right-0 top-full mt-1 z-50 p-1 rounded-lg shadow-xl border bg-white dark:bg-slate-800 border-slate-100 dark:border-white/10">
+                                    {patientResults.map(p => (
+                                        <button key={p.id} onClick={() => { setFormData({ ...formData, name: `${p.name}`, patientId: p.id }); setPatientSearch(p.name); setShowPatientResults(false); }} className="w-full text-left px-3 py-1.5 rounded-md hover:bg-primary/5 text-[11px] flex justify-between items-center transition-all">
+                                            <div className="flex flex-col">
+                                                <span className="font-bold">{p.name} {p.last_name || ''}</span>
+                                                <span className="text-[9px] opacity-50">ID: {p.id.slice(0, 8)}</span>
+                                            </div>
+                                            <span className="text-[10px] opacity-50">{p.phone}</span>
                                         </button>
                                     ))}
                                 </div>
+                            )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase">Date</label>
+                                <input type="date" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} className={`w-full border rounded-lg px-2 py-1.5 text-xs outline-none ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`} />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase">Time</label>
+                                <input type="time" value={formData.time} onChange={e => setFormData({ ...formData, time: e.target.value })} className={`w-full border rounded-lg px-2 py-1.5 text-xs outline-none ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`} />
                             </div>
                         </div>
-                    </div>
-
-                    <div className="mt-4">
-                        <label className="text-[9px] font-black text-slate-400 mb-1.5 block uppercase tracking-widest">Clinical Notes</label>
-                        <textarea rows={3} value={formData.purpose} onChange={e => setFormData({ ...formData, purpose: e.target.value })} className={`w-full border rounded-xl p-3 text-xs font-bold outline-none transition-all focus:ring-4 ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white focus:border-primary/50' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-primary'}`} placeholder="Reason for visit..."></textarea>
-                    </div>
-
-                    <div className="flex gap-2 mt-6 justify-end">
-                        <button onClick={() => setView('list')} className={`px-5 py-2.5 rounded-xl border text-[11px] font-bold transition-all active:scale-95 ${theme === 'dark' ? 'border-white/10 text-slate-400 hover:bg-white/5' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>Cancel</button>
-                        <button onClick={handleSaveAppointment} className="px-6 py-2.5 rounded-xl bg-primary text-white text-[11px] font-bold hover:bg-primary-hover shadow-lg shadow-primary/20 transition-all active:scale-95">
-                            {view === 'edit' ? 'Save' : 'Confirm Slot'}
-                        </button>
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-slate-500 uppercase">Doctor</label>
+                            <CustomSelect value={formData.doctorName} onChange={val => { const d = doctors.find(doc => doc.name === val); setFormData({ ...formData, doctorName: val, doctorId: d?.id || '' }); }} options={doctors.map(d => d.name)} placeholder="Select doctor" className="text-xs" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase">Treatment Type</label>
+                                <CustomSelect value={formData.type} onChange={v => setFormData({ ...formData, type: v })} options={['Consultation', 'Scaling', 'Root Canal', 'Fillings', 'Extraction', 'Surgery']} />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase">Tooth ID</label>
+                                <input type="text" value={formData.toothId} onChange={e => setFormData({ ...formData, toothId: e.target.value })} className={`w-full border rounded-lg px-2 py-1.5 text-xs outline-none ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`} />
+                            </div>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-slate-500 uppercase">Notes</label>
+                            <textarea rows={2} value={formData.purpose} onChange={e => setFormData({ ...formData, purpose: e.target.value })} className={`w-full border rounded-lg p-2 text-xs outline-none ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`} placeholder="Reason for appointment..." />
+                        </div>
+                        <div className="flex gap-2 pt-1">
+                            <button onClick={() => setView('list')} className="flex-1 py-2 rounded-lg border text-xs font-bold transition-all hover:bg-slate-50">Cancel</button>
+                            <button onClick={handleSaveAppointment} className="flex-1 py-2 rounded-lg bg-primary text-white text-xs font-bold transition-all hover:opacity-90 active:scale-95">Save Appointment</button>
+                        </div>
                     </div>
                 </div>
             </div>
         );
     }
 
-    const filteredAppointments = appointments.filter(apt =>
-        apt.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        apt.type.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
     return (
-        <div className="animate-slide-up space-y-3 pb-20">
-            {/* Header Section */}
-            <div className={`flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 p-6 md:p-8 rounded-[2.5rem] shadow-xl border transition-all`} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
-                <div>
-                    <h2 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--text-dark)' }}>Appointments</h2>
-                    <p className="text-sm font-medium mt-1" style={{ color: 'var(--text-muted)' }}>Management for <span className="text-primary font-bold">{selectedDate === today ? 'Today' : selectedDate}</span></p>
-                </div>
-                <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
-                    <div className={`flex items-center gap-3 p-2 px-4 rounded-2xl border w-full sm:w-auto transition-all shadow-inner`} style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)' }}>
-                        <CalendarIcon size={18} className="text-primary" />
-                        <input
-                            type="date"
-                            value={selectedDate}
-                            onChange={(e) => setSelectedDate(e.target.value)}
-                            className="bg-transparent border-none text-sm font-bold focus:ring-0 outline-none p-1 cursor-pointer"
-                            style={{ color: 'var(--text-main)' }}
-                        />
+        <div className="animate-slide-up space-y-3 px-1 sm:px-0">
+            {/* Header */}
+            <div className={`p-3 sm:p-4 rounded-xl border ${theme === 'dark' ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
+                            <CalendarDays size={18} />
+                        </div>
+                        <div>
+                            <h2 className="text-sm sm:text-base font-bold uppercase tracking-tight">Appointments</h2>
+                            <p className="text-[10px] font-medium text-slate-500">{new Date(selectedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} • {appointments.length} Total</p>
+                        </div>
                     </div>
-                    <div className="relative flex-1 lg:w-64 w-full">
-                        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
-                            <input
-                                type="text"
-                                placeholder="Search by name..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className={`w-full border rounded-2xl py-3.5 pl-11 pr-4 text-sm font-bold outline-none transition-all`}
-                                style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }}
-                            />
-                    </div>
-                        <button
-                            onClick={() => {
-                                setFormData({
-                                    name: '',
-                                    date: selectedDate,
-                                    time: '10:00',
-                                    type: 'Consultation',
-                                    purpose: '',
-                                    status: 'Confirmed',
-                                    toothId: ''
-                                });
-                                setView('add');
-                            }}
-                            className="bg-primary hover:scale-[1.02] active:scale-95 text-white shadow-premium px-8 py-3.5 rounded-2xl text-sm font-bold transition-all w-full sm:w-auto flex items-center justify-center gap-2"
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <select 
+                            value={doctorFilter} 
+                            onChange={(e) => setDoctorFilter(e.target.value)}
+                            className="bg-slate-50 dark:bg-white/5 border-none rounded-lg text-[11px] font-bold px-3 py-2 outline-none flex-1 sm:flex-none"
                         >
-                            <Plus size={20} /> New Slot
+                            <option value="All">All Doctors</option>
+                            {doctors.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                        </select>
+                        <button onClick={() => setView('add')} className="bg-primary text-white px-3 py-2 rounded-lg flex items-center justify-center gap-1.5 text-[11px] font-bold transition-all hover:opacity-90 active:scale-95">
+                            <Plus size={14} /> Add New
                         </button>
+                    </div>
                 </div>
+                <div className="mt-3">{renderDateStrip()}</div>
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-4 gap-3">
-                <div className="xl:col-span-1 space-y-4">
-                    <div className={`p-6 rounded-[2rem] shadow-lg border transition-all`} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
-                        <div className="flex items-center justify-between mb-5">
-                            <h3 className="font-bold text-sm flex items-center gap-2" style={{ color: 'var(--text-dark)' }}>
-                                <Filter size={18} className="text-primary" />
-                                Filter Status
-                            </h3>
-                            <div className="flex gap-1.5">
-                                <button onClick={prevDay} className="p-2 bg-slate-100 dark:bg-white/5 rounded-xl transition-all text-slate-500 hover:text-primary"><ChevronLeft size={18} /></button>
-                                <button onClick={nextDay} className="p-2 bg-slate-100 dark:bg-white/5 rounded-xl transition-all text-slate-500 hover:text-primary"><ChevronRight size={18} /></button>
-                            </div>
+            {/* List */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div className="md:col-span-1 space-y-2">
+                    <div className={`p-2.5 rounded-xl border ${theme === 'dark' ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
+                        <div className="relative mb-2">
+                            <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <input type="text" placeholder="Quick find..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-slate-50 dark:bg-white/5 border-none rounded-lg pl-8 pr-3 py-1.5 text-[11px] outline-none" />
                         </div>
-
-                        <div className="space-y-2 mt-2">
-                            {['All', 'Finished', 'Cancelled', 'Missed'].map(status => (
-                                <button
-                                    key={status}
-                                    onClick={() => setStatusFilter(status)}
-                                    className={`flex items-center justify-between px-5 py-3.5 rounded-2xl text-sm font-bold transition-all border ${statusFilter === status ? 'bg-primary text-white border-primary shadow-premium' : 'hover:bg-primary/5'}`}
-                                    style={statusFilter === status ? {} : { background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)', color: 'var(--text-muted)' }}
-                                >
-                                    <span>{status === 'Finished' ? 'Completed' : status}</span>
-                                    {statusFilter === status && <div className="w-2 h-2 bg-white rounded-full shadow-inner" />}
-                                </button>
+                        <div className="flex flex-col gap-0.5">
+                            {['All', 'Confirmed', 'Completed', 'Cancelled', 'Missed'].map(status => (
+                                <button key={status} onClick={() => setStatusFilter(status)} className={`text-left px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${statusFilter === status ? 'bg-primary text-white shadow-sm' : 'hover:bg-slate-50 dark:hover:bg-white/5 text-slate-500'}`}>{status === 'Completed' ? 'Completed' : status}</button>
                             ))}
                         </div>
                     </div>
-
-                    <div className="bg-gradient-to-br from-primary via-primary to-primary-hover p-5 rounded-2xl shadow-xl shadow-primary/20 text-white relative overflow-hidden group">
-                        <div className="relative z-10">
-                            <p className="text-[10px] font-bold opacity-80 mb-1">Today's Total</p>
-                            <h4 className="text-3xl font-black mb-2 flex items-baseline gap-2">
-                                {appointments.length}
-                                <span className="text-xs font-bold opacity-60">Appointments</span>
-                            </h4>
-                            <div className="h-1 w-full bg-white/20 rounded-full overflow-hidden">
-                                <div className="h-full bg-white rounded-full transition-all duration-1000" style={{ width: `${Math.min(100, (appointments.length / 20) * 100)}%` }} />
-                            </div>
-                        </div>
-                        <CalendarIcon size={60} className="absolute -right-3 -bottom-3 opacity-10 rotate-12 transition-transform group-hover:scale-110 duration-700" />
-                    </div>
                 </div>
-
-                <div className="xl:col-span-3 space-y-3">
+                <div className="md:col-span-3">
                     {isLoading ? (
-                        <div className={`p-16 flex items-center justify-center rounded-2xl border ${theme === 'dark' ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-100'}`}>
-                            <div className="flex flex-col items-center gap-3">
-                                <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-                                <p className="text-xs text-slate-400 font-bold italic">Loading...</p>
-                            </div>
-                        </div>
-                    ) : filteredAppointments.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <AnimatePresence>
-                                {filteredAppointments.map((apt, idx) => (
-                                    <motion.div
-                                        key={apt.id}
-                                        initial={{ opacity: 0, y: 15 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: idx * 0.05 }}
-                                        className={`p-3.5 rounded-2xl shadow-sm border transition-all group relative overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-white/10 hover:border-primary/30' : 'bg-white border-slate-100 hover:shadow-md'}`}
-                                    >
-                                        <div className="flex justify-between items-start mb-3">
-                                            <div className="flex items-center gap-2.5">
-                                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-primary font-black text-xs shadow-inner border transition-colors ${theme === 'dark' ? 'bg-white/5 border-white/10 group-hover:bg-primary/5' : 'bg-slate-50 border-slate-100 group-hover:bg-primary/5'}`}>
-                                                    {apt.name.charAt(0)}
-                                                </div>
-                                                 <div>
-                                                     <h3 className={`font-bold text-sm leading-tight ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>{apt.name}</h3>
-                                                     <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1 mt-0.5">
-                                                         <Clock size={10} /> {apt.time}
-                                                     </span>
-                                                 </div>
-                                            </div>
-                                             <span className={`text-[10px] font-bold px-2 py-1 rounded-lg border ${apt.status === 'Confirmed' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                                                 apt.status === 'Finished' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                                     'bg-rose-50 text-rose-600 border-rose-100'
-                                                 }`}>
-                                                 {apt.status}
-                                             </span>
-                                        </div>
-
-                                         <div className={`flex items-center gap-2 p-2.5 rounded-xl mb-3 transition-all border ${theme === 'dark' ? 'bg-white/5 border-transparent group-hover:border-white/10' : 'bg-slate-50 border-transparent group-hover:border-slate-100'}`}>
-                                             <div className={`w-7 h-7 rounded-lg flex items-center justify-center shadow-sm text-primary ${theme === 'dark' ? 'bg-white/10' : 'bg-white'}`}>
-                                                 <AlertCircle size={14} />
-                                             </div>
-                                             <p className={`text-xs font-bold line-clamp-1 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-600'}`}>{apt.type} • {apt.notes || 'Routine'}</p>
-                                         </div>
-
-                                        <div className="flex gap-1.5">
-                                            <button
-                                                onClick={() => handleDetailsClick(apt)}
-                                                className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-sm transition-all transform active:scale-95 flex items-center justify-center gap-1.5 ${theme === 'dark' ? 'bg-primary text-white' : 'bg-slate-800 text-white'}`}
-                                            >
-                                                View
-                                            </button>
-                                            <button
-                                                onClick={() => handleEditClick(apt)}
-                                                className={`p-1.5 border rounded-lg transition-all active:scale-95 ${theme === 'dark' ? 'bg-white/5 border-white/10 text-slate-400 hover:text-white' : 'bg-white border-slate-200 text-slate-400 hover:text-primary hover:border-primary/30'}`}
-                                            >
-                                                <MoreVertical size={14} />
-                                            </button>
-                                        </div>
-                                    </motion.div>
-                                ))}
-                            </AnimatePresence>
-                        </div>
+                        <div className="py-16 flex flex-col items-center justify-center gap-2 opacity-50"><div className="w-6 h-6 border-2 border-primary border-t-transparent animate-spin rounded-full" /><p className="text-[9px] font-bold uppercase tracking-widest">Updating Schedule...</p></div>
+                    ) : appointments.length > 0 ? (
+                        <div className="space-y-0.5">{appointments.filter(a => a.name.toLowerCase().includes(searchQuery.toLowerCase())).map(renderTimelineItem)}</div>
                     ) : (
-                        <div className={`p-16 text-center rounded-2xl border flex flex-col items-center justify-center gap-3 ${theme === 'dark' ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-100'}`}>
-                            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-200">
-                                <CalendarIcon size={32} />
-                            </div>
-                            <div>
-                                <h4 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-700'}`}>No appointments</h4>
-                                <p className="text-xs text-slate-400 font-medium">Try another date.</p>
-                            </div>
-                        </div>
+                        <div className={`py-16 text-center rounded-xl border-2 border-dashed ${theme === 'dark' ? 'border-white/5 text-slate-600' : 'border-slate-100 text-slate-300'}`}><Users size={32} className="mx-auto mb-1.5 opacity-50" /><p className="text-xs font-bold">No appointments scheduled for this day</p></div>
                     )}
                 </div>
             </div>
 
-            <Modal isOpen={isDetailsModalOpen} onClose={() => setIsDetailsModalOpen(false)} title="Session Controls" maxWidth="max-w-md">
+            <Modal isOpen={isDetailsModalOpen} onClose={() => setIsDetailsModalOpen(false)} title="Appointment Details" maxWidth="max-w-xs">
                 {selectedAppointment && (
-                    <div className="space-y-6">
-                        <div className={`flex items-center gap-4 p-5 rounded-[2rem] border ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-100'}`}>
-                            <div className="w-16 h-16 rounded-2xl bg-white shadow-sm flex items-center justify-center text-primary text-2xl font-black">
-                                {selectedAppointment.name.charAt(0)}
-                            </div>
-                            <div>
-                                <h3 className={`font-bold text-xl ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>{selectedAppointment.name}</h3>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg border ${selectedAppointment.status === 'Confirmed' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                                        selectedAppointment.status === 'Finished' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                            'bg-rose-50 text-rose-600 border-rose-100'
-                                        }`}>
-                                        {selectedAppointment.status}
-                                    </span>
-                                    <span className="text-[10px] font-bold text-slate-400">ID: #{selectedAppointment.id}</span>
+                    <div className="space-y-4 pt-1">
+                        <div className="flex items-center gap-3 pb-3 border-b dark:border-white/5">
+                            <div className="w-12 h-12 rounded-lg bg-primary text-white flex items-center justify-center text-xl font-bold italic shadow-sm">{selectedAppointment.name.charAt(0)}</div>
+                            <div className="min-w-0">
+                                <h3 className="font-bold text-sm truncate">{selectedAppointment.name}</h3>
+                                <div className="flex items-center gap-1.5 text-[10px] text-slate-500 mt-0.5">
+                                    <Clock size={10} /> {formatTime(selectedAppointment.time)}
+                                    <span className="opacity-50">•</span>
+                                    <span className={`px-1 rounded bg-slate-100 dark:bg-white/10 text-[9px] font-bold`}>{selectedAppointment.status}</span>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-3 gap-2">
-                            <button onClick={() => handleUpdateStatus(selectedAppointment.id, 'Finished')} className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 hover:bg-emerald-500 hover:text-white transition-all flex flex-col items-center gap-1.5 active:scale-95 group">
-                                <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">✅</div>
-                                <span className="text-[10px] font-black uppercase">Finish</span>
-                            </button>
-                            <button onClick={() => handleUpdateStatus(selectedAppointment.id, 'Cancelled')} className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-600 hover:bg-rose-500 hover:text-white transition-all flex flex-col items-center gap-1.5 active:scale-95 group">
-                                <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">❌</div>
-                                <span className="text-[10px] font-black uppercase">Cancel</span>
-                            </button>
-                            <button onClick={() => handleUpdateStatus(selectedAppointment.id, 'Missed')} className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 hover:bg-amber-500 hover:text-white transition-all flex flex-col items-center gap-1.5 active:scale-95 group">
-                                <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">⚠️</div>
-                                <span className="text-[10px] font-black uppercase">Missed</span>
-                            </button>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className={`p-4 border rounded-2xl shadow-sm ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white border-slate-100'}`}>
-                                <p className="text-[10px] font-bold text-slate-400 mb-1">Date</p>
-                                <p className={`text-sm font-bold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>{selectedAppointment.date}</p>
-                            </div>
-                            <div className={`p-4 border rounded-2xl shadow-sm ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white border-slate-100'}`}>
-                                <p className="text-[10px] font-bold text-slate-400 mb-1">Time</p>
-                                <p className={`text-sm font-bold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>{selectedAppointment.time}</p>
+                        <div className="space-y-2">
+                             <p className="text-[9px] font-bold uppercase text-slate-400 tracking-wider">Update Status</p>
+                             <div className="grid grid-cols-3 gap-1.5">
+                                {['Completed', 'Cancelled', 'Missed'].map(s => (
+                                    <button 
+                                        key={s} 
+                                        onClick={() => handleUpdateStatus(selectedAppointment.id, s)} 
+                                        className={`py-2 rounded-lg border text-[9px] font-bold uppercase transition-all flex items-center justify-center ${
+                                            selectedAppointment.status === s 
+                                            ? 'bg-primary text-white border-primary' 
+                                            : 'bg-white dark:bg-white/5 border-slate-100 dark:border-white/5 hover:border-primary/50'
+                                        }`}
+                                    >
+                                        {s}
+                                    </button>
+                                ))}
                             </div>
                         </div>
 
-                        <div className={`p-4 rounded-2xl ${theme === 'dark' ? 'bg-white/5' : 'bg-slate-50'}`}>
-                            <p className="text-[10px] font-bold text-slate-400 mb-2">Clinical Intent</p>
-                            <p className={`text-sm font-bold ${theme === 'dark' ? 'text-primary' : 'text-primary'}`}>{selectedAppointment.type}</p>
-                            <p className={`text-xs font-medium italic mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>"{selectedAppointment.notes || 'No clinical notes provided'}"</p>
+                        <div className="p-3 rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5">
+                            <p className="text-[9px] font-bold uppercase text-slate-400 mb-1 flex items-center gap-1"><Filter size={9} /> Notes</p>
+                            <p className="text-[11px] font-medium leading-relaxed">{selectedAppointment.notes || 'No notes available for this appointment.'}</p>
                         </div>
 
-                        <div className="flex gap-3 pt-4 border-t border-slate-100 dark:border-white/5">
-                            <button onClick={() => { setIsDetailsModalOpen(false); handleEditClick(selectedAppointment); }} className="flex-1 py-4 bg-primary text-white rounded-xl text-xs font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2 hover:bg-primary-hover active:scale-95 transition-all">
-                                <Edit3 size={16} /> Reschedule
+                        <div className="flex gap-2 pt-1">
+                            <button onClick={() => { setIsDetailsModalOpen(false); handleEditClick(selectedAppointment); }} className="flex-1 py-2.5 bg-primary text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all hover:opacity-90 active:scale-95">
+                                <Edit3 size={12} /> Reschedule
                             </button>
-                            <button onClick={() => { setIsDetailsModalOpen(false); handleDeleteAppointment(selectedAppointment.id); }} className={`px-4 py-4 rounded-xl font-bold transition-all active:scale-95 ${theme === 'dark' ? 'bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white' : 'bg-red-50 text-red-500 hover:bg-red-500 hover:text-white'}`}>
-                                <Trash2 size={16} /> Delete
+                            <button onClick={() => { setIsDetailsModalOpen(false); handleDeleteAppointment(selectedAppointment.id); }} className="px-3 py-2.5 border border-rose-100 dark:border-rose-500/20 text-rose-500 rounded-lg flex items-center justify-center transition-all hover:bg-rose-50 dark:hover:bg-rose-500/10">
+                                <Trash2 size={14} />
                             </button>
                         </div>
                     </div>

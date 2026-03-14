@@ -1,6 +1,4 @@
-
-import { useState, useMemo } from 'react';
-
+import { useState, useMemo, useEffect } from 'react';
 import { useToast } from '../../components/Toast';
 import { supabase } from '../../supabase';
 import {
@@ -24,20 +22,45 @@ import {
     ChevronLeft,
     Save,
     Plus,
-    ArrowRightLeft
+    ArrowRightLeft,
+    FlaskConical,
+    ClipboardCheck,
+    Heart,
+    AlertTriangle,
+    Trash2,
+    Signature,
+    CheckCircle
 } from 'lucide-react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment } from '@react-three/drei';
 import { RealisticDentition } from './Dentition3D';
+import { 
+    downloadInvoicePDF, 
+    downloadTreatmentPlanPDF, 
+    downloadLabOrderPDF,
+    downloadPrescriptionPDF,
+    type TreatmentPlanData
+} from '../../utils/pdfExport';
 
 type PatientView = 'overview' | 'treatment_plan' | 'bill_detail';
 
-export function PatientOverview({ onBack, patient, theme }: { onBack: () => void, patient: any, theme?: 'light' | 'dark' }) {
+export function PatientOverview({ onBack, patient, theme, setActiveTab: setGlobalActiveTab }: { onBack: () => void, patient: any, theme?: 'light' | 'dark', setActiveTab?: (tab: string) => void }) {
     const [activeTab, setActiveTab] = useState('home');
     const { showToast } = useToast();
     const [view, setView] = useState<PatientView>('overview');
     const [selectedBill, setSelectedBill] = useState<any>(null);
     const [toothChartData, setToothChartData] = useState<any>({});
+    
+    // Real data states
+    const [patientBills, setPatientBills] = useState<any[]>([]);
+    const [patientPlans, setPatientPlans] = useState<any[]>([]);
+    const [patientLabOrders, setPatientLabOrders] = useState<any[]>([]);
+    const [patientPrescriptions, setPatientPrescriptions] = useState<any[]>([]);
+    const [patientNotes, setPatientNotes] = useState<any[]>([]);
+    const [patientVitals, setPatientVitals] = useState<any[]>([]);
+    const [patientConsents, setPatientConsents] = useState<any[]>([]);
+    const [isLoadingData, setIsLoadingData] = useState(false);
+    const [clinicalSubTab, setClinicalSubTab] = useState<'soap' | 'vitals' | 'consents'>('soap');
 
     const treatmentCounts = useMemo(() => {
         if (!patient) return {};
@@ -48,6 +71,38 @@ export function PatientOverview({ onBack, patient, theme }: { onBack: () => void
     }, [patient?.patient_history]);
 
     const repeatedTreatments = Object.entries(treatmentCounts).filter(([_, count]: any) => count > 1);
+
+    const fetchData = async () => {
+        if (!patient?.id) return;
+        setIsLoadingData(true);
+        
+        const [
+            { data: bills },
+            { data: plans },
+            { data: labOrders },
+            { data: prescriptions },
+            { data: notes },
+            { data: vitals },
+            { data: consents }
+        ] = await Promise.all([
+            supabase.from('bills').select('*').eq('patient_id', patient.id).order('date', { ascending: false }),
+            supabase.from('treatment_plans').select('*, treatment_plan_items(*)').eq('patient_id', patient.id).order('created_at', { ascending: false }),
+            supabase.from('lab_orders').select('*').eq('patient_id', patient.id).order('order_date', { ascending: false }),
+            supabase.from('prescriptions').select('*').eq('patient_id', patient.id).order('created_at', { ascending: false }),
+            supabase.from('clinical_notes').select('*').eq('patient_id', patient.id).order('created_at', { ascending: false }),
+            supabase.from('vital_signs').select('*').eq('patient_id', patient.id).order('recorded_at', { ascending: false }),
+            supabase.from('consent_forms').select('*').eq('patient_id', patient.id).order('created_at', { ascending: false })
+        ]);
+
+        setPatientBills(bills || []);
+        setPatientPlans(plans || []);
+        setPatientLabOrders(labOrders || []);
+        setPatientPrescriptions(prescriptions || []);
+        setPatientNotes(notes || []);
+        setPatientVitals(vitals || []);
+        setPatientConsents(consents || []);
+        setIsLoadingData(false);
+    };
 
     const loadToothChart = async () => {
         const { data } = await supabase
@@ -63,17 +118,37 @@ export function PatientOverview({ onBack, patient, theme }: { onBack: () => void
         }
     };
 
+    useEffect(() => {
+        fetchData();
+        loadToothChart();
+
+        // Real-time subscriptions for clinical/financial sync
+        const channel = supabase.channel(`patient_sync_${patient.id}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'bills', filter: `patient_id=eq.${patient.id}` }, fetchData)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'treatment_plans', filter: `patient_id=eq.${patient.id}` }, fetchData)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'lab_orders', filter: `patient_id=eq.${patient.id}` }, fetchData)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'clinical_notes', filter: `patient_id=eq.${patient.id}` }, fetchData)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'vital_signs', filter: `patient_id=eq.${patient.id}` }, fetchData)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'consent_forms', filter: `patient_id=eq.${patient.id}` }, fetchData)
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [patient.id]);
+
     const handleTabChange = (tabId: string) => {
         setActiveTab(tabId);
         if (tabId === 'emr') loadToothChart();
+        if (['billing', 'treatment_plans', 'lab_orders', 'prescriptions', 'clinical'].includes(tabId)) fetchData();
     };
 
     const totalDue = useMemo(() => {
         if (!patient) return 0;
-        const billed = (patient.patient_history || []).reduce((acc: number, curr: any) => acc + (Number(curr.cost) || 0), 0);
-        const spent = Number(patient.total_spent) || 0;
-        return Math.max(0, billed - spent);
-    }, [patient]);
+        const totalBilled = patientBills.reduce((acc, b) => acc + (Number(b.amount) || 0), 0);
+        const totalPaid = Number(patient.total_spent) || 0; 
+        return Math.max(0, totalBilled - totalPaid);
+    }, [patientBills, patient.total_spent]);
 
     const patientLifecycle = useMemo(() => {
         if (!patient || !patient.last_visit) return { status: 'New', color: 'bg-primary/10 text-primary border-primary/20' };
@@ -86,7 +161,11 @@ export function PatientOverview({ onBack, patient, theme }: { onBack: () => void
     }, [patient?.last_visit]);
 
     const handleDownloadReport = (format: 'pdf' | 'csv' | 'excel') => {
-        showToast(`Preparing ${format.toUpperCase()} report...`, 'success');
+        if (format === 'pdf') {
+            // Use standard report PDF or just generate a summary
+            showToast('Generating Patient Summary PDF...', 'info');
+            // For now, let's keep it simple or hook into a summary PDF
+        }
         
         let content = '';
         const timestamp = new Date().toISOString().split('T')[0];
@@ -121,73 +200,26 @@ export function PatientOverview({ onBack, patient, theme }: { onBack: () => void
         }
     };
 
+    const handleShareWhatsApp = (plan: any) => {
+        const text = `*Treatment Plan: ${plan.title}*\nPatient: ${patient.name}\nTotal Cost: ₹${plan.total_cost}\nStatus: ${plan.status}\n\nProcedures:\n${(plan.treatment_plan_items || []).map((it: any) => `- ${it.treatment_name} (${it.tooth_reference || 'all'})`).join('\n')}\n\nPlease contact us for any questions.`;
+        const encoded = encodeURIComponent(text);
+        window.open(`https://wa.me/${patient.phone?.replace(/\D/g, '')}?text=${encoded}`, '_blank');
+    };
+
     const tabs = [
         { id: 'home', label: 'Home', icon: Activity },
-        { id: 'billing', label: 'Billing', icon: FileText },
-        { id: 'payment', label: 'Payment', icon: IndianRupee },
-        { id: 'messages', label: 'Messages', icon: MessageSquare },
+        { id: 'billing', label: 'Invoices', icon: FileText },
+        { id: 'treatment_plans', label: 'Plans', icon: FileSignature },
+        { id: 'prescriptions', label: 'Prescriptions', icon: FileText },
+        { id: 'lab_orders', label: 'Labs', icon: FlaskConical },
+        { id: 'clinical', label: 'Medical Records', icon: ClipboardCheck },
         { id: 'appointments', label: 'Appointments', icon: Calendar },
+        { id: 'emr', label: 'EMR/Chart', icon: Activity },
         { id: 'gallery', label: 'Gallery', icon: ImageIcon },
-        { id: 'emr', label: 'Tooth Chart', icon: Activity },
-        { id: 'more', label: 'More', icon: MoreHorizontal }
+        { id: 'messages', label: 'Chat', icon: MessageSquare },
     ];
 
     if (!patient) return null;
-
-    if (view === 'treatment_plan') {
-        return (
-            <div className={`animate-slide-up space-y-10 pb-12 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
-                <div className="flex items-center gap-6">
-                    <button onClick={() => setView('overview')} className="p-4 border rounded-2xl transition-all shadow-premium" style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)', color: 'var(--text-muted)' }}>
-                        <ChevronLeft size={24} />
-                    </button>
-                    <div>
-                        <h2 className={`text-2xl md:text-3xl font-bold tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Design Treatment Plan</h2>
-                        <p className="text-base font-medium mt-1" style={{ color: 'var(--text-muted)' }}>Drafting clinical roadmap for {patient.name}</p>
-                    </div>
-                </div>
-
-                <div className="p-12 rounded-[3.5rem] border shadow-premium shadow-primary/5" style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                        <div className="space-y-8">
-                            <div>
-                                <label className="text-base font-bold text-slate-500 mb-3 block">Patient Identification Details</label>
-                                <input type="text" className="w-full border rounded-2xl px-8 py-5 text-base font-bold outline-none transition-all focus:ring-4"
-                                    style={{ background: 'var(--card-bg-alt)', border: '1.5px solid var(--border-color)', color: 'var(--text-main)' }} placeholder="Patient info placeholder..." />
-                            </div>
-                            <div>
-                                <label className="text-base font-bold text-slate-500 mb-3 block">Primary Complaint & Symptoms</label>
-                                <textarea rows={5} className="w-full border rounded-2xl px-8 py-5 text-base font-bold outline-none transition-all focus:ring-4"
-                                    style={{ background: 'var(--card-bg-alt)', border: '1.5px solid var(--border-color)', color: 'var(--text-main)' }} placeholder="Describe patient concerns..."></textarea>
-                            </div>
-                        </div>
-                        <div className="space-y-8">
-                            <div>
-                                <label className="text-base font-bold text-slate-500 mb-3 block">Estimated Treatment Budget (₹)</label>
-                                <div className="relative">
-                                    <span className="absolute left-8 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-lg">₹</span>
-                                    <input type="number" className="w-full border rounded-2xl pl-14 pr-8 py-5 text-xl font-bold outline-none transition-all focus:ring-4"
-                                        style={{ background: 'var(--card-bg-alt)', border: '1.5px solid var(--border-color)', color: 'var(--text-main)' }} placeholder="0.00" />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="text-base font-bold text-slate-500 mb-3 block">Proposed Clinical Procedures</label>
-                                <textarea rows={5} className="w-full border rounded-2xl px-8 py-5 text-base font-bold outline-none transition-all focus:ring-4"
-                                    style={{ background: 'var(--card-bg-alt)', border: '1.5px solid var(--border-color)', color: 'var(--text-main)' }} placeholder="E.g. Root Canal on #14, Scaling & Polishing..."></textarea>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="mt-16 flex gap-6">
-                        <button onClick={() => setView('overview')} className={`flex-1 py-6 rounded-3xl font-bold text-lg transition-all ${theme === 'dark' ? 'bg-white/5 text-white hover:bg-white/10' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>Discard Draft</button>
-                        <button onClick={() => { showToast('Treatment plan saved!', 'success'); setView('overview'); }} className="flex-1 py-6 bg-primary hover:bg-primary-hover text-white rounded-3xl font-bold text-lg shadow-premium shadow-primary/20 transition-all flex items-center justify-center gap-4 active:scale-95">
-                            <Save size={24} /> Finalize & Sync
-                        </button>
-                    </div>
-                </div>
-            </div>
-        );
-    }
 
     if (view === 'bill_detail' && selectedBill) {
         return (
@@ -206,7 +238,7 @@ export function PatientOverview({ onBack, patient, theme }: { onBack: () => void
                     <div className="flex justify-between items-start mb-16">
                         <div>
                             <p className="text-base font-bold text-slate-400 mb-3 uppercase tracking-widest">Transaction Number</p>
-                            <h4 className="text-5xl font-sans font-bold text-primary">{selectedBill.id}</h4>
+                            <h4 className="text-5xl font-sans font-bold text-primary">{selectedBill.invoice_number || selectedBill.id.slice(0, 8)}</h4>
                         </div>
                         <div className="text-right">
                             <p className="text-base font-bold text-slate-400 mb-3 uppercase tracking-widest">Date of Issuance</p>
@@ -224,12 +256,8 @@ export function PatientOverview({ onBack, patient, theme }: { onBack: () => void
                             </thead>
                             <tbody style={{ color: 'var(--text-main)', borderColor: 'var(--border-color)' }}>
                                 <tr className="text-lg font-bold" style={{ borderTop: '1px solid var(--border-color)' }}>
-                                    <td className="py-8">Comprehensive Dental Examination</td>
-                                    <td className="py-8 text-right">₹850.00</td>
-                                </tr>
-                                <tr className="text-lg font-bold" style={{ borderTop: '1px solid var(--border-color)' }}>
-                                    <td className="py-8">Advanced Restorative Procedure</td>
-                                    <td className="py-8 text-right">₹{Number(selectedBill.amount - 850).toLocaleString()}</td>
+                                    <td className="py-8">{selectedBill.treatment_name || 'Restorative Procedure'}</td>
+                                    <td className="py-8 text-right">₹{Number(selectedBill.amount).toLocaleString()}</td>
                                 </tr>
                             </tbody>
                             <tfoot>
@@ -242,10 +270,25 @@ export function PatientOverview({ onBack, patient, theme }: { onBack: () => void
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-16">
-                        <button onClick={() => showToast('Sharing via secure channel...', 'success')} className={`flex items-center justify-center gap-4 py-6 rounded-3xl font-bold text-lg shadow-premium transition-all active:scale-95 ${theme === 'dark' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 border border-emerald-100 font-bold'}`}>
+                        <button onClick={() => handleShareWhatsApp({ title: `Invoice ${selectedBill.invoice_number}`, total_cost: selectedBill.amount, status: selectedBill.status })} className={`flex items-center justify-center gap-4 py-6 rounded-3xl font-bold text-lg shadow-premium transition-all active:scale-95 ${theme === 'dark' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'}`}>
                             <MessageSquare size={24} /> Forward to WhatsApp
                         </button>
-                        <button onClick={() => handleDownloadReport('pdf')} className="flex items-center justify-center gap-4 py-6 bg-slate-900 text-white rounded-3xl font-bold text-lg shadow-premium hover:bg-black transition-all active:scale-95">
+                        <button onClick={() => downloadInvoicePDF({
+                            invoiceNumber: selectedBill.invoice_number || selectedBill.id.slice(0, 8),
+                            date: selectedBill.date,
+                            patientName: patient.name,
+                            clinicName: 'DentiSphere Clinic',
+                            clinicLocation: 'Main Center',
+                            doctorName: selectedBill.doctor_name || 'Attending Doctor',
+                            treatmentName: selectedBill.treatment_name || 'Dental Treatment',
+                            grossAmount: selectedBill.amount,
+                            discount: selectedBill.discount || 0,
+                            gstRate: 0,
+                            gstAmount: 0,
+                            totalAmount: selectedBill.amount,
+                            paymentMethod: selectedBill.payment_method || 'Cash',
+                            paymentStatus: selectedBill.status
+                        })} className="flex items-center justify-center gap-4 py-6 bg-slate-900 text-white rounded-3xl font-bold text-lg shadow-premium hover:bg-black transition-all active:scale-95">
                             <Printer size={24} /> Print Secure Copy
                         </button>
                     </div>
@@ -253,6 +296,7 @@ export function PatientOverview({ onBack, patient, theme }: { onBack: () => void
             </div>
         );
     }
+
 
     return (
         <div className={`animate-slide-up space-y-8 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
@@ -408,32 +452,260 @@ export function PatientOverview({ onBack, patient, theme }: { onBack: () => void
                 )}
 
                 {activeTab === 'billing' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {[
-                            { id: 'INV-0089', date: '12 Oct 2026', amount: 12000, status: 'Paid', items: 'Consultation, OPG, Scaling' },
-                            { id: 'INV-0092', date: '25 Oct 2026', amount: 3500, status: 'Unpaid', items: 'Review, Post-op Medication' }
-                        ].map(bill => (
-                            <div key={bill.id} className="p-8 rounded-[2.5rem] group transition-all hover:scale-[1.02]" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
-                                <div className="flex justify-between items-start mb-10">
-                                    <div>
-                                        <h5 className="text-xl font-bold">{bill.id}</h5>
-                                        <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">{bill.date}</p>
+                    <div className="space-y-6">
+                        <div className="flex justify-between items-center">
+                            <h4 className="text-2xl font-bold" style={{ color: 'var(--text-dark)' }}>Financial Invoices</h4>
+                            <p className="text-sm font-bold text-slate-500">Showing {patientBills.length} records</p>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {patientBills.map(bill => (
+                                <div key={bill.id} className="p-8 rounded-[2.5rem] group transition-all hover:scale-[1.02] shadow-sm" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
+                                    <div className="flex justify-between items-start mb-8">
+                                        <div>
+                                            <h5 className="text-lg font-bold">INV-{bill.invoice_number || bill.id.slice(0, 4)}</h5>
+                                            <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">{new Date(bill.date).toLocaleDateString()}</p>
+                                        </div>
+                                        <span className={`px-4 py-1.5 rounded-full text-[9px] font-extrabold uppercase border ${bill.status === 'Paid' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-rose-500/10 text-rose-500 border-rose-500/20'}`}>
+                                            {bill.status}
+                                        </span>
                                     </div>
-                                    <span className={`px-4 py-1.5 rounded-full text-[9px] font-extrabold uppercase border ${bill.status === 'Paid' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-rose-500/10 text-rose-500 border-rose-500/20'}`}>
-                                        {bill.status}
-                                    </span>
-                                </div>
-                                <p className="text-sm font-bold text-slate-400 mb-8 line-clamp-1">{bill.items}</p>
-                                <div className="flex items-center justify-between pt-6 border-t border-white/5">
-                                    <p className="text-2xl font-sans font-bold text-primary">₹{bill.amount}</p>
-                                    <div className="flex gap-2">
-                                        <button onClick={() => { setSelectedBill(bill); setView('bill_detail'); }} className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:text-primary transition-all">
-                                            <Eye size={18} />
-                                        </button>
+                                    <p className="text-sm font-bold text-slate-400 mb-6 line-clamp-1">{bill.treatment_name || 'Restorative Treatment'}</p>
+                                    <div className="flex items-center justify-between pt-6 border-t border-black/5">
+                                        <p className="text-2xl font-sans font-bold text-primary">₹{bill.amount}</p>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => { setSelectedBill(bill); setView('bill_detail'); }} className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 hover:text-primary transition-all">
+                                                <Eye size={16} />
+                                            </button>
+                                            <button onClick={() => downloadInvoicePDF({
+                                                invoiceNumber: bill.invoice_number || bill.id.slice(0, 8),
+                                                date: bill.date,
+                                                patientName: patient.name,
+                                                clinicName: 'DentiSphere Clinic',
+                                                clinicLocation: 'Main Center',
+                                                doctorName: bill.doctor_name || 'Attending Doctor',
+                                                treatmentName: bill.treatment_name || 'Dental Treatment',
+                                                grossAmount: bill.amount,
+                                                discount: bill.discount || 0,
+                                                gstRate: 0,
+                                                gstAmount: 0,
+                                                totalAmount: bill.amount,
+                                                paymentMethod: bill.payment_method || 'Cash',
+                                                paymentStatus: bill.status
+                                            })} className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 hover:text-primary transition-all">
+                                                <Download size={16} />
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
+                            ))}
+                            {patientBills.length === 0 && (
+                                <div className="col-span-full py-20 text-center bg-slate-50 rounded-[3rem] border-2 border-dashed border-slate-200">
+                                    <FileText size={48} className="mx-auto text-slate-300 mb-4" />
+                                    <p className="font-bold text-slate-400">No invoices found for this patient.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'treatment_plans' && (
+                    <div className="space-y-6">
+                        <div className="flex justify-between items-center">
+                            <h4 className="text-2xl font-bold" style={{ color: 'var(--text-dark)' }}>Clinical Treatment Plans</h4>
+                            <button onClick={() => setView('treatment_plan')} className="px-6 py-2 bg-primary text-white rounded-xl text-xs font-bold shadow-lg shadow-primary/20 flex items-center gap-2">
+                                <Plus size={16} /> New Plan
+                            </button>
+                        </div>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {patientPlans.map(plan => (
+                                <div key={plan.id} className="p-8 rounded-[2.5rem] shadow-sm relative overflow-hidden group" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
+                                    <div className="flex justify-between items-start mb-6">
+                                        <div>
+                                            <h5 className="text-xl font-bold mb-1">{plan.title}</h5>
+                                            <p className="text-xs font-bold text-slate-400">{new Date(plan.created_at).toLocaleDateString()}</p>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => downloadTreatmentPlanPDF({
+                                                date: new Date(plan.created_at).toLocaleDateString(),
+                                                patientName: patient.name,
+                                                patientPhone: patient.phone || '',
+                                                planTitle: plan.title,
+                                                items: (plan.treatment_plan_items || []).map((it: any) => ({
+                                                    treatment_name: it.treatment_name,
+                                                    tooth_reference: it.tooth_reference || 'All',
+                                                    cost: it.cost || 0,
+                                                    status: it.status || 'Pending'
+                                                })),
+                                                totalCost: plan.total_cost,
+                                                notes: plan.notes || ''
+                                            })} className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 hover:text-primary transition-all">
+                                                <Download size={16} />
+                                            </button>
+                                            <button onClick={() => handleShareWhatsApp(plan)} className="p-2 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 hover:bg-emerald-100 transition-all">
+                                                <Share2 size={16} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-4 mb-8">
+                                        {(plan.treatment_plan_items || []).slice(0, 3).map((item: any) => (
+                                            <div key={item.id} className="flex justify-between items-center text-sm font-medium">
+                                                <span className="text-slate-600">Tooth {item.tooth_reference || 'All'}: {item.treatment_name}</span>
+                                                <span className="font-bold">₹{item.cost}</span>
+                                            </div>
+                                        ))}
+                                        {plan.treatment_plan_items?.length > 3 && (
+                                            <p className="text-xs font-bold text-primary">+{plan.treatment_plan_items.length - 3} more procedures</p>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center justify-between pt-6 border-t border-black/5 mt-auto">
+                                        <div>
+                                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Estimated Budget</p>
+                                            <p className="text-3xl font-sans font-black text-primary">₹{plan.total_cost.toLocaleString()}</p>
+                                        </div>
+                                        <span className={`px-4 py-2 rounded-xl text-xs font-bold border ${plan.status === 'Active' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-slate-100 text-slate-500'}`}>
+                                            {plan.status}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                            {patientPlans.length === 0 && (
+                                <div className="col-span-full py-20 text-center bg-slate-50 rounded-[3rem] border-2 border-dashed border-slate-200">
+                                    <FileSignature size={48} className="mx-auto text-slate-300 mb-4" />
+                                    <p className="font-bold text-slate-400">No active treatment plans.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'lab_orders' && (
+                    <div className="space-y-6">
+                        <div className="flex justify-between items-center">
+                            <h4 className="text-2xl font-bold" style={{ color: 'var(--text-dark)' }}>Lab History & Orders</h4>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {patientLabOrders.map(order => {
+                                const meta = order.metadata || {};
+                                return (
+                                    <div key={order.id} className="p-8 rounded-[2.5rem] shadow-sm relative group bg-white border border-slate-100" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
+                                        <div className="flex justify-between items-start mb-6">
+                                            <div>
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <FlaskConical size={14} className="text-primary" />
+                                                    <h5 className="font-bold text-lg">{order.vendor_name}</h5>
+                                                </div>
+                                                <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">{new Date(order.order_date).toLocaleDateString()} • {meta.time || 'N/A'}</p>
+                                            </div>
+                                            <button onClick={() => downloadLabOrderPDF({
+                                                orderId: order.id,
+                                                date: order.order_date,
+                                                patientName: patient.name,
+                                                patientPhone: patient.phone || '',
+                                                doctorName: meta.doctor || 'Dr. Sarah Jenkins',
+                                                vendorName: order.vendor_name,
+                                                teeth: meta.selectedTeeth?.join(', ') || 'N/A',
+                                                details: `Prosthesis: ${meta.prosthesis?.join(', ') || 'N/A'}\nSurface: ${meta.surfaceCluster || 'N/A'}\nPontic: ${meta.ponticType || 'N/A'}\nNotes: ${meta.delivery?.notes || 'N/A'}`,
+                                                status: order.order_status,
+                                                deliveryDates: {
+                                                    trial: meta.delivery?.trial,
+                                                    bisque: meta.delivery?.bisque,
+                                                    final: meta.delivery?.final
+                                                }
+                                            })} className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 hover:text-primary transition-all">
+                                                <Download size={16} />
+                                            </button>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4 mb-6">
+                                            <div className="p-4 bg-slate-50 rounded-2xl">
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Teeth</p>
+                                                <p className="text-sm font-bold text-primary">{meta.selectedTeeth?.join(', ') || 'N/A'}</p>
+                                            </div>
+                                            <div className="p-4 bg-slate-50 rounded-2xl">
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Prosthesis</p>
+                                                <p className="text-sm font-bold truncate">{meta.prosthesis?.join(', ') || 'N/A'}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center justify-between pt-6 border-t border-black/5">
+                                            <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${order.order_status === 'Ready' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                                                {order.order_status}
+                                            </span>
+                                            <p className="text-lg font-bold text-slate-700">₹{meta.totalAmount || 0}</p>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            {patientLabOrders.length === 0 && (
+                                <div className="col-span-full py-20 text-center bg-slate-50 rounded-[3rem] border-2 border-dashed border-slate-200">
+                                    <FlaskConical size={48} className="mx-auto text-slate-300 mb-4" />
+                                    <p className="font-bold text-slate-400">No lab orders found.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'prescriptions' && (
+                    <div className="space-y-6">
+                         <div className="flex justify-between items-center px-4">
+                            <h4 className="text-2xl font-bold" style={{ color: 'var(--text-dark)' }}>Medication Records</h4>
+                            <p className="text-sm font-bold text-slate-500">{patientPrescriptions.length} Records found</p>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {patientPrescriptions.map(rx => (
+                                <div key={rx.id} className="p-8 rounded-[2.5rem] bg-white border border-slate-200 shadow-sm hover:shadow-md transition-all group" style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
+                                    <div className="flex justify-between items-start mb-6">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+                                                <FileText size={24} />
+                                            </div>
+                                            <div>
+                                                <h5 className="font-bold text-lg">Rx-{rx.id.slice(0, 8).toUpperCase()}</h5>
+                                                <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">{new Date(rx.created_at).toLocaleDateString()}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => downloadPrescriptionPDF({
+                                                patientName: patient.name,
+                                                patientPhone: patient.phone || '',
+                                                doctorName: rx.medication_data?.doctorName || 'Dr. Sarah Jenkins',
+                                                clinicName: rx.medication_data?.clinicName || 'DentiSphere Clinic',
+                                                date: rx.created_at,
+                                                drugs: rx.medication_data?.drugs || [],
+                                                notes: rx.medication_data?.notes,
+                                                rxId: rx.id.slice(0, 8)
+                                            })} className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 hover:text-primary transition-all">
+                                                <Download size={18} />
+                                            </button>
+                                            <button onClick={() => {
+                                                const drugs = rx.medication_data?.drugs || [];
+                                                const msg = `Hello ${patient.name},\n\nYour prescription from DentiSphere:\n${drugs.map((d: any) => `• ${d.name} ${d.dosage} — ${d.frequency}`).join('\n')}\n\nPlease follow as directed.`;
+                                                const phone = patient.phone?.replace(/\D/g, '');
+                                                window.open(`https://wa.me/${phone ? '91' + phone : ''}?text=${encodeURIComponent(msg)}`, '_blank');
+                                            }} className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 hover:bg-emerald-100 transition-all">
+                                                <MessageSquare size={18} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-3">
+                                        {(rx.medication_data?.drugs || []).slice(0, 2).map((d: any, i: number) => (
+                                            <div key={i} className="flex justify-between items-center p-3 rounded-xl bg-slate-50/50 border border-slate-100">
+                                                <span className="text-sm font-bold">{d.name}</span>
+                                                <span className="text-[10px] font-black text-slate-400 uppercase">{d.frequency}</span>
+                                            </div>
+                                        ))}
+                                        {rx.medication_data?.drugs?.length > 2 && (
+                                            <p className="text-[10px] font-bold text-slate-400 text-center">+ {rx.medication_data.drugs.length - 2} more medications</p>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        {patientPrescriptions.length === 0 && (
+                            <div className="py-20 text-center bg-slate-50/50 rounded-[3rem] border border-dashed border-slate-200">
+                                <FileText size={48} className="mx-auto mb-4 text-slate-300" />
+                                <p className="text-slate-500 font-bold">No prescriptions recorded for this patient yet.</p>
                             </div>
-                        ))}
+                        )}
                     </div>
                 )}
 
@@ -462,6 +734,163 @@ export function PatientOverview({ onBack, patient, theme }: { onBack: () => void
                                 </div>
                             ))}
                         </div>
+                    </div>
+                )}
+
+                {activeTab === 'clinical' && (
+                    <div className="space-y-8">
+                        <div className="flex items-center gap-3 p-1.5 bg-slate-100/50 dark:bg-white/5 rounded-2xl w-fit border border-slate-200 dark:border-white/10">
+                            <button onClick={() => setClinicalSubTab('soap')} className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${clinicalSubTab === 'soap' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-500 hover:text-primary'}`}>SOAP Notes</button>
+                            <button onClick={() => setClinicalSubTab('vitals')} className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${clinicalSubTab === 'vitals' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-500 hover:text-primary'}`}>Vital Signs</button>
+                            <button onClick={() => setClinicalSubTab('consents')} className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${clinicalSubTab === 'consents' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-500 hover:text-primary'}`}>Consent Forms</button>
+                        </div>
+
+                        {clinicalSubTab === 'soap' && (
+                            <div className="space-y-4">
+                                {patientNotes.length > 0 ? patientNotes.map(note => (
+                                    <div key={note.id} className="p-8 rounded-[2.5rem] border shadow-sm" style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
+                                        <div className="flex justify-between items-start mb-6">
+                                            <div>
+                                                <h5 className="text-xl font-bold mb-1">Clinical Record: {new Date(note.created_at).toLocaleDateString()}</h5>
+                                                <p className="text-xs font-bold text-primary flex items-center gap-2 uppercase tracking-widest"><ClipboardCheck size={12} /> Dr. {note.doctor_name}</p>
+                                            </div>
+                                            <span className="px-4 py-1.5 bg-primary/10 text-primary rounded-full text-[10px] font-black uppercase tracking-widest">Permanent Record</span>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Subjective</p>
+                                                    <p className="text-sm font-medium leading-relaxed" style={{ color: 'var(--text-muted)' }}>{note.subjective}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Objective</p>
+                                                    <p className="text-sm font-medium leading-relaxed" style={{ color: 'var(--text-muted)' }}>{note.objective}</p>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Assessment</p>
+                                                    <p className="text-sm font-medium leading-relaxed" style={{ color: 'var(--text-muted)' }}>{note.assessment}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Plan</p>
+                                                    <p className="text-sm font-medium leading-relaxed" style={{ color: 'var(--text-muted)' }}>{note.plan}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )) : (
+                                    <div className="py-20 text-center bg-slate-50/50 rounded-[3rem] border border-dashed border-slate-200">
+                                        <ClipboardCheck size={48} className="mx-auto mb-4 text-slate-300" />
+                                        <p className="text-slate-500 font-bold">No clinical SOAP notes recorded yet.</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {clinicalSubTab === 'vitals' && (
+                            <div className="space-y-4">
+                                {patientVitals.length > 0 ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {patientVitals.map(v => (
+                                            <div key={v.id} className={`p-8 rounded-[2.5rem] border transition-all ${v.bp_systolic > 140 || v.spo2 < 95 ? 'border-rose-500/30 bg-rose-500/5' : 'border-slate-200 dark:border-white/10 dark:bg-white/3 bg-white'}`}>
+                                                <div className="flex justify-between items-center mb-6">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${v.bp_systolic > 140 ? 'bg-rose-500 text-white animate-pulse' : 'bg-primary/10 text-primary'}`}>
+                                                            <Heart size={20} />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{new Date(v.recorded_at).toLocaleDateString()}</p>
+                                                            <p className="text-xs font-bold uppercase tracking-tighter">logged by {v.doctor_name}</p>
+                                                        </div>
+                                                    </div>
+                                                    {(v.bp_systolic > 140 || v.spo2 < 95) && <AlertTriangle size={20} className="text-rose-500" />}
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="p-4 rounded-2xl bg-slate-900/5 dark:bg-white/5 border border-black/5">
+                                                        <p className="text-[9px] font-extrabold text-slate-400 uppercase mb-1">Blood Pressure</p>
+                                                        <p className="text-lg font-black">{v.bp_systolic}/{v.bp_diastolic}</p>
+                                                        <p className="text-[8px] font-bold text-slate-400">mmHg</p>
+                                                    </div>
+                                                    <div className="p-4 rounded-2xl bg-slate-900/5 dark:bg-white/5 border border-black/5">
+                                                        <p className="text-[9px] font-extrabold text-slate-400 uppercase mb-1">Pulse Rate</p>
+                                                        <p className="text-lg font-black">{v.pulse}</p>
+                                                        <p className="text-[8px] font-bold text-slate-400">BPM</p>
+                                                    </div>
+                                                    <div className="p-4 rounded-2xl bg-slate-900/5 dark:bg-white/5 border border-black/5">
+                                                        <p className="text-[9px] font-extrabold text-slate-400 uppercase mb-1">Blood Oxygen</p>
+                                                        <p className="text-lg font-black">{v.spo2}%</p>
+                                                        <p className="text-[8px] font-bold text-slate-400">SpO2</p>
+                                                    </div>
+                                                    <div className="p-4 rounded-2xl bg-slate-900/5 dark:bg-white/5 border border-black/5">
+                                                        <p className="text-[9px] font-extrabold text-slate-400 uppercase mb-1">Temperature</p>
+                                                        <p className="text-lg font-black">{v.temp || '--'}°C</p>
+                                                        <p className="text-[8px] font-bold text-slate-400">Body Temp</p>
+                                                    </div>
+                                                </div>
+                                                {v.notes && (
+                                                    <div className="mt-4 p-4 rounded-xl bg-slate-100 dark:bg-black/20 text-[10px] font-medium italic text-slate-500 leading-relaxed border border-black/5">
+                                                        "{v.notes}"
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="py-20 text-center bg-slate-50/50 rounded-[3rem] border border-dashed border-slate-200">
+                                        <Heart size={48} className="mx-auto mb-4 text-slate-300" />
+                                        <p className="text-slate-500 font-bold">No vital signs recorded yet.</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {clinicalSubTab === 'consents' && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {patientConsents.length > 0 ? patientConsents.map(form => (
+                                    <div key={form.id} className="p-8 rounded-[2.5rem] border shadow-sm group hover:scale-[1.02] transition-all" style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
+                                        <div className="flex justify-between items-start mb-6">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+                                                    <FileSignature size={24} />
+                                                </div>
+                                                <div>
+                                                    <h5 className="font-bold text-lg">{form.title}</h5>
+                                                    <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">{new Date(form.created_at).toLocaleDateString()} • {form.status}</p>
+                                                </div>
+                                            </div>
+                                            <button onClick={() => {
+                                                // Minimal print logic for now within Overview
+                                                const win = window.open('', '_blank');
+                                                if (win) {
+                                                    win.document.write(`<html><body style="font-family:serif; padding:50px;"><h1>${form.title}</h1><p>${form.body}</p><hr/><p>Digitally Signed by ${patient.name}</p></body></html>`);
+                                                    win.document.close();
+                                                    win.print();
+                                                }
+                                            }} className="p-3 rounded-xl bg-primary text-white shadow-lg shadow-primary/20 opacity-0 group-hover:opacity-100 transition-all active:scale-95">
+                                                <Printer size={18} />
+                                            </button>
+                                        </div>
+                                        <div className="bg-slate-100 dark:bg-white/5 p-4 rounded-xl border border-black/5 mb-4">
+                                            <p className="text-[11px] font-bold text-slate-500 leading-relaxed line-clamp-3 italic opacity-60">
+                                                {form.body}
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-[10px] font-bold text-slate-400">Auth: Dr. {form.doctor_name}</p>
+                                            <span className="text-[9px] font-black px-3 py-1 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-full uppercase tracking-widest flex items-center gap-1">
+                                                <CheckCircle size={10} /> Verified Signed
+                                            </span>
+                                        </div>
+                                    </div>
+                                )) : (
+                                    <div className="col-span-full py-20 text-center bg-slate-50/50 rounded-[3rem] border border-dashed border-slate-200">
+                                        <FileSignature size={48} className="mx-auto mb-4 text-slate-300" />
+                                        <p className="text-slate-500 font-bold">No digital consent forms signed yet.</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 )}
 

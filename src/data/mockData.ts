@@ -70,7 +70,7 @@ export const generateMockPatients = () => {
         const visits = Math.floor(Math.random() * 8) + 1;
         const history = [];
 
-        let hasScaling = Math.random() > 0.3;
+        const hasScaling = Math.random() > 0.3;
         let scalingCount = 0;
 
         for (let v = 0; v < visits; v++) {

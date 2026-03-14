@@ -1,21 +1,26 @@
 import { useState, useEffect } from 'react';
-import { FileText, Save, History, Plus, Brain, User, Calendar, Activity, Bot, Sparkles } from 'lucide-react';
+import { FileText, Save, History, Plus, Brain, User, Calendar, Activity, Bot, Sparkles, ChevronDown } from 'lucide-react';
 import { supabase } from '../../supabase';
 import { useToast } from '../Toast';
 import { VoiceCharting } from './VoiceCharting';
 import { useGlobalChat } from '../ai/GlobalAIAssistant/useGlobalChat';
+import { DoctorSelect } from '../DoctorSelect';
+import { PatientSelect } from '../PatientSelect';
 
 interface ClinicalNotesProps {
-    patientId: string;
+    patientId?: string;
     theme?: 'light' | 'dark';
 }
 
-export function ClinicalNotes({ patientId, theme }: ClinicalNotesProps) {
+export function ClinicalNotes({ patientId: initialPatientId, theme }: ClinicalNotesProps) {
     const { showToast } = useToast();
     const isDark = theme === 'dark';
     const [notes, setNotes] = useState<any[]>([]);
     const [isSaving, setIsSaving] = useState(false);
     const [showForm, setShowForm] = useState(false);
+    
+    const [selectedPatient, setSelectedPatient] = useState<any>(initialPatientId ? { id: initialPatientId } : null);
+    const [selectedDoctor, setSelectedDoctor] = useState<any>(null);
 
     const [form, setForm] = useState({
         subjective: '',
@@ -25,36 +30,67 @@ export function ClinicalNotes({ patientId, theme }: ClinicalNotesProps) {
     });
 
     useEffect(() => {
-        if (patientId) fetchNotes();
-    }, [patientId]);
+        if (initialPatientId) {
+            setSelectedPatient({ id: initialPatientId, name: '' });
+            fetchNotes(initialPatientId);
+        } else {
+            fetchAllNotes();
+        }
+    }, [initialPatientId]);
 
-    const fetchNotes = async () => {
+    const fetchNotes = async (pid: string) => {
         const { data } = await supabase
             .from('clinical_notes')
             .select('*')
-            .eq('patient_id', patientId)
+            .eq('patient_id', pid)
             .order('created_at', { ascending: false });
         if (data) setNotes(data);
     };
 
+    const fetchAllNotes = async () => {
+        const { data } = await supabase
+            .from('clinical_notes')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(20);
+        if (data) setNotes(data);
+    };
+
     const handleSave = async () => {
+        if (!selectedPatient) return showToast('Please select a patient', 'error');
+        if (!selectedDoctor) return showToast('Please select an attending doctor', 'error');
         if (!form.subjective && !form.objective && !form.assessment && !form.plan) {
             return showToast('Empty notes cannot be committed', 'error');
         }
 
         setIsSaving(true);
         const { error } = await supabase.from('clinical_notes').insert({
-            patient_id: patientId,
+            patient_id: selectedPatient.id,
+            doctor_id: selectedDoctor.id,
+            doctor_name: selectedDoctor.name,
             ...form
         });
+
+        // Also sync to general patient history for the Overview tab
+        if (!error) {
+            await supabase.from('patient_history').insert({
+                patient_id: selectedPatient.id,
+                date: new Date().toISOString().split('T')[0],
+                treatment: 'Clinical SOAP Note',
+                notes: `Assessment: ${form.assessment.slice(0, 50)}...`,
+                category: 'Clinical',
+                doctor_name: selectedDoctor.name
+            });
+        }
 
         if (!error) {
             showToast('Clinical SOAP record committed', 'success');
             setForm({ subjective: '', objective: '', assessment: '', plan: '' });
             setShowForm(false);
-            fetchNotes();
+            if (selectedPatient) fetchNotes(selectedPatient.id);
+            else fetchAllNotes();
         } else {
-            showToast('Failed to commit record', 'error');
+            showToast('Failed to commit record: ' + error.message, 'error');
         }
         setIsSaving(false);
     };
@@ -74,7 +110,7 @@ export function ClinicalNotes({ patientId, theme }: ClinicalNotesProps) {
         Assessment: [Your assessment here]
         Plan: [Your plan here]`;
 
-        const responseText = await sendAIQuery(prompt, { patientId });
+        const responseText = await sendAIQuery(prompt, { patientId: selectedPatient?.id });
         
         if (responseText && responseText.length > 5) {
             // Robust extraction: fallback to raw text if tags aren't found
@@ -118,6 +154,10 @@ export function ClinicalNotes({ patientId, theme }: ClinicalNotesProps) {
 
                 {showForm && (
                     <div className="space-y-4 animate-slide-up bg-white/5 p-4 rounded-2xl border border-white/5 mb-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            {!initialPatientId && <PatientSelect value={selectedPatient?.id} onSelect={setSelectedPatient} theme={theme} />}
+                            <DoctorSelect value={selectedDoctor?.id} onSelect={setSelectedDoctor} theme={theme} />
+                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-1.5">
                                 <div className="flex items-center justify-between">

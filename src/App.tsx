@@ -1,7 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { supabase } from './supabase';
 import { Capacitor } from '@capacitor/core';
-import { Bell } from 'lucide-react';
+import { Bell, Sun, Moon, Search } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { MobileBottomNav } from './components/MobileBottomNav';
@@ -100,7 +100,7 @@ function App() {
     try {
       if (!user) return;
       
-      let clinicId = null;
+      const clinicId = null;
       let clinicData = null;
 
       // 1. Try to find clinic where user is owner
@@ -465,22 +465,38 @@ function App() {
         )}
 
         {isMobile && !isMobileMenuOpen && (
-          <header className="sticky top-0 z-40 px-5 py-3 transition-all duration-300">
+          <header className={`sticky top-0 z-40 px-5 py-3 transition-all duration-300 ${theme === 'dark' ? 'bg-slate-900 shadow-lg border-b border-white/5' : 'bg-white shadow-sm border-b border-slate-100'}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-xl overflow-hidden shadow-sm border border-slate-100" onClick={() => setActiveTab('profile')}>
+                <div className={`w-10 h-10 rounded-xl overflow-hidden shadow-sm border transition-colors ${theme === 'dark' ? 'border-slate-800' : 'border-slate-200'}`} onClick={() => setActiveTab('profile')}>
                   <img alt="User avatar" className="w-full h-full object-cover" src={userRole === 'patient' ? "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150" : "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=150"} />
                 </div>
                 <div>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider leading-none mb-1">Welcome</p>
-                  <h1 className="text-base font-bold text-slate-800 leading-none">{session?.user?.user_metadata?.full_name || session?.user?.email?.split('@')[0] || 'User'}</h1>
+                  <p className={`text-[10px] font-bold uppercase tracking-wider leading-none mb-1 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>Welcome</p>
+                  <h1 className={`text-base font-bold leading-none ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>{session?.user?.user_metadata?.full_name || session?.user?.email?.split('@')[0] || 'User'}</h1>
                 </div>
               </div>
-              <button onClick={() => setActiveTab('notifications')} aria-label="View notifications"
-                className="w-10 h-10 rounded-xl flex items-center justify-center bg-white border border-slate-100 text-slate-400 shadow-sm active:scale-90 relative">
-                <Bell size={18} />
-                <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-primary border-2 border-white"></span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                    onClick={() => setIsCommandPaletteOpen(true)}
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 active:scale-90 ${theme === 'dark' ? 'bg-slate-800 text-slate-400 border border-slate-700' : 'bg-slate-50 text-slate-400 border border-slate-200'}`}
+                    aria-label="Search"
+                >
+                    <Search size={18} />
+                </button>
+                <button
+                    onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 active:scale-90 ${theme === 'dark' ? 'bg-slate-800 text-amber-400 border border-slate-700' : 'bg-slate-50 text-primary border border-slate-200'}`}
+                    aria-label="Toggle theme"
+                >
+                    {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                </button>
+                <button onClick={() => setActiveTab('notifications')} aria-label="View notifications"
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 active:scale-90 relative ${theme === 'dark' ? 'bg-slate-800 text-slate-400 border border-slate-700' : 'bg-slate-50 text-slate-400 border border-slate-200'}`}>
+                  <Bell size={18} />
+                  <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-primary border-2 border-white"></span>
+                </button>
+              </div>
             </div>
           </header>
         )}

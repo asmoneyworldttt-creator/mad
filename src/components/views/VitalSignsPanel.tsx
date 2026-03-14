@@ -1,19 +1,24 @@
 import { useState, useEffect } from 'react';
-import { Heart, ChevronDown, ChevronUp, Plus, AlertTriangle, Activity, Thermometer, Wind } from 'lucide-react';
+import { Heart, ChevronDown, ChevronUp, Plus, AlertTriangle, Activity, Thermometer, Wind, User } from 'lucide-react';
 import { supabase } from '../../supabase';
 import { useToast } from '../Toast';
+import { DoctorSelect } from '../DoctorSelect';
+import { PatientSelect } from '../PatientSelect';
 
 interface VitalSignsPanelProps {
-    patient: any;
+    patient?: any;
     theme?: 'light' | 'dark';
 }
 
-export function VitalSignsPanel({ patient, theme }: VitalSignsPanelProps) {
+export function VitalSignsPanel({ patient: initialPatient, theme }: VitalSignsPanelProps) {
     const { showToast } = useToast();
     const [collapsed, setCollapsed] = useState(false);
     const [vitals, setVitals] = useState<any[]>([]);
     const [showLogForm, setShowLogForm] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [selectedPatient, setSelectedPatient] = useState<any>(initialPatient || null);
+    const [selectedDoctor, setSelectedDoctor] = useState<any>(null);
+
     const [form, setForm] = useState({
         bp_systolic: '',
         bp_diastolic: '',
@@ -23,32 +28,39 @@ export function VitalSignsPanel({ patient, theme }: VitalSignsPanelProps) {
     });
 
     useEffect(() => {
-        if (!patient?.id) return;
-        fetchVitals();
+        if (selectedPatient?.id) {
+            fetchVitals();
 
-        const channel = supabase.channel(`vitals-${patient.id}`)
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'vital_signs', filter: `patient_id=eq.${patient.id}` },
-                () => fetchVitals())
-            .subscribe();
+            const channel = supabase.channel(`vitals-${selectedPatient.id}`)
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'vital_signs', filter: `patient_id=eq.${selectedPatient.id}` },
+                    () => fetchVitals())
+                .subscribe();
 
-        return () => { supabase.removeChannel(channel); };
-    }, [patient?.id]);
+            return () => { supabase.removeChannel(channel); };
+        }
+    }, [selectedPatient?.id]);
 
     const fetchVitals = async () => {
+        if (!selectedPatient?.id) return;
         const { data } = await supabase
             .from('vital_signs')
             .select('*')
-            .eq('patient_id', patient.id)
+            .eq('patient_id', selectedPatient.id)
             .order('recorded_at', { ascending: false })
             .limit(5);
         if (data) setVitals(data);
     };
 
     const handleSave = async () => {
+        if (!selectedPatient) return showToast('Please select a patient', 'error');
+        if (!selectedDoctor) return showToast('Please select an attending doctor', 'error');
         if (!form.bp_systolic && !form.pulse) return showToast('Please enter at least BP or Pulse', 'error');
+        
         setSaving(true);
         const { error } = await supabase.from('vital_signs').insert({
-            patient_id: patient.id,
+            patient_id: selectedPatient.id,
+            doctor_id: selectedDoctor.id,
+            doctor_name: selectedDoctor.name,
             bp_systolic: form.bp_systolic ? parseInt(form.bp_systolic) : null,
             bp_diastolic: form.bp_diastolic ? parseInt(form.bp_diastolic) : null,
             pulse: form.pulse ? parseInt(form.pulse) : null,
@@ -56,16 +68,27 @@ export function VitalSignsPanel({ patient, theme }: VitalSignsPanelProps) {
             notes: form.notes,
         });
         setSaving(false);
-        if (error) showToast('Failed to save vitals', 'error');
+        if (error) showToast('Failed to save vitals: ' + error.message, 'error');
         else {
-            showToast('Vitals logged', 'success');
+            // Sync to general patient history for context in Overview
+            await supabase.from('patient_history').insert({
+                patient_id: selectedPatient.id,
+                date: new Date().toISOString().split('T')[0],
+                treatment: 'Vital Signs Recorded',
+                notes: `BP: ${form.bp_systolic}/${form.bp_diastolic}, Pulse: ${form.pulse}, SpO2: ${form.spo2}%`,
+                category: 'Clinical',
+                doctor_name: selectedDoctor.name
+            });
+
+            showToast('Vitals logged successfully', 'success');
             setShowLogForm(false);
             setForm({ bp_systolic: '', bp_diastolic: '', pulse: '', spo2: '', notes: '' });
+            fetchVitals();
         }
     };
 
     const latest = vitals[0];
-    const allergies: string[] = patient?.allergies ? (typeof patient.allergies === 'string' ? patient.allergies.split(',').map((a: string) => a.trim()) : patient.allergies) : [];
+    const allergies: string[] = selectedPatient?.allergies ? (typeof selectedPatient.allergies === 'string' ? selectedPatient.allergies.split(',').map((a: string) => a.trim()) : selectedPatient.allergies) : [];
     const isDark = theme === 'dark';
 
     const bpWarning = latest && latest.bp_systolic > 140;
@@ -123,15 +146,15 @@ export function VitalSignsPanel({ patient, theme }: VitalSignsPanelProps) {
 
                         <div className={`p-5 rounded-2xl ${isDark ? 'bg-white/5 border border-white/10' : 'bg-slate-50 border border-slate-100'}`}>
                             <p className="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest mb-3">Medical Conditions</p>
-                            {patient?.medical_conditions ? (
-                                <p className="text-xs font-medium text-slate-300">{patient.medical_conditions}</p>
+                            {selectedPatient?.medical_conditions ? (
+                                <p className="text-xs font-medium text-slate-300">{selectedPatient.medical_conditions}</p>
                             ) : <p className="text-xs text-slate-400 italic">None recorded</p>}
                         </div>
 
                         <div className={`p-5 rounded-2xl ${isDark ? 'bg-white/5 border border-white/10' : 'bg-slate-50 border border-slate-100'}`}>
                             <p className="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest mb-3">Current Medications</p>
-                            {patient?.current_medications ? (
-                                <p className="text-xs font-medium text-slate-300">{patient.current_medications}</p>
+                            {selectedPatient?.current_medications ? (
+                                <p className="text-xs font-medium text-slate-300">{selectedPatient.current_medications}</p>
                             ) : <p className="text-xs text-slate-400 italic">None recorded</p>}
                         </div>
                     </div>
@@ -151,6 +174,12 @@ export function VitalSignsPanel({ patient, theme }: VitalSignsPanelProps) {
                     {showLogForm && (
                         <div className={`mt-5 p-6 rounded-2xl border animate-slide-up ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
                             <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-4">Log New Vitals</p>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                {!initialPatient && <PatientSelect value={selectedPatient?.id} onSelect={setSelectedPatient} theme={theme} />}
+                                <DoctorSelect value={selectedDoctor?.id} onSelect={setSelectedDoctor} theme={theme} />
+                            </div>
+
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 <div>
                                     <label className="text-[9px] font-bold text-slate-500 uppercase mb-2 block flex items-center gap-1"><Activity size={10} /> Systolic BP</label>

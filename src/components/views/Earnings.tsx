@@ -32,7 +32,7 @@ export function Earnings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
         const channel = supabase.channel('earnings_realtime')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'bills' }, fetchFinancialData)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'payroll_transactions' }, fetchFinancialData)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'staff_members' }, fetchFinancialData)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'staff' }, fetchFinancialData)
             .subscribe();
 
         return () => { supabase.removeChannel(channel); };
@@ -78,10 +78,9 @@ export function Earnings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
         const { data: staffData } = await supabase.from('staff').select('*').order('name');
         if (staffData) setStaff(staffData);
 
-        // Fetch payroll logs
         const { data: payrollData } = await supabase
             .from('payroll_transactions')
-            .select('*, staff_members(full_name, role_title)')
+            .select('*')
             .order('payment_date', { ascending: false });
         if (payrollData) setPayrollLogs(payrollData);
     };
@@ -186,7 +185,7 @@ export function Earnings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
                     ))}
                 </div>
                 <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
-                    <select value={filterRange} onChange={e => setFilterRange(e.target.value)} 
+                    <select value={filterRange} onChange={e => setFilterRange(e.target.value)}
                         className={`px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest outline-none border transition-all shadow-inner`}
                         style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }}>
                         <option>Today</option>

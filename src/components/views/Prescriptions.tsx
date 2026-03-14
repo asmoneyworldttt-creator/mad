@@ -23,10 +23,11 @@ export function Prescriptions({ userRole, theme }: { userRole: UserRole; theme?:
     const [prescriptions, setPrescriptions] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [selectedPatient, setSelectedPatient] = useState<any>(null);
 
     const [newPresc, setNewPresc] = useState({
-        patientName: '',
-        doctorName: 'Dr. S. Jenkins',
+        doctorName: 'Dr. Sarah Jenkins',
         clinicName: 'DentiSphere Clinic',
         drugs: [{ name: '', dosage: '', frequency: 'Twice daily', duration: '5 days' }] as Drug[],
         notes: ''
@@ -50,6 +51,19 @@ export function Prescriptions({ userRole, theme }: { userRole: UserRole; theme?:
         setIsLoading(false);
     };
 
+    const handlePatientSearch = async (val: string) => {
+        setSearchQuery(val);
+        if (val.length < 2) return setSearchResults([]);
+        const { data } = await supabase.from('patients').select('*').ilike('name', `%${val}%`).limit(5);
+        setSearchResults(data || []);
+    };
+
+    const selectPatient = (p: any) => {
+        setSelectedPatient(p);
+        setSearchQuery(p.name);
+        setSearchResults([]);
+    };
+
     const addDrug = () => setNewPresc({ ...newPresc, drugs: [...newPresc.drugs, { name: '', dosage: '', frequency: 'Twice daily', duration: '5 days' }] });
     const removeDrug = (i: number) => setNewPresc({ ...newPresc, drugs: newPresc.drugs.filter((_, idx) => idx !== i) });
     const updateDrug = (i: number, field: keyof Drug, val: string) => {
@@ -59,109 +73,34 @@ export function Prescriptions({ userRole, theme }: { userRole: UserRole; theme?:
     };
 
     const handleSavePrescription = async () => {
-        if (!newPresc.patientName) return showToast('Patient name is required', 'error');
+        if (!selectedPatient) return showToast('Please select a patient', 'error');
         if (newPresc.drugs.some(d => !d.name)) return showToast('All drug names are required', 'error');
 
-        let patientId = null;
-        const { data: existingPatients } = await supabase.from('patients').select('id').ilike('name', newPresc.patientName);
-        if (existingPatients && existingPatients.length > 0) {
-            patientId = existingPatients[0].id;
-        } else {
-            const { data: newPatient } = await supabase.from('patients').insert({ name: newPresc.patientName }).select('id');
-            if (newPatient) patientId = newPatient[0].id;
-        }
-        if (!patientId) return showToast('Could not determine patient ID', 'error');
-
         const { error } = await supabase.from('prescriptions').insert({
-            patient_id: patientId,
+            patient_id: selectedPatient.id,
             medication_data: {
                 drugs: newPresc.drugs,
                 notes: newPresc.notes,
                 doctorName: newPresc.doctorName,
                 clinicName: newPresc.clinicName
-            },
-            created_at: new Date().toISOString()
+            }
         });
 
         if (error) {
             showToast('Error saving prescription', 'error');
         } else {
-            showToast('Prescription saved', 'success');
+            showToast('Prescription saved successfully!', 'success');
             setIsPrescModalOpen(false);
-            setNewPresc({ patientName: '', doctorName: 'Dr. S. Jenkins', clinicName: 'DentiSphere Clinic', drugs: [{ name: '', dosage: '', frequency: 'Twice daily', duration: '5 days' }], notes: '' });
+            setNewPresc({ doctorName: 'Dr. Sarah Jenkins', clinicName: 'DentiSphere Clinic', drugs: [{ name: '', dosage: '', frequency: 'Twice daily', duration: '5 days' }], notes: '' });
+            setSelectedPatient(null);
+            setSearchQuery('');
             fetchPrescriptions();
         }
     };
 
-    const printPrescription = (rx: any) => {
-        const patient = rx.patients?.name || 'Patient';
-        const drugs: Drug[] = rx.medication_data?.drugs || [];
-        const doc = rx.medication_data?.doctorName || 'Attending Doctor';
-        const clinic = rx.medication_data?.clinicName || 'DentiSphere Clinic';
-        const date = new Date(rx.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
-
-        const html = `<!DOCTYPE html>
-<html>
-<head>
-<title>Rx — ${patient}</title>
-<style>
-  body { font-family: 'Georgia', serif; max-width: 700px; margin: 40px auto; padding: 40px; color: #1e293b; border: 2px solid #135bec; border-radius: 12px; }
-  .header { display: flex; justify-content: space-between; border-bottom: 2px solid #135bec; padding-bottom: 20px; margin-bottom: 20px; }
-  .clinic-name { font-size: 24px; font-weight: bold; color: #135bec; }
-  .doctor { font-size: 14px; color: #64748b; margin-top: 4px; }
-  .rx-symbol { font-size: 48px; color: #135bec; font-style: italic; }
-  .patient-info { background: #f0f7ff; padding: 16px; border-radius: 8px; margin-bottom: 20px; }
-  table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-  th { background: #135bec; color: white; padding: 10px 16px; text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
-  td { padding: 10px 16px; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
-  tr:nth-child(even) td { background: #f8fafc; }
-  .signature { margin-top: 60px; border-top: 1px solid #cbd5e1; padding-top: 20px; display: flex; justify-content: flex-end; }
-  .sig-block { text-align: center; }
-  .notes { background: #fef9c3; border: 1px solid #fde047; border-radius: 8px; padding: 12px; margin-top: 16px; font-size: 13px; }
-  @media print { body { border: none; } }
-</style>
-</head>
-<body>
-<div class="header">
-  <div>
-    <div class="clinic-name">${clinic}</div>
-    <div class="doctor">${doc} · BDS, MDS</div>
-    <div class="doctor">Date: ${date}</div>
-  </div>
-  <div class="rx-symbol">℞</div>
-</div>
-<div class="patient-info">
-  <strong>Patient:</strong> ${patient} &nbsp;&nbsp; <strong>Phone:</strong> ${rx.patients?.phone || 'N/A'}
-</div>
-<table>
-  <thead><tr><th>#</th><th>Drug</th><th>Dosage</th><th>Frequency</th><th>Duration</th></tr></thead>
-  <tbody>
-    ${drugs.map((d, i) => `<tr><td>${i + 1}</td><td><strong>${d.name}</strong></td><td>${d.dosage}</td><td>${d.frequency}</td><td>${d.duration}</td></tr>`).join('')}
-  </tbody>
-</table>
-${rx.medication_data?.notes ? `<div class="notes"><strong>Special Instructions:</strong> ${rx.medication_data.notes}</div>` : ''}
-<div class="signature">
-  <div class="sig-block">
-    <div style="border-top: 1px solid #1e293b; padding-top: 8px; width: 200px; text-align: center;">
-      <strong>${doc}</strong><br/>
-      <small style="color: #64748b;">Signature & Stamp</small>
-    </div>
-  </div>
-</div>
-</body>
-</html>`;
-
-        const win = window.open('', '_blank');
-        if (win) {
-            win.document.write(html);
-            win.document.close();
-            win.print();
-        }
-        showToast('Prescription sent to printer', 'success');
-    };
-
     const filtered = prescriptions.filter(rx =>
-        (rx.patients?.name || '').toLowerCase().includes(searchQuery.toLowerCase())
+        (rx.patients?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (rx.patients?.phone || '').includes(searchQuery)
     );
 
     const QUICK_TEMPLATES = [
@@ -240,7 +179,7 @@ ${rx.medication_data?.notes ? `<div class="notes"><strong>Special Instructions:<
                                                             date: rx.created_at,
                                                             drugs: rx.medication_data?.drugs || [],
                                                             notes: rx.medication_data?.notes,
-                                                            rxId: rx.id,
+                                                            rxId: rx.id?.slice(0, 8),
                                                         });
                                                         showToast('PDF Exported', 'success');
                                                     }}
@@ -281,7 +220,10 @@ ${rx.medication_data?.notes ? `<div class="notes"><strong>Special Instructions:<
                                 {QUICK_TEMPLATES.map((tmpl, i) => (
                                     <button
                                         key={i}
-                                        onClick={() => { setNewPresc({ ...newPresc, drugs: tmpl.drugs }); setIsPrescModalOpen(true); }}
+                                        onClick={() => { 
+                                            setNewPresc({ ...newPresc, drugs: tmpl.drugs }); 
+                                            setIsPrescModalOpen(true); 
+                                        }}
                                         className={`w-full p-3 border rounded-xl text-left transition-all group hover:border-primary hover:bg-primary/5 ${isDark ? 'border-white/10 bg-white/3' : 'border-slate-200 bg-slate-50'}`}
                                     >
                                          <p className="font-bold text-xs group-hover:text-primary transition-colors">{tmpl.label}</p>
@@ -306,60 +248,99 @@ ${rx.medication_data?.notes ? `<div class="notes"><strong>Special Instructions:<
 
             <Modal isOpen={isPrescModalOpen} onClose={() => setIsPrescModalOpen(false)} title="Write New Prescription">
                 <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
-                    <div className="grid grid-cols-2 gap-2">
-                        <input type="text" placeholder="Patient Name..." value={newPresc.patientName} onChange={e => setNewPresc({ ...newPresc, patientName: e.target.value })}
-                            className="col-span-2 w-full rounded-xl px-3 py-2 text-xs font-bold outline-none border" style={{ background: 'var(--bg-page)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }} />
-                        <input type="text" placeholder="Doctor Name..." value={newPresc.doctorName} onChange={e => setNewPresc({ ...newPresc, doctorName: e.target.value })}
-                            className="w-full rounded-xl px-3 py-2 text-[11px] font-medium outline-none border" style={{ background: 'var(--bg-page)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }} />
-                        <input type="text" placeholder="Clinic Name..." value={newPresc.clinicName} onChange={e => setNewPresc({ ...newPresc, clinicName: e.target.value })}
-                            className="w-full rounded-xl px-3 py-2 text-[11px] font-medium outline-none border" style={{ background: 'var(--bg-page)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }} />
+                    <div className="relative">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Search Patient</label>
+                        <input type="text" placeholder="Start typing patient name..." value={searchQuery} onChange={e => handlePatientSearch(e.target.value)}
+                            className="w-full rounded-xl px-4 py-3 text-sm font-bold outline-none border transition-all focus:ring-2 focus:ring-primary/20" 
+                            style={{ background: 'var(--bg-page)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }} />
+                        {searchResults.length > 0 && (
+                            <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2">
+                                {searchResults.map(p => (
+                                    <button key={p.id} onClick={() => selectPatient(p)} className="w-full text-left px-4 py-3 hover:bg-primary/5 transition-colors border-b border-slate-50 last:border-none">
+                                        <p className="text-sm font-bold text-slate-800">{p.name}</p>
+                                        <p className="text-[10px] text-slate-500">{p.phone} • {p.email || 'No email'}</p>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                        {selectedPatient && (
+                            <div className="mt-2 flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded-xl">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-xs">{selectedPatient.name[0]}</div>
+                                    <div>
+                                        <p className="text-xs font-bold text-primary">{selectedPatient.name}</p>
+                                        <p className="text-[10px] text-primary/60">{selectedPatient.phone}</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => setSelectedPatient(null)} className="text-[10px] font-bold text-rose-500 hover:underline">Clear</button>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Practitioner</label>
+                            <CustomSelect 
+                                value={newPresc.doctorName}
+                                onChange={val => setNewPresc({ ...newPresc, doctorName: val })}
+                                options={['Dr. Sarah Jenkins', 'Dr. Michael Chen', 'Dr. Priya Sharma']}
+                            />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Center</label>
+                            <CustomSelect 
+                                value={newPresc.clinicName}
+                                onChange={val => setNewPresc({ ...newPresc, clinicName: val })}
+                                options={['DentiSphere Main', 'DentiSphere North', 'DentiSphere East']}
+                            />
+                        </div>
                     </div>
 
                     <div>
-                        <p className="text-xs font-bold text-slate-500 mb-2 px-1">Medication details</p>
-                        <div className="space-y-2">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2">Medication details</p>
+                        <div className="space-y-3">
                             {newPresc.drugs.map((drug, i) => (
-                                <div key={i} className="p-3 rounded-xl space-y-2" style={{ background: 'var(--card-bg-alt)', border: '1px solid var(--border-color)' }}>
-                                    <div className="flex gap-2">
+                                <div key={i} className="p-4 rounded-2xl space-y-3 shadow-sm border border-slate-100" style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)' }}>
+                                    <div className="flex gap-3">
                                         <div className="flex-1">
                                             <input type="text" placeholder="Drug name..." value={drug.name} onChange={e => updateDrug(i, 'name', e.target.value)}
-                                                className="w-full rounded-lg px-2 py-1.5 text-xs font-bold outline-none border" style={{ background: 'var(--bg-page)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }} />
-                                            <DrugInteractionChecker drugName={drug.name} patientAllergies={[]} theme={theme} />
+                                                className="w-full rounded-xl px-3 py-2.5 text-xs font-bold outline-none border" style={{ background: 'var(--bg-page)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }} />
+                                            <DrugInteractionChecker drugName={drug.name} patientAllergies={selectedPatient?.allergies || []} theme={theme} />
                                         </div>
-                                        <input type="text" placeholder="Dosage" value={drug.dosage} onChange={e => updateDrug(i, 'dosage', e.target.value)}
-                                            className="w-20 rounded-lg px-2 py-1.5 text-[10px] font-medium outline-none border" style={{ background: 'var(--bg-page)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }} />
+                                        <input type="text" placeholder="Mg/Ml" value={drug.dosage} onChange={e => updateDrug(i, 'dosage', e.target.value)}
+                                            className="w-24 rounded-xl px-3 py-2.5 text-xs font-bold outline-none border" style={{ background: 'var(--bg-page)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }} />
                                         {newPresc.drugs.length > 1 && (
-                                            <button onClick={() => removeDrug(i)} className="p-1 px-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all text-xs font-bold">×</button>
+                                            <button onClick={() => removeDrug(i)} className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all">×</button>
                                         )}
                                     </div>
-                                    <div className="grid grid-cols-2 gap-2">
+                                    <div className="grid grid-cols-2 gap-3">
                                         <CustomSelect 
                                             value={drug.frequency} 
                                             onChange={val => updateDrug(i, 'frequency', val)}
                                             options={[
-                                                'Once daily',
-                                                'Twice daily',
-                                                'Thrice daily',
+                                                'Once daily (1-0-0)',
+                                                'Twice daily (1-0-1)',
+                                                'Thrice daily (1-1-1)',
                                                 'Four times daily',
-                                                'SOS'
+                                                'SOS (When needed)'
                                             ]}
                                         />
-                                        <input type="text" placeholder="Duration..." value={drug.duration} onChange={e => updateDrug(i, 'duration', e.target.value)}
-                                            className="rounded-lg px-2 py-1.5 text-[10px] font-medium outline-none border" style={{ background: 'var(--bg-page)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }} />
+                                        <input type="text" placeholder="Duration (e.g. 5 days)" value={drug.duration} onChange={e => updateDrug(i, 'duration', e.target.value)}
+                                            className="rounded-xl px-3 py-2.5 text-xs font-bold outline-none border" style={{ background: 'var(--bg-page)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }} />
                                     </div>
                                 </div>
                             ))}
                         </div>
-                        <button onClick={addDrug} className="mt-2 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-primary hover:underline px-1">
-                            <Plus size={12} /> Add drug
+                        <button onClick={addDrug} className="mt-3 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-primary hover:underline px-1">
+                            <Plus size={14} /> Add medication
                         </button>
                     </div>
 
-                    <textarea placeholder="Special instructions..." value={newPresc.notes} onChange={e => setNewPresc({ ...newPresc, notes: e.target.value })}
-                        className="w-full h-16 rounded-xl p-3 text-xs font-medium outline-none border resize-none" style={{ background: 'var(--bg-page)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }} />
+                    <textarea placeholder="Clinical notes or special instructions..." value={newPresc.notes} onChange={e => setNewPresc({ ...newPresc, notes: e.target.value })}
+                        className="w-full h-24 rounded-2xl p-4 text-sm font-medium outline-none border resize-none" style={{ background: 'var(--bg-page)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }} />
 
-                    <button onClick={handleSavePrescription} className="w-full py-2.5 bg-primary text-white rounded-xl font-bold text-xs shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all">
-                        Save Prescription
+                    <button onClick={handleSavePrescription} className="w-full py-4 bg-primary hover:bg-primary-hover text-white rounded-2xl font-bold text-sm shadow-xl shadow-primary/20 hover:translate-y-[-2px] active:translate-y-[0] transition-all">
+                        Finalize & Authorize Rx
                     </button>
                 </div>
             </Modal>

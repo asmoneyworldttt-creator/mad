@@ -91,7 +91,7 @@ export function MobileBottomNav({ activeTab, setActiveTab, toggleMore, theme, us
             )}
 
             <nav className={`fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-sm rounded-[2.5rem] px-6 py-3 z-50 transition-all duration-500 shadow-2xl border ${isDark
-                ? 'bg-slate-900/95 border-white/10 backdrop-blur-xl'
+                ? 'bg-slate-900/95 border-slate-800 backdrop-blur-xl'
                 : 'bg-white/95 border-slate-200 backdrop-blur-xl shadow-slate-200/50'
                 }`}>
                 <div className="flex items-center justify-between">
@@ -113,7 +113,7 @@ export function MobileBottomNav({ activeTab, setActiveTab, toggleMore, theme, us
                     <div className="flex flex-col items-center">
                         <button
                             onClick={() => setActiveTab('patient-registration')}
-                            className="w-14 h-14 rounded-2xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/30 active:scale-95 hover:scale-105 transition-all duration-300 -mt-8 mb-1 border-4 border-white"
+                            className={`w-14 h-14 rounded-2xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/30 active:scale-95 hover:scale-105 transition-all duration-300 -mt-8 mb-1 border-4 ${isDark ? 'border-slate-900' : 'border-white'}`}
                             style={{ background: 'linear-gradient(135deg, var(--primary), #8B5CF6)' }}
                         >
                             <Plus size={28} strokeWidth={2.5} />

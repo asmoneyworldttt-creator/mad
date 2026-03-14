@@ -153,7 +153,161 @@ export function downloadPrescriptionPDF(data: PrescriptionData): void {
     doc.text('Signature & Stamp', 163, y + 30, { align: 'center' });
 
     addFooter(doc);
-    doc.save(`Rx_${data.patientName.replace(/\s+/g, '_')}_${data.date}.pdf`);
+    const filename = `Prescription_${data.patientName.replace(/\s+/g, '_')}_${new Date(data.date).toISOString().split('T')[0]}.pdf`;
+    doc.save(filename);
+}
+
+export interface TreatmentPlanData {
+    patientName: string;
+    patientPhone?: string;
+    planTitle: string;
+    date: string;
+    items: { treatment_name: string; tooth_reference: string; cost: number; status: string }[];
+    totalCost: number;
+    discountAmount?: number;
+    notes?: string;
+}
+
+export function downloadTreatmentPlanPDF(data: TreatmentPlanData): void {
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+
+    addClinicHeader(
+        doc,
+        'DentiSphere Clinic',
+        'Clinical Treatment Roadmap',
+        'Treatment Plan',
+        new Date(data.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+    );
+
+    // Patient info box
+    doc.setFillColor(240, 247, 255);
+    doc.roundedRect(14, 34, 182, 18, 3, 3, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(...DARK_COLOR);
+    doc.text('Patient:', 18, 43);
+    doc.setFont('helvetica', 'normal');
+    doc.text(data.patientName, 38, 43);
+    if (data.patientPhone) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('Phone:', 110, 43);
+        doc.setFont('helvetica', 'normal');
+        doc.text(data.patientPhone, 130, 43);
+    }
+    doc.setFont('helvetica', 'bold');
+    doc.text('Plan Title:', 18, 49);
+    doc.setFont('helvetica', 'normal');
+    doc.text(data.planTitle, 38, 49);
+
+    // Items table
+    autoTable(doc, {
+        startY: 58,
+        head: [['#', 'Treatment', 'Teeth', 'Cost (₹)', 'Status']],
+        body: data.items.map((it, i) => [
+            (i + 1).toString(),
+            it.treatment_name,
+            it.tooth_reference || '—',
+            `₹${it.cost.toLocaleString('en-IN')}`,
+            it.status
+        ]),
+        headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
+        bodyStyles: { fontSize: 9, textColor: DARK_COLOR },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        margin: { left: 14, right: 14 },
+    });
+
+    let y = (doc as any).lastAutoTable.finalY + 10;
+
+    // Totals
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Total Estimated Cost: ₹${data.totalCost.toLocaleString('en-IN')}`, 196, y, { align: 'right' });
+    if (data.discountAmount) {
+        y += 6;
+        doc.setTextColor(220, 50, 50);
+        doc.text(`Discount: − ₹${data.discountAmount.toLocaleString('en-IN')}`, 196, y, { align: 'right' });
+        y += 6;
+        doc.setTextColor(...BRAND_COLOR);
+        doc.text(`Net Amount: ₹${(data.totalCost - data.discountAmount).toLocaleString('en-IN')}`, 196, y, { align: 'right' });
+    }
+
+    addFooter(doc);
+    const filename = `TreatmentPlan_${data.patientName.replace(/\s+/g, '_')}_${new Date(data.date).toISOString().split('T')[0]}.pdf`;
+    doc.save(filename);
+}
+
+export interface LabOrderData {
+    orderId: string;
+    date: string;
+    patientName: string;
+    patientPhone?: string;
+    doctorName: string;
+    vendorName: string;
+    teeth: string;
+    details: string;
+    status: string;
+    deliveryDates: { trial?: string; bisque?: string; final?: string };
+}
+
+export function downloadLabOrderPDF(data: LabOrderData): void {
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+
+    addClinicHeader(
+        doc,
+        'DentiSphere Clinic',
+        data.doctorName || 'Attending Doctor',
+        'Lab Order',
+        new Date(data.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+    );
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Order ID: #${data.orderId.slice(0, 8)}`, 14, 38);
+
+    // Info Grid
+    const info = [
+        ['Patient Name', data.patientName, 'Lab / Vendor', data.vendorName],
+        ['Contact', data.patientPhone || 'N/A', 'Status', data.status],
+        ['Teeth Reference', data.teeth || 'N/A', '', '']
+    ];
+
+    autoTable(doc, {
+        startY: 42,
+        body: info,
+        theme: 'plain',
+        bodyStyles: { fontSize: 9, textColor: DARK_COLOR, cellPadding: 2 },
+        columnStyles: { 0: { fontStyle: 'bold', cellWidth: 30 }, 2: { fontStyle: 'bold', cellWidth: 30 } }
+    });
+
+    let y = (doc as any).lastAutoTable.finalY + 10;
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Order Details / Instructions:', 14, y);
+    y += 6;
+    doc.setFont('helvetica', 'normal');
+    const splitDetails = doc.splitTextToSize(data.details || 'No additional instructions provided.', 182);
+    doc.text(splitDetails, 14, y);
+    y += (splitDetails.length * 5) + 10;
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Delivery Schedule:', 14, y);
+    y += 6;
+    const delivery = [
+        ['Trial Fitment', data.deliveryDates.trial || 'TBD'],
+        ['Bisque/Second Trial', data.deliveryDates.bisque || 'TBD'],
+        ['Final Delivery', data.deliveryDates.final || 'TBD']
+    ];
+    autoTable(doc, {
+        startY: y,
+        body: delivery,
+        theme: 'grid',
+        bodyStyles: { fontSize: 9 },
+        columnStyles: { 0: { fontStyle: 'bold', cellWidth: 40 } }
+    });
+
+    addFooter(doc);
+    const filename = `LabOrder_${data.patientName.replace(/\s+/g, '_')}_${new Date(data.date).toISOString().split('T')[0]}.pdf`;
+    doc.save(filename);
 }
 
 export interface InvoiceData {
@@ -305,5 +459,86 @@ export function downloadInvoicePDF(data: InvoiceData): void {
     doc.text('Authorized Signature', 163, y + 28, { align: 'center' });
 
     addFooter(doc);
-    doc.save(`Invoice_${data.invoiceNumber}.pdf`);
+    const filename = `Invoice_${data.patientName.replace(/\s+/g, '_')}_${data.invoiceNumber}.pdf`;
+    doc.save(filename);
 }
+
+export interface ConsentData {
+    patientName: string;
+    patientPhone?: string;
+    doctorName: string;
+    date: string;
+    title: string;
+    body: string;
+    signatureUrl?: string;
+    formId: string;
+}
+
+export function downloadConsentPDF(data: ConsentData): void {
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+
+    addClinicHeader(
+        doc,
+        'DentiSphere Clinic',
+        'Informed Consent Form',
+        'Legal Record',
+        new Date(data.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+    );
+
+    doc.setFillColor(240, 247, 255);
+    doc.roundedRect(14, 34, 182, 18, 3, 3, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(...DARK_COLOR);
+    doc.text('Patient Name:', 18, 43);
+    doc.setFont('helvetica', 'normal');
+    doc.text(data.patientName, 45, 43);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Date:', 18, 49);
+    doc.setFont('helvetica', 'normal');
+    doc.text(new Date(data.date).toLocaleString(), 45, 49);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Doctor:', 110, 43);
+    doc.setFont('helvetica', 'normal');
+    doc.text(data.doctorName, 130, 43);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Ref ID:', 110, 49);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`#${data.formId.slice(0, 8)}`, 130, 49);
+
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...BRAND_COLOR);
+    doc.text(data.title, 14, 64);
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...DARK_COLOR);
+    const splitBody = doc.splitTextToSize(data.body, 182);
+    doc.text(splitBody, 14, 72);
+
+    let y = 72 + (splitBody.length * 5) + 10;
+    y = Math.max(y, 200);
+    doc.setDrawColor(...MUTED_COLOR);
+    doc.line(14, y + 20, 80, y + 20);
+    doc.setFontSize(8);
+    doc.text('Patient Signature', 47, y + 25, { align: 'center' });
+    
+    if (data.signatureUrl) {
+        try {
+            doc.addImage(data.signatureUrl, 'PNG', 20, y - 5, 40, 20);
+        } catch (e) {
+            console.error('Signature attachment failed', e);
+        }
+    }
+
+    doc.line(130, y + 20, 196, y + 20);
+    doc.text('Doctor Signature / Audit', 163, y + 25, { align: 'center' });
+    doc.setFont('helvetica', 'italic');
+    doc.text(data.doctorName, 163, y + 18, { align: 'center' });
+
+    addFooter(doc);
+    const filename = `Consent_${data.title.replace(/\s+/g, '_')}_${data.patientName.replace(/\s+/g, '_')}.pdf`;
+    doc.save(filename);
+}
+

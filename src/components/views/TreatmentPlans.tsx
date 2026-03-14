@@ -1,10 +1,11 @@
 
 import { useState, useEffect } from 'react';
-import { Plus, ChevronRight, CheckCircle2, Clock, XCircle, Trash2, Save, ArrowLeft, Search, Calendar } from 'lucide-react';
+import { Plus, ChevronRight, CheckCircle2, Clock, Trash2, Save, ArrowLeft, Search, Calendar, Zap, BadgePercent } from 'lucide-react';
 import { supabase } from '../../supabase';
 import { useToast } from '../Toast';
 import { Modal } from '../Modal';
 import { CustomSelect } from '../ui/CustomControls';
+import { ToothChart } from '../ui/ToothChart';
 
 type UserRole = 'master' | 'admin' | 'staff' | 'patient';
 const formatINR = (v: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(v);
@@ -41,9 +42,19 @@ export function TreatmentPlans({ userRole, theme, setActiveTab }: { userRole: Us
     const [search, setSearch] = useState('');
 
     // New plan form
-    const [newPlan, setNewPlan] = useState({ patientSearch: '', patientId: '', patientName: '', title: '', status: 'Draft' });
+    const [newPlan, setNewPlan] = useState({ 
+        patientSearch: '', 
+        patientId: '', 
+        patientName: '', 
+        title: '', 
+        status: 'Draft',
+        chartType: 'Adult' as 'Adult' | 'Pediatric'
+    });
     const [patientResults, setPatientResults] = useState<any[]>([]);
-    const [newItems, setNewItems] = useState<any[]>([{ treatment_name: '', tooth_reference: '', estimated_sessions: 1, cost: 0, status: 'Pending', scheduled_date: '', notes: '' }]);
+    const [newItems, setNewItems] = useState<any[]>([
+        { treatment_name: '', selected_teeth: [] as string[], unit_cost: 0, estimated_sessions: 1, cost: 0, status: 'Pending', scheduled_date: '', notes: '' }
+    ]);
+    const [discount, setDiscount] = useState({ type: 'flat' as 'flat' | 'percentage', value: 0 });
     const [isSaving, setIsSaving] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [planToDelete, setPlanToDelete] = useState<string | null>(null);
@@ -58,7 +69,11 @@ export function TreatmentPlans({ userRole, theme, setActiveTab }: { userRole: Us
 
     useEffect(() => {
         if (newPlan.patientSearch.length > 2) {
-            supabase.from('patients').select('id, name, phone').ilike('name', `%${newPlan.patientSearch}%`).limit(5).then(({ data }) => setPatientResults(data || []));
+            supabase.from('patients')
+                .select('id, name, phone, age, metadata')
+                .or(`name.ilike.%${newPlan.patientSearch}%,phone.ilike.%${newPlan.patientSearch}%,id.ilike.%${newPlan.patientSearch}%`)
+                .limit(5)
+                .then(({ data }) => setPatientResults(data || []));
         } else setPatientResults([]);
     }, [newPlan.patientSearch]);
 
@@ -89,7 +104,9 @@ export function TreatmentPlans({ userRole, theme, setActiveTab }: { userRole: Us
         if (newItems.some(i => !i.treatment_name)) return showToast('All treatment names are required', 'error');
 
         setIsSaving(true);
-        const totalCost = newItems.reduce((a, b) => a + Number(b.cost || 0), 0);
+        const subtotal = newItems.reduce((a, b) => a + Number(b.cost || 0), 0);
+        const discountAmount = discount.type === 'percentage' ? (subtotal * discount.value / 100) : discount.value;
+        const totalCost = Math.max(0, subtotal - discountAmount);
 
         const { data: planData, error: planError } = await supabase.from('treatment_plans').insert({
             patient_id: newPlan.patientId,
@@ -97,20 +114,52 @@ export function TreatmentPlans({ userRole, theme, setActiveTab }: { userRole: Us
             status: newPlan.status,
             total_cost: totalCost,
             paid_amount: 0,
+            metadata: {
+                discount,
+                subtotal,
+                discount_amount: discountAmount
+            }
         }).select('id').single();
 
-        if (planError) { showToast('Error creating plan: ' + planError.message, 'error'); setIsSaving(false); return; }
+        if (planError) { 
+            showToast('Error creating plan: ' + planError.message, 'error'); 
+            setIsSaving(false); 
+            return; 
+        }
 
-        const items = newItems.map(item => ({ ...item, plan_id: planData.id, cost: Number(item.cost) }));
+        const items = newItems.map(item => ({ 
+            plan_id: planData.id,
+            treatment_name: item.treatment_name,
+            tooth_reference: item.selected_teeth.join(', '),
+            estimated_sessions: item.estimated_sessions,
+            cost: Number(item.cost),
+            status: item.status,
+            scheduled_date: item.scheduled_date || null,
+            notes: item.notes,
+            unit_cost: item.unit_cost
+        }));
+        
         const { error: itemsError } = await supabase.from('treatment_plan_items').insert(items);
 
         if (itemsError) { showToast('Plan created but items had an error: ' + itemsError.message, 'error'); }
-        else { showToast('Treatment plan created!', 'success'); }
+        else { 
+            // Sync to general patient history
+            await supabase.from('patient_history').insert({
+                patient_id: newPlan.patientId,
+                date: new Date().toISOString().split('T')[0],
+                treatment: `Treatment Plan Created: ${newPlan.title}`,
+                notes: `Budget: ${formatINR(totalCost)}. Sessions: ${items.reduce((a, b) => a + b.estimated_sessions, 0)}`,
+                category: 'Clinical'
+            });
+
+            showToast('Treatment plan created!', 'success'); 
+        }
 
         setIsSaving(false);
         setView('list');
-        setNewPlan({ patientSearch: '', patientId: '', patientName: '', title: '', status: 'Draft' });
-        setNewItems([{ treatment_name: '', tooth_reference: '', estimated_sessions: 1, cost: 0, status: 'Pending', scheduled_date: '', notes: '' }]);
+        setNewPlan({ patientSearch: '', patientId: '', patientName: '', title: '', status: 'Draft', chartType: 'Adult' });
+        setNewItems([{ treatment_name: '', selected_teeth: [], unit_cost: 0, estimated_sessions: 1, cost: 0, status: 'Pending', scheduled_date: '', notes: '' }]);
+        setDiscount({ type: 'flat', value: 0 });
         fetchPlans();
     };
 
@@ -138,6 +187,7 @@ export function TreatmentPlans({ userRole, theme, setActiveTab }: { userRole: Us
 
     const filtered = plans.filter(p =>
         (p.patients?.name || '').toLowerCase().includes(search.toLowerCase()) ||
+        (p.patients?.id || '').toLowerCase().includes(search.toLowerCase()) ||
         p.title.toLowerCase().includes(search.toLowerCase())
     );
 
@@ -157,9 +207,8 @@ export function TreatmentPlans({ userRole, theme, setActiveTab }: { userRole: Us
                         onClick={() => setActiveTab?.('appointments')}
                         className="px-5 py-2.5 rounded-2xl text-sm font-bold flex items-center gap-2 text-white transition-all hover:scale-105"
                         style={{ background: 'var(--primary)', boxShadow: '0 4px 16px var(--primary-glow)' }}
-                        aria-label="Schedule appointment for this patient"
                     >
-                        <Calendar size={16} aria-hidden="true" /> Schedule Appointment
+                        <Calendar size={16} /> Schedule Appointment
                     </button>
                     <CustomSelect 
                         value={selectedPlan.status} 
@@ -167,25 +216,26 @@ export function TreatmentPlans({ userRole, theme, setActiveTab }: { userRole: Us
                         options={['Draft', 'Active', 'Completed', 'Cancelled']}
                         className="w-40"
                     />
-                    <button onClick={() => { setPlanToDelete(selectedPlan.id); setShowDeleteModal(true); }} className="p-3 rounded-2xl border transition-all" style={{ background: 'var(--red-soft)', borderColor: 'var(--red-subtle)', color: 'var(--error)' }} aria-label="Delete treatment plan"><Trash2 size={18} /></button>
+                    <button onClick={() => { setPlanToDelete(selectedPlan.id); setShowDeleteModal(true); }} className="p-3 rounded-2xl border transition-all" style={{ background: 'var(--red-soft)', borderColor: 'var(--red-subtle)', color: 'var(--error)' }}><Trash2 size={18} /></button>
                 </div>
 
-                {/* Progress Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {[
                         { label: 'Total Treatments', value: planItems.length, color: 'text-primary' },
                         { label: 'Completed', value: planItems.filter(i => i.status === 'Done').length, color: 'text-emerald-500' },
-                        { label: 'Total Cost', value: formatINR(selectedPlan.total_cost), color: 'text-primary' },
+                        { label: selectedPlan.metadata?.discount_amount ? 'After Discount' : 'Total Cost', value: formatINR(selectedPlan.total_cost), color: 'text-primary' },
                         { label: 'Paid Amount', value: formatINR(selectedPlan.paid_amount), color: 'text-emerald-500' },
                     ].map((card, i) => (
                         <div key={i} className={`p-5 rounded-[1.8rem] border ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
                             <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">{card.label}</p>
                             <p className={`text-2xl font-bold ${card.color}`}>{card.value}</p>
+                            {card.label === 'After Discount' && selectedPlan.metadata?.subtotal && (
+                                <p className="text-[10px] text-slate-500 mt-1 line-through opacity-50">Subtotal: {formatINR(selectedPlan.metadata.subtotal)}</p>
+                            )}
                         </div>
                     ))}
                 </div>
 
-                {/* Progress Bars */}
                 <div className={`p-6 rounded-[2rem] border space-y-4 ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
                     <div>
                         <div className="flex justify-between mb-2">
@@ -207,7 +257,6 @@ export function TreatmentPlans({ userRole, theme, setActiveTab }: { userRole: Us
                     </div>
                 </div>
 
-                {/* Treatment Items */}
                 <div className={`rounded-[2rem] border overflow-hidden ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
                     <div className={`px-6 py-5 border-b flex justify-between items-center ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
                         <h3 className="font-bold text-lg">Treatment Items</h3>
@@ -216,7 +265,6 @@ export function TreatmentPlans({ userRole, theme, setActiveTab }: { userRole: Us
                     <div className="divide-y divide-slate-100/10">
                         {planItems.map((item, i) => {
                             const cfg = ITEM_STATUS_CONFIG[item.status] || ITEM_STATUS_CONFIG.Pending;
-                            const StatusIcon = cfg.icon;
                             return (
                                 <div key={item.id} className={`p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4 ${isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'} transition-all`}>
                                     <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0 ${isDark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-500'}`}>{i + 1}</div>
@@ -266,11 +314,9 @@ export function TreatmentPlans({ userRole, theme, setActiveTab }: { userRole: Us
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2 space-y-5">
-                        {/* Plan Header */}
-                        <div className={`p-6 rounded-[2rem] border ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
-                            <h3 className="font-bold mb-5 text-sm uppercase tracking-widest text-slate-400">Plan Details</h3>
+                        <div className={`p-6 rounded-[2rem] border transition-all ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100 shadow-sm'}`}>
+                            <h3 className="font-bold mb-5 text-sm uppercase tracking-widest text-slate-400 text-[10px]">Plan Details</h3>
                             <div className="space-y-4">
-                                {/* Patient Search */}
                                 <div className="relative">
                                     <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                                     <input
@@ -278,17 +324,26 @@ export function TreatmentPlans({ userRole, theme, setActiveTab }: { userRole: Us
                                         placeholder="Search patient by name..."
                                         value={newPlan.patientSearch}
                                         onChange={e => setNewPlan({ ...newPlan, patientSearch: e.target.value, patientId: '', patientName: '' })}
-                                        className={`w-full pl-11 pr-4 py-3 rounded-2xl border font-bold text-sm outline-none transition-all ${isDark ? 'bg-white/5 border-white/10 text-white placeholder:text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-700 focus:border-primary'}`}
+                                        className={`w-full pl-11 pr-4 py-3.5 rounded-2xl border font-bold text-sm outline-none transition-all ${isDark ? 'bg-slate-900 border-slate-800 text-white placeholder:text-slate-600 focus:border-primary/50' : 'bg-slate-50 border-slate-200 text-slate-700 focus:border-primary'}`}
                                     />
                                     {patientResults.length > 0 && (
-                                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden">
+                                        <div className={`absolute top-full left-0 right-0 mt-2 border rounded-2xl shadow-2xl z-50 overflow-hidden ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
                                             {patientResults.map(p => (
-                                                <button key={p.id} onClick={() => { setNewPlan({ ...newPlan, patientId: p.id, patientName: p.name, patientSearch: p.name }); setPatientResults([]); }}
-                                                    className="w-full text-left px-5 py-3 hover:bg-slate-50 flex items-center gap-3 transition-colors border-b border-slate-100 last:border-0">
+                                                <button key={p.id} onClick={() => { 
+                                                    setNewPlan({ 
+                                                        ...newPlan, 
+                                                        patientId: p.id, 
+                                                        patientName: p.name, 
+                                                        patientSearch: p.name,
+                                                        chartType: (p.age && p.age < 13) ? 'Pediatric' : 'Adult'
+                                                    }); 
+                                                    setPatientResults([]); 
+                                                }}
+                                                    className={`w-full text-left px-5 py-3 flex items-center gap-3 transition-colors border-b last:border-0 ${isDark ? 'hover:bg-slate-800/50 border-slate-800' : 'hover:bg-slate-50 border-slate-100'}`}>
                                                     <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">{p.name?.charAt(0)}</div>
                                                     <div>
-                                                        <p className="font-bold text-sm text-slate-700">{p.name}</p>
-                                                        <p className="text-[10px] text-slate-400">{p.phone}</p>
+                                                        <p className={`font-bold text-sm ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{p.name}</p>
+                                                        <p className="text-[10px] text-slate-400">{p.phone} {p.age ? `· ${p.age} years` : ''}</p>
                                                     </div>
                                                 </button>
                                             ))}
@@ -296,84 +351,172 @@ export function TreatmentPlans({ userRole, theme, setActiveTab }: { userRole: Us
                                     )}
                                 </div>
                                 {newPlan.patientName && (
-                                    <div className="flex items-center gap-3 p-3 bg-primary/5 border border-primary/20 rounded-xl">
-                                        <CheckCircle2 size={16} className="text-primary" />
-                                        <span className="text-sm font-bold text-primary">{newPlan.patientName} selected</span>
+                                    <div className="flex items-center justify-between p-3 bg-primary/5 border border-primary/10 rounded-xl">
+                                        <div className="flex items-center gap-3">
+                                            <CheckCircle2 size={16} className="text-primary" />
+                                            <span className="text-sm font-bold text-primary">{newPlan.patientName} selected</span>
+                                        </div>
+                                        <div className="flex items-center gap-2 bg-white/50 dark:bg-slate-800/50 p-1 rounded-lg border border-primary/5">
+                                            <button 
+                                                onClick={() => setNewPlan({ ...newPlan, chartType: 'Adult' })}
+                                                className={`px-3 py-1 rounded-md text-[10px] font-black uppercase transition-all ${newPlan.chartType === 'Adult' ? 'bg-primary text-white shadow-md' : 'text-slate-400 hover:text-primary'}`}
+                                            >
+                                                Adult
+                                            </button>
+                                            <button 
+                                                onClick={() => setNewPlan({ ...newPlan, chartType: 'Pediatric' })}
+                                                className={`px-3 py-1 rounded-md text-[10px] font-black uppercase transition-all ${newPlan.chartType === 'Pediatric' ? 'bg-primary text-white shadow-md' : 'text-slate-400 hover:text-primary'}`}
+                                            >
+                                                Pediatric
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
                                 <input type="text" placeholder="Plan Title (e.g. Full Smile Makeover)" value={newPlan.title} onChange={e => setNewPlan({ ...newPlan, title: e.target.value })}
-                                    className={`w-full px-5 py-3.5 rounded-2xl border font-bold text-sm outline-none transition-all ${isDark ? 'bg-white/5 border-white/10 text-white placeholder:text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-700 focus:border-primary'}`} />
-                                <select value={newPlan.status} onChange={e => setNewPlan({ ...newPlan, status: e.target.value })} className={`w-full px-5 py-3.5 rounded-2xl border font-bold text-sm outline-none ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-700'}`}>
+                                    className={`w-full px-5 py-3.5 rounded-2xl border font-bold text-sm outline-none transition-all ${isDark ? 'bg-slate-900 border-slate-800 text-white placeholder:text-slate-600 focus:border-primary/50' : 'bg-slate-50 border-slate-200 text-slate-700 focus:border-primary'}`} />
+                                <select value={newPlan.status} onChange={e => setNewPlan({ ...newPlan, status: e.target.value })} className={`w-full px-5 py-3.5 rounded-2xl border font-bold text-sm outline-none ${isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-700'}`}>
                                     <option>Draft</option><option>Active</option>
                                 </select>
                             </div>
                         </div>
 
-                        {/* Treatment Items */}
-                        <div className={`p-6 rounded-[2rem] border ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
+                        <div className={`p-6 rounded-[2rem] border transition-all ${isDark ? 'bg-slate-900/40 border-slate-800/40 shadow-[0_8px_32px_rgba(0,0,0,0.2)]' : 'bg-white border-slate-100 shadow-sm'}`}>
                             <div className="flex justify-between items-center mb-5">
-                                <h3 className="font-bold text-sm uppercase tracking-widest text-slate-400">Treatment Items</h3>
-                                <button onClick={() => setNewItems([...newItems, { treatment_name: '', tooth_reference: '', estimated_sessions: 1, cost: 0, status: 'Pending', scheduled_date: '', notes: '' }])}
-                                    className="flex items-center gap-2 text-xs font-bold text-primary hover:underline">
+                                <h3 className="font-bold text-sm uppercase tracking-widest text-slate-400 text-[10px]">Treatment Items</h3>
+                                <button onClick={() => setNewItems([...newItems, { treatment_name: '', selected_teeth: [], unit_cost: 0, estimated_sessions: 1, cost: 0, status: 'Pending', scheduled_date: '', notes: '' }])}
+                                    className="flex items-center gap-2 text-xs font-black uppercase tracking-tighter text-primary hover:underline">
                                     <Plus size={14} /> Add Item
                                 </button>
                             </div>
-                            <div className="space-y-4">
+                            <div className="space-y-6">
                                 {newItems.map((item, i) => (
-                                    <div key={i} className={`p-5 rounded-2xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                                            <select value={item.treatment_name} onChange={e => { const n = [...newItems]; n[i].treatment_name = e.target.value; setNewItems(n); }}
-                                                className={`px-4 py-3 rounded-xl border font-bold text-sm outline-none ${isDark ? 'bg-slate-800 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700'}`}>
-                                                <option value="">Select Treatment...</option>
-                                                {TREATMENTS.map(t => <option key={t}>{t}</option>)}
-                                            </select>
-                                            <input type="text" placeholder="Tooth Ref. (e.g. 14, 15)" value={item.tooth_reference} onChange={e => { const n = [...newItems]; n[i].tooth_reference = e.target.value; setNewItems(n); }}
-                                                className={`px-4 py-3 rounded-xl border font-bold text-sm outline-none ${isDark ? 'bg-slate-800 border-white/10 text-white placeholder:text-slate-500' : 'bg-white border-slate-200 text-slate-700'}`} />
+                                    <div key={i} className={`p-6 rounded-[2rem] border ${isDark ? 'bg-slate-900/40 border-slate-800' : 'bg-slate-50 border-slate-200'} space-y-6`}>
+                                        <div className="flex justify-between items-start">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Treatment Type</label>
+                                                    <select value={item.treatment_name} onChange={e => { const n = [...newItems]; n[i].treatment_name = e.target.value; setNewItems(n); }}
+                                                        className={`w-full px-5 py-3.5 rounded-2xl border font-bold text-sm outline-none ${isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-700'}`}>
+                                                        <option value="">Select Treatment...</option>
+                                                        {TREATMENTS.map(t => <option key={t}>{t}</option>)}
+                                                    </select>
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Unit Cost (₹)</label>
+                                                    <input type="number" placeholder="0" value={item.unit_cost} onChange={e => { 
+                                                        const n = [...newItems]; 
+                                                        n[i].unit_cost = Number(e.target.value); 
+                                                        n[i].cost = n[i].unit_cost * (n[i].selected_teeth?.length || 1);
+                                                        setNewItems(n); 
+                                                    }}
+                                                        className={`w-full px-5 py-3.5 rounded-2xl border font-bold text-sm outline-none ${isDark ? 'bg-slate-900 border-slate-800 text-white placeholder:text-slate-600' : 'bg-white border-slate-200 text-slate-700'}`} />
+                                                </div>
+                                            </div>
+                                            {newItems.length > 1 && (
+                                                <button onClick={() => setNewItems(newItems.filter((_, idx) => idx !== i))} className={`p-2 ml-4 rounded-xl transition-all ${isDark ? 'text-rose-400 hover:bg-rose-400/10' : 'text-rose-500 hover:bg-rose-50'}`}>
+                                                    <Trash2 size={18} />
+                                                </button>
+                                            )}
                                         </div>
-                                        <div className="grid grid-cols-3 gap-3">
-                                            <div>
-                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Cost (₹)</label>
-                                                <input type="number" value={item.cost} onChange={e => { const n = [...newItems]; n[i].cost = Number(e.target.value); setNewItems(n); }}
-                                                    className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none ${isDark ? 'bg-slate-800 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700'}`} />
+
+                                        {item.treatment_name && (
+                                            <div className="space-y-4 animate-in fade-in slide-in-from-top-4">
+                                                <div className="flex items-center justify-between px-1">
+                                                    <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest">Select Target Teeth</h4>
+                                                    {item.selected_teeth.length > 0 && (
+                                                        <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-1 rounded-lg">
+                                                            {item.selected_teeth.length} Teeth Selected
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <ToothChart 
+                                                    type={newPlan.chartType} 
+                                                    selectedTeeth={item.selected_teeth} 
+                                                    isDark={isDark}
+                                                    onToggleTooth={(tooth) => {
+                                                        const n = [...newItems];
+                                                        const teeth = n[i].selected_teeth || [];
+                                                        if (teeth.includes(tooth)) {
+                                                            n[i].selected_teeth = teeth.filter((t: string) => t !== tooth);
+                                                        } else {
+                                                            n[i].selected_teeth = [...teeth, tooth];
+                                                        }
+                                                        n[i].cost = n[i].unit_cost * (n[i].selected_teeth.length || 1);
+                                                        setNewItems(n);
+                                                    }}
+                                                />
                                             </div>
-                                            <div>
-                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Sessions</label>
-                                                <input type="number" min="1" value={item.estimated_sessions} onChange={e => { const n = [...newItems]; n[i].estimated_sessions = Number(e.target.value); setNewItems(n); }}
-                                                    className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none ${isDark ? 'bg-slate-800 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700'}`} />
-                                            </div>
-                                            <div>
-                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Scheduled</label>
-                                                <input type="date" value={item.scheduled_date} onChange={e => { const n = [...newItems]; n[i].scheduled_date = e.target.value; setNewItems(n); }}
-                                                    className={`w-full px-4 py-2.5 rounded-xl border font-bold text-sm outline-none ${isDark ? 'bg-slate-800 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700'}`} />
-                                            </div>
-                                        </div>
-                                        {newItems.length > 1 && (
-                                            <button onClick={() => setNewItems(newItems.filter((_, idx) => idx !== i))} className="mt-3 flex items-center gap-1.5 text-xs font-bold text-rose-500 hover:underline">
-                                                <Trash2 size={12} /> Remove
-                                            </button>
                                         )}
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-1.5">
+                                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Est. Sessions</label>
+                                                <input type="number" min="1" value={item.estimated_sessions} onChange={e => { const n = [...newItems]; n[i].estimated_sessions = Number(e.target.value); setNewItems(n); }}
+                                                    className={`w-full px-5 py-3.5 rounded-2xl border font-bold text-sm outline-none ${isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-700 focus:border-primary'}`} />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Scheduled Date</label>
+                                                <input type="date" value={item.scheduled_date} onChange={e => { const n = [...newItems]; n[i].scheduled_date = e.target.value; setNewItems(n); }}
+                                                    className={`w-full px-5 py-3.5 rounded-2xl border font-bold text-sm outline-none ${isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-700 focus:border-primary'}`} />
+                                            </div>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
                         </div>
                     </div>
 
-                    {/* Summary Panel */}
                     <div className="space-y-4">
-                        <div className={`p-6 rounded-[2rem] border sticky top-6 ${isDark ? 'bg-slate-950 border-white/5' : 'bg-slate-900 text-white'}`}>
-                            <h3 className="text-xs font-extrabold text-primary uppercase tracking-widest mb-5">Plan Summary</h3>
+                        <div className={`p-6 rounded-[2rem] border sticky top-6 transition-all ${isDark ? 'bg-slate-900 border-slate-800 shadow-2xl shadow-black/40' : 'bg-white border-slate-100 shadow-xl shadow-slate-200/50'}`}>
+                            <div className="flex justify-between items-center mb-5">
+                                <h3 className="text-xs font-black text-primary uppercase tracking-widest">Plan Summary</h3>
+                            </div>
                             <div className="space-y-3 mb-6">
-                                <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/5' : 'bg-white/10'}`}>
-                                    <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">Patient</p>
-                                    <p className="font-bold text-white">{newPlan.patientName || '—'}</p>
+                                <div className={`p-4 rounded-2xl border transition-colors ${isDark ? 'bg-slate-800/30 border-slate-800/50' : 'bg-slate-50 border-slate-100'}`}>
+                                    <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1">Patient</p>
+                                    <p className={`font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>{newPlan.patientName || '—'}</p>
                                 </div>
-                                <div className={`p-4 rounded-2xl ${isDark ? 'bg-white/5' : 'bg-white/10'}`}>
-                                    <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">Procedures</p>
-                                    <p className="font-bold text-white">{newItems.filter(i => i.treatment_name).length}</p>
+                                <div className={`p-4 rounded-2xl border transition-colors ${isDark ? 'bg-slate-800/30 border-slate-800/50' : 'bg-slate-50 border-slate-100'}`}>
+                                    <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-1">Procedures</p>
+                                    <p className={`font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>{newItems.filter(i => i.treatment_name).length}</p>
                                 </div>
-                                <div className={`p-4 rounded-2xl ${isDark ? 'bg-primary/10 border border-primary/20' : 'bg-primary/10'}`}>
-                                    <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">Estimated Total</p>
-                                    <p className="text-2xl font-bold text-primary">{formatINR(newItems.reduce((a, b) => a + Number(b.cost || 0), 0))}</p>
+                                
+                                <div className={`p-5 rounded-2xl border transition-all ${isDark ? 'bg-slate-800/20 border-slate-800/50' : 'bg-slate-50/50 border-slate-100'} space-y-4`}>
+                                    <div className="flex justify-between items-center text-xs">
+                                        <span className="font-extrabold text-slate-500 uppercase tracking-widest">Subtotal</span>
+                                        <span className={`font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>{formatINR(newItems.reduce((a, b) => a + Number(b.cost || 0), 0))}</span>
+                                    </div>
+                                    
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">Discount</span>
+                                            <div className={`flex rounded-lg p-0.5 border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                                <button onClick={() => setDiscount({ ...discount, type: 'flat' })} className={`p-1.5 rounded-md transition-all ${discount.type === 'flat' ? 'bg-primary text-white shadow-lg scale-110' : 'text-slate-400 opacity-40'}`}><Zap size={12} /></button>
+                                                <button onClick={() => setDiscount({ ...discount, type: 'percentage' })} className={`p-1.5 rounded-md transition-all ${discount.type === 'percentage' ? 'bg-primary text-white shadow-lg scale-110' : 'text-slate-400 opacity-40'}`}><BadgePercent size={12} /></button>
+                                            </div>
+                                        </div>
+                                        <div className="relative">
+                                            <input 
+                                                type="number" 
+                                                value={discount.value} 
+                                                onChange={e => setDiscount({ ...discount, value: Number(e.target.value) })}
+                                                className={`w-full rounded-xl px-4 py-2 text-sm font-bold outline-none transition-all ${isDark ? 'bg-slate-900 border-slate-800 text-white focus:border-primary/50' : 'bg-white border-slate-200 text-slate-700 focus:border-primary'}`}
+                                                placeholder={discount.type === 'percentage' ? 'Enter %' : 'Enter Amount'}
+                                            />
+                                            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-[10px] font-black">{discount.type === 'percentage' ? '%' : '₹'}</div>
+                                        </div>
+                                    </div>
+
+                                    <div className={`pt-3 border-t ${isDark ? 'border-slate-800' : 'border-slate-200'} flex justify-between items-center`}>
+                                        <p className="text-[10px] font-extrabold text-primary uppercase tracking-widest">Grand Total</p>
+                                        <p className="text-2xl font-black text-primary">
+                                            {(() => {
+                                                const subtotal = newItems.reduce((a, b) => a + Number(b.cost || 0), 0);
+                                                const disc = discount.type === 'percentage' ? (subtotal * discount.value / 100) : discount.value;
+                                                return formatINR(Math.max(0, subtotal - disc));
+                                            })()}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                             <button onClick={handleSaveNewPlan} disabled={isSaving} className="w-full py-4 bg-primary text-white rounded-2xl font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
@@ -389,7 +532,7 @@ export function TreatmentPlans({ userRole, theme, setActiveTab }: { userRole: Us
     /* ─────── LIST VIEW ─────── */
     return (
         <div className="animate-slide-up space-y-6 pb-10">
-            <div className={`p-6 rounded-[2.5rem] border flex flex-col md:flex-row justify-between items-center gap-4 ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
+            <div className={`p-6 rounded-[2.5rem] border flex flex-col md:flex-row justify-between items-center gap-4 ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100 shadow-sm'}`}>
                 <div>
                     <h2 className={`text-2xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>Treatment Plans</h2>
                     <p className={`text-sm font-medium mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Create and track treatment plans for your patients.</p>
@@ -399,14 +542,12 @@ export function TreatmentPlans({ userRole, theme, setActiveTab }: { userRole: Us
                 </button>
             </div>
 
-            {/* Search */}
             <div className="relative max-w-md">
                 <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input type="text" placeholder="Search by patient or plan title..." value={search} onChange={e => setSearch(e.target.value)}
-                    className={`w-full pl-11 pr-4 py-3.5 rounded-2xl border font-bold text-sm outline-none ${isDark ? 'bg-slate-900 border-white/10 text-white placeholder:text-slate-500' : 'bg-white border-slate-200 text-slate-700 shadow-sm focus:border-primary'}`} />
+                    className={`w-full pl-11 pr-4 py-3.5 rounded-2xl border font-bold text-sm outline-none transition-all ${isDark ? 'bg-slate-900 border-slate-800 text-white placeholder:text-slate-600 focus:border-primary/50' : 'bg-white border-slate-200 text-slate-700 shadow-sm focus:border-primary'}`} />
             </div>
 
-            {/* Plans Grid */}
             {isLoading ? (
                 <div className="py-20 text-center">
                     <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-4" />
@@ -419,31 +560,31 @@ export function TreatmentPlans({ userRole, theme, setActiveTab }: { userRole: Us
                         const paidPct = plan.total_cost > 0 ? Math.round((plan.paid_amount / plan.total_cost) * 100) : 0;
                         return (
                             <div key={plan.id} onClick={() => handleOpenPlan(plan)}
-                                className={`p-6 rounded-[2rem] border cursor-pointer transition-all hover:-translate-y-1 group ${isDark ? 'bg-slate-900 border-white/5 hover:border-primary/20' : 'bg-white border-slate-100 shadow-sm hover:shadow-xl'}`}>
+                                className={`p-6 rounded-[2rem] border cursor-pointer transition-all hover:-translate-y-1 group ${isDark ? 'bg-slate-900 border-slate-800 hover:border-primary/50' : 'bg-white border-slate-100 shadow-sm hover:shadow-xl'}`}>
                                 <div className="flex justify-between items-start mb-4">
                                     <div>
                                         <p className="font-bold text-sm line-clamp-1">{plan.title}</p>
-                                        <p className="text-[11px] text-slate-400 font-medium mt-0.5">{plan.patients?.name}</p>
+                                        <p className="text-[11px] text-slate-500 font-medium mt-0.5">{plan.patients?.name}</p>
                                     </div>
                                     <span className={`px-2.5 py-1 rounded-xl text-[9px] font-extrabold border uppercase ${statusCfg.color}`}>{plan.status}</span>
                                 </div>
                                 <div className="space-y-3">
                                     <div className="flex justify-between">
-                                        <span className="text-xs text-slate-400 font-medium">Total Cost</span>
-                                        <span className="text-sm font-bold text-primary">{formatINR(plan.total_cost)}</span>
+                                        <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Total Cost</span>
+                                        <span className="text-sm font-black text-primary">{formatINR(plan.total_cost)}</span>
                                     </div>
                                     <div>
                                         <div className="flex justify-between mb-1">
-                                            <span className="text-[10px] text-slate-400 font-medium">Payment</span>
+                                            <span className="text-[9px] text-slate-500 font-black uppercase tracking-widest">Payment</span>
                                             <span className="text-[10px] font-extrabold text-emerald-500">{paidPct}%</span>
                                         </div>
-                                        <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/5' : 'bg-slate-100'}`}>
+                                        <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
                                             <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${paidPct}%` }} />
                                         </div>
                                     </div>
                                 </div>
                                 <div className="mt-4 flex items-center justify-between">
-                                    <span className="text-[10px] text-slate-400">{new Date(plan.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                                    <span className="text-[10px] text-slate-500">{new Date(plan.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                                     <span className="text-xs font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">Open <ChevronRight size={14} /></span>
                                 </div>
                             </div>
@@ -451,7 +592,7 @@ export function TreatmentPlans({ userRole, theme, setActiveTab }: { userRole: Us
                     })}
                 </div>
             ) : (
-                <div className={`py-20 text-center rounded-[2rem] border-2 border-dashed ${isDark ? 'border-white/10 text-slate-500' : 'border-slate-200 text-slate-400'}`}>
+                <div className={`py-20 text-center rounded-[2rem] border-2 border-dashed ${isDark ? 'border-slate-800 text-slate-500' : 'border-slate-200 text-slate-400'}`}>
                     <p className="font-bold mb-2">No treatment plans yet</p>
                     <p className="text-sm">Create your first plan to get started</p>
                 </div>
@@ -459,3 +600,4 @@ export function TreatmentPlans({ userRole, theme, setActiveTab }: { userRole: Us
         </div>
     );
 }
+
