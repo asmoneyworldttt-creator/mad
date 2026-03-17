@@ -35,6 +35,8 @@ export function TeamHub({ userRole, theme }: { userRole: string; theme?: 'light'
     const [isLocationVerified, setIsLocationVerified] = useState(false);
     const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'verified' | 'denied'>('idle');
     const [showLocationDeniedModal, setShowLocationDeniedModal] = useState(false);
+    const [currentDistance, setCurrentDistance] = useState<number | null>(null);
+    const [isFetchingStaff, setIsFetchingStaff] = useState(userRole === 'staff');
 
     useEffect(() => {
         const fetchActiveStaff = async () => {
@@ -42,9 +44,11 @@ export function TeamHub({ userRole, theme }: { userRole: string; theme?: 'light'
              if (user && userRole === 'staff') {
                   const { data } = await supabase.from('staff').select('*').eq('id', user.id).maybeSingle();
                   if (data) setActiveStaff(data);
+                  setIsFetchingStaff(false);
              }
         };
         if (userRole === 'staff') fetchActiveStaff();
+        else setIsFetchingStaff(false);
     }, [userRole]);
     
     // Face-api States
@@ -163,10 +167,13 @@ export function TeamHub({ userRole, theme }: { userRole: string; theme?: 'light'
 
                 const distance = calculateDistance(currentLat, currentLng, targetLat, targetLng);
                 const isWithinRange = distance <= targetRadius;
+                
+                setCurrentDistance(distance);
 
                 if (isWithinRange) {
                     setIsLocationVerified(true);
                     setLocationStatus('verified');
+                    showToast(`Location verified: ${locationName}`, 'success');
                 } else {
                     setLocationStatus('denied');
                     setShowLocationDeniedModal(true);
@@ -182,9 +189,10 @@ export function TeamHub({ userRole, theme }: { userRole: string; theme?: 'light'
             (err) => {
                 console.error('Location Error:', err);
                 setLocationStatus('denied');
-                showToast('Please enable location access to punch attendance.', 'warning');
+                setCurrentDistance(null);
+                showToast('Please enable location access and ensure GPS is on.', 'warning');
             },
-            { enableHighAccuracy: true, timeout: 8000 }
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
         );
     };
 
@@ -601,12 +609,18 @@ export function TeamHub({ userRole, theme }: { userRole: string; theme?: 'light'
                                 <p className="text-sm font-bold text-slate-600 leading-relaxed px-4">
                                     நீங்க அனுமதிக்கப்பட்ட லொகேஷன்ல இல்ல. தயவுசெய்து லொகேஷனுக்கு வந்து அட்டனன்ஸ் போடவும்.
                                 </p>
+                                {currentDistance !== null && (
+                                    <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 flex flex-col gap-1">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase">Calculated Distance</p>
+                                        <p className="text-lg font-black text-rose-500">{currentDistance.toFixed(0)} Meters Away</p>
+                                    </div>
+                                )}
                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">
                                     Admin has been notified of this attempt.
                                 </p>
                             </div>
                             <button 
-                                onClick={() => { setShowLocationDeniedModal(false); verifyLocationOnMount(); }}
+                                onClick={() => { setShowLocationDeniedModal(false); setLocationStatus('idle'); verifyLocationOnMount(); }}
                                 className="w-full py-4 bg-primary text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2"
                             >
                                 <MapPin size={14} /> Retry Verification
@@ -614,6 +628,15 @@ export function TeamHub({ userRole, theme }: { userRole: string; theme?: 'light'
                         </div>
                     </Modal>
                 )}
+            </div>
+        );
+    }
+
+    if (isFetchingStaff) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+                <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                <p className="text-sm font-black text-slate-400 uppercase tracking-widest animate-pulse">Loading Your Profile...</p>
             </div>
         );
     }
