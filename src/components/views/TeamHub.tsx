@@ -32,6 +32,9 @@ export function TeamHub({ userRole, theme }: { userRole: string; theme?: 'light'
     const [stats, setStats] = useState<any>({ total_days: 0, total_hours: 0, total_leaves: 0 });
     const [branches, setBranches] = useState<any[]>([]);
     const [activeStaff, setActiveStaff] = useState<any>(null);
+    const [isLocationVerified, setIsLocationVerified] = useState(false);
+    const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'verified' | 'denied'>('idle');
+    const [showLocationDeniedModal, setShowLocationDeniedModal] = useState(false);
 
     useEffect(() => {
         const fetchActiveStaff = async () => {
@@ -110,6 +113,86 @@ export function TeamHub({ userRole, theme }: { userRole: string; theme?: 'light'
             stream.getTracks().forEach(track => track.stop());
         }
     };
+
+    const verifyLocationOnMount = async () => {
+        if (!activeStaff || branches.length === 0 || locationStatus !== 'idle') return;
+        
+        setLocationStatus('loading');
+        
+        if (!navigator.geolocation) {
+            showToast('GPS not supported by browser', 'error');
+            setLocationStatus('denied');
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                const currentLat = position.coords.latitude;
+                const currentLng = position.coords.longitude;
+
+                let targetLat = 0, targetLng = 0, targetRadius = 100;
+                let locationName = "Branch";
+
+                if (activeStaff.assigned_location_type === 'custom') {
+                    targetLat = parseFloat(activeStaff.custom_latitude);
+                    targetLng = parseFloat(activeStaff.custom_longitude);
+                    targetRadius = activeStaff.custom_radius || 100;
+                    locationName = "Custom Zone";
+                } else if (activeStaff.assigned_location_type === 'branch') {
+                    const branch = branches.find(b => b.id === activeStaff.assigned_location_id);
+                    if (branch) {
+                        targetLat = branch.latitude;
+                        targetLng = branch.longitude;
+                        targetRadius = branch.radius || 100;
+                        locationName = branch.name;
+                    }
+                } else {
+                    const defaultBranch = branches.find(b => b.is_default);
+                    if (defaultBranch) {
+                        targetLat = defaultBranch.latitude;
+                        targetLng = defaultBranch.longitude;
+                        targetRadius = defaultBranch.radius || 100;
+                        locationName = defaultBranch.name;
+                    }
+                }
+
+                if (!targetLat || !targetLng) {
+                    setLocationStatus('denied');
+                    return;
+                }
+
+                const distance = calculateDistance(currentLat, currentLng, targetLat, targetLng);
+                const isWithinRange = distance <= targetRadius;
+
+                if (isWithinRange) {
+                    setIsLocationVerified(true);
+                    setLocationStatus('verified');
+                } else {
+                    setLocationStatus('denied');
+                    setShowLocationDeniedModal(true);
+                    // Send alert to admin
+                    await supabase.from('notifications').insert({
+                        title: 'Attendance Access Denied',
+                        message: `${activeStaff.name} attempted check-in from unauthorized location: ${distance.toFixed(0)}m away from ${locationName}.`,
+                        type: 'security',
+                        staff_id: activeStaff.id
+                    });
+                }
+            },
+            (err) => {
+                console.error('Location Error:', err);
+                setLocationStatus('denied');
+                showToast('Please enable location access to punch attendance.', 'warning');
+            },
+            { enableHighAccuracy: true, timeout: 8000 }
+        );
+    };
+
+    useEffect(() => {
+        if (userRole === 'staff' && activeStaff && branches.length > 0) {
+            verifyLocationOnMount();
+        }
+    }, [activeStaff, branches, userRole]);
 
     useEffect(() => {
         if (isScanning && scanningStaff) {
@@ -317,88 +400,15 @@ export function TeamHub({ userRole, theme }: { userRole: string; theme?: 'light'
     const getStaffLog = (staffId: number) => logs.find(l => l.staff_id === staffId);
 
     const handleCheckIn = async (staff: any) => {
-        if (!isFaceApiLoaded) return showToast('Initializing face scanning metrics, wait...', 'warning');
-        setClockingId(staff.id);
-
-        if (!navigator.geolocation) {
-            showToast('Browser lacks GPS nodes', 'error');
-            setClockingId(null);
+        if (!isFaceApiLoaded) return showToast('Initializing face recognition, please wait a moment...', 'warning');
+        if (locationStatus !== 'verified') {
+            setShowLocationDeniedModal(true);
             return;
         }
-
-        setScanMessage('Verifying GPS Coordinates...');
-        showToast('Acquiring location permission...', 'info');
-
-        navigator.geolocation.getCurrentPosition(
-            async (position) => {
-                const currentLat = position.coords.latitude;
-                const currentLng = position.coords.longitude;
-
-                let targetLat = 0, targetLng = 0, targetRadius = 100;
-                let locationName = "the branch";
-
-                if (staff.assigned_location_type === 'custom') {
-                    targetLat = parseFloat(staff.custom_latitude);
-                    targetLng = parseFloat(staff.custom_longitude);
-                    targetRadius = staff.custom_radius || 100;
-                    locationName = "your assigned custom location";
-                } else if (staff.assigned_location_type === 'branch') {
-                    const branch = branches.find(b => b.id === staff.assigned_location_id);
-                    if (branch) {
-                        targetLat = branch.latitude;
-                        targetLng = branch.longitude;
-                        targetRadius = branch.radius || 100;
-                        locationName = branch.name;
-                    }
-                } else {
-                    const defaultBranch = branches.find(b => b.is_default);
-                    if (defaultBranch) {
-                        targetLat = defaultBranch.latitude;
-                        targetLng = defaultBranch.longitude;
-                        targetRadius = defaultBranch.radius || 100;
-                        locationName = defaultBranch.name;
-                    }
-                }
-
-                if (!targetLat || !targetLng) {
-                    showToast('Admin has not configured valid GPS references', 'error');
-                    setClockingId(null);
-                    return;
-                }
-
-                const distance = calculateDistance(currentLat, currentLng, targetLat, targetLng);
-                const isWithinRange = distance <= targetRadius;
-
-                if (!isWithinRange) {
-                    // Specific message requested by user: "நீங்க இந்த லொகேஷன்ல இல்ல.. லொகேஷன் வந்துட்டு அட்டனன்ஸ் போடுங்க"
-                    const errorMsg = `ACCESS DENIED: You are not at ${locationName}. Please arrive at the designated location to punch attendance. (Dist: ${distance.toFixed(0)}m)`;
-                    showToast(errorMsg, 'error');
-                    setClockingId(null);
-                    return;
-                }
-
-                if (!staff.face_descriptor) {
-                    showToast('No enrolled face descriptor. Reverting to manual check-in.', 'warning');
-                    executeCheckIn(staff, false, 0);
-                    return;
-                }
-
-                setScanningStaff(staff);
-                setIsScanning(true);
-                setScanMessage('GPS Verified. Initializing face scan...');
-                setClockingId(null);
-            },
-            (err) => {
-                const errorMap: Record<number, string> = {
-                    1: "Location permission denied. Please enable GPS access in browser settings.",
-                    2: "Position unavailable. Check your internet/GPS connection.",
-                    3: "Request timed out while acquiring GPS signal."
-                };
-                showToast('Geo-coordinates failed: ' + (errorMap[err.code] || err.message), 'error');
-                setClockingId(null);
-            },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-        );
+        
+        setScanningStaff(staff);
+        setIsScanning(true);
+        setScanMessage('Initializing face scan...');
     };
 
     const handleCheckOut = async (logId: string, staffId: number) => {
@@ -518,23 +528,43 @@ export function TeamHub({ userRole, theme }: { userRole: string; theme?: 'light'
         
         return (
             <div className="animate-slide-up space-y-6 pb-20 max-w-lg mx-auto p-4">
-                <div className="text-center py-12 rounded-[2.5rem] bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 shadow-2xl backdrop-blur-3xl">
+                <div className="text-center py-12 rounded-[2.5rem] bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 shadow-2xl backdrop-blur-3xl relative overflow-hidden">
+                    {locationStatus === 'loading' && (
+                        <div className="absolute inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-sm z-20 flex flex-col items-center justify-center gap-4">
+                            <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                            <p className="text-xs font-bold text-primary animate-pulse uppercase tracking-widest">Verifying Location...</p>
+                        </div>
+                    )}
+
                     <h3 className="text-xl font-black mb-1">Punch Attendance</h3>
                     <p className="text-[10px] text-slate-400 font-bold mb-8 uppercase tracking-wider">Coordinates Location + Face Scan</p>
                     
-                     <button 
-                          onClick={() => handleCheckIn(activeStaff)}
-                          disabled={clockingId === activeStaff.id}
-                          className={`w-36 h-36 rounded-full flex flex-col items-center justify-center gap-2 border-4 text-white font-black text-[12px] uppercase shadow-2xl transition-all mx-auto duration-500 hover:scale-105 active:scale-95 disabled:opacity-50 ${
-                              log && !log.clock_out ? 'bg-rose-500 border-rose-400 shadow-rose-500/40' : 'bg-emerald-500 border-emerald-400 shadow-emerald-500/40'
-                          }`}
-                     >
-                         {log && !log.clock_out ? <XCircle size={36} /> : <CheckCircle size={36} />}
-                         <span>{log && !log.clock_out ? 'Check Out' : 'Check In'}</span>
+                    <button 
+                         onClick={() => handleCheckIn(activeStaff)}
+                         disabled={clockingId === activeStaff.id || locationStatus === 'loading'}
+                         className={`w-36 h-36 rounded-full flex flex-col items-center justify-center gap-2 border-4 text-white font-black text-[12px] uppercase shadow-2xl transition-all mx-auto duration-500 hover:scale-105 active:scale-95 disabled:opacity-50 ${
+                             locationStatus === 'denied' ? 'bg-slate-400 border-slate-300' :
+                             log && !log.clock_out ? 'bg-rose-500 border-rose-400 shadow-rose-500/40' : 'bg-emerald-500 border-emerald-400 shadow-emerald-500/40'
+                         }`}
+                    >
+                         {locationStatus === 'denied' ? <AlertCircle size={36} /> :
+                          log && !log.clock_out ? <XCircle size={36} /> : <CheckCircle size={36} />}
+                         <span>{locationStatus === 'denied' ? 'Denied' : log && !log.clock_out ? 'Check Out' : 'Check In'}</span>
                     </button>
                     {log && !log.clock_out && (
                         <p className="text-[11px] font-bold text-slate-500 mt-5 flex items-center justify-center gap-1.5"><Clock size={12} /> Shift started at {new Date(log.clock_in).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</p>
                     )}
+                    
+                    <div className="mt-6 flex justify-center gap-6">
+                        <div className="flex flex-col items-center gap-1">
+                            <div className={`w-2 h-2 rounded-full ${isFaceApiLoaded ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-amber-500 animate-pulse'}`} />
+                            <span className="text-[8px] font-black uppercase text-slate-400">Face Engine</span>
+                        </div>
+                        <div className="flex flex-col items-center gap-1">
+                            <div className={`w-2 h-2 rounded-full ${locationStatus === 'verified' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : locationStatus === 'denied' ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]' : 'bg-slate-300'}`} />
+                            <span className="text-[8px] font-black uppercase text-slate-400">GPS Signal</span>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[2rem] p-6">
@@ -559,7 +589,31 @@ export function TeamHub({ userRole, theme }: { userRole: string; theme?: 'light'
                     </div>
                 </div>
 
-
+                {/* Location Denied Modal */}
+                {showLocationDeniedModal && (
+                    <Modal isOpen={showLocationDeniedModal} onClose={() => setShowLocationDeniedModal(false)} title="Security Restriction">
+                        <div className="p-8 flex flex-col items-center text-center space-y-6">
+                            <div className="w-20 h-20 rounded-[2.5rem] bg-rose-500/10 text-rose-500 flex items-center justify-center shadow-inner">
+                                <MapPin size={40} className="animate-bounce" />
+                            </div>
+                            <div className="space-y-2">
+                                <h3 className="text-xl font-black text-rose-600 uppercase tracking-tighter">Access Denied</h3>
+                                <p className="text-sm font-bold text-slate-600 leading-relaxed px-4">
+                                    நீங்க அனுமதிக்கப்பட்ட லொகேஷன்ல இல்ல. தயவுசெய்து லொகேஷனுக்கு வந்து அட்டனன்ஸ் போடவும்.
+                                </p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">
+                                    Admin has been notified of this attempt.
+                                </p>
+                            </div>
+                            <button 
+                                onClick={() => { setShowLocationDeniedModal(false); verifyLocationOnMount(); }}
+                                className="w-full py-4 bg-primary text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2"
+                            >
+                                <MapPin size={14} /> Retry Verification
+                            </button>
+                        </div>
+                    </Modal>
+                )}
             </div>
         );
     }
