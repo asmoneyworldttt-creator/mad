@@ -71,6 +71,24 @@ function App() {
   const [isMobile, setIsMobile] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [permissions, setPermissions] = useState<any>(null);
+  const [staffData, setStaffData] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchStaffData = async () => {
+        if (session?.user && userRole === 'staff') {
+            const { data } = await supabase.from('staff').select('*').eq('id', session.user.id).maybeSingle();
+            if (data) {
+                setPermissions(data.permissions);
+                setStaffData(data);
+            }
+        } else {
+            setPermissions(null);
+            setStaffData(null);
+        }
+    };
+    fetchStaffData();
+  }, [session, userRole]);
 
   useEffect(() => {
     localStorage.setItem('dentora_theme', theme);
@@ -446,6 +464,8 @@ function App() {
         isOpen={isMobileMenuOpen}
         setIsOpen={setIsMobileMenuOpen}
         userRole={userRole}
+        permissions={permissions}
+        staffData={staffData}
         theme={theme}
         setTheme={setTheme}
       />
@@ -469,7 +489,7 @@ function App() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className={`w-10 h-10 rounded-xl overflow-hidden shadow-sm border transition-colors ${theme === 'dark' ? 'border-slate-800' : 'border-slate-200'}`} onClick={() => setActiveTab('profile')}>
-                  <img alt="User avatar" className="w-full h-full object-cover" src={userRole === 'patient' ? "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150" : "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=150"} />
+                  <img alt="User avatar" className="w-full h-full object-cover" src={staffData?.profile_photo_url || (userRole === 'patient' ? "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150" : "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=150")} />
                 </div>
                 <div>
                   <p className={`text-[10px] font-bold uppercase tracking-wider leading-none mb-1 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>Welcome</p>
@@ -510,7 +530,7 @@ function App() {
         </main>
       </div>
 
-      {isMobile && <MobileBottomNav activeTab={activeTab} setActiveTab={setActiveTab} toggleMore={() => setIsMobileMenuOpen(true)} theme={theme} userRole={userRole} />}
+      {isMobile && <MobileBottomNav activeTab={activeTab} setActiveTab={setActiveTab} toggleMore={() => setIsMobileMenuOpen(true)} theme={theme} userRole={userRole} permissions={permissions} />}
       <CommandPalette
         isOpen={isCommandPaletteOpen}
         onClose={() => setIsCommandPaletteOpen(false)}

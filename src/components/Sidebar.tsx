@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import {
     LayoutDashboard, Calendar, Users,
     Activity, Settings, FileText, DollarSign, FlaskConical,
@@ -17,24 +16,14 @@ interface SidebarProps {
     isOpen: boolean;
     setIsOpen: (o: boolean) => void;
     userRole: UserRole;
+    permissions: any;
+    staffData: any;
     theme: 'light' | 'dark';
     setTheme: (theme: 'light' | 'dark') => void;
 }
 
-export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen, userRole, theme, setTheme }: SidebarProps) {
+export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen, userRole, permissions, staffData, theme, setTheme }: SidebarProps) {
     const isDark = theme === 'dark';
-    const [permissions, setPermissions] = useState<any>(null);
-
-    useEffect(() => {
-        const fetchPermissions = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user && userRole === 'staff') {
-                const { data } = await supabase.from('staff').select('permissions').eq('id', user.id).single();
-                if (data) setPermissions(data.permissions);
-            }
-        };
-        fetchPermissions();
-    }, [userRole]);
 
     const allMenus = [
         { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', roles: ['master', 'admin', 'staff', 'patient'] },
@@ -172,7 +161,7 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen, userRole, 
                     >
                         <div className="relative flex-shrink-0">
                             <img
-                                src={userRole === 'patient' ? "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150" : "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=150"}
+                                src={staffData?.profile_photo_url || (userRole === 'patient' ? "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150" : "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=150")}
                                 alt="User"
                                 className="w-10 h-10 rounded-xl object-cover border-2 border-white/50 shadow-sm"
                             />

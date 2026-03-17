@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
     Clock, Calendar, Star, TrendingUp,
     ArrowRight, Activity, CheckCircle2,
-    ClipboardList, Target, User, Search, Brain, Video, type LucideIcon
+    ClipboardList, Target, User, Search, Brain, Video, UserCog, type LucideIcon
 } from 'lucide-react';
 import { supabase } from '../../supabase';
 import { useToast } from '../Toast';
@@ -149,13 +149,20 @@ export function DoctorPanel({ theme, setActiveTab }: DoctorPanelProps) {
                         Today's Schedule & Patient Overview
                     </p>
                 </div>
-                <div className="flex gap-4 w-full md:w-auto">
-                    <div className="relative flex-1 md:w-80">
+                <div className="flex flex-wrap gap-4 w-full md:w-auto items-center">
+                    <button 
+                        onClick={() => setActiveTab?.('team-hub')}
+                        className="flex items-center gap-2 px-6 py-4 rounded-2xl bg-primary text-white font-bold text-sm shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
+                    >
+                        <UserCog size={18} />
+                        Punch Attendance
+                    </button>
+                    <div className="relative flex-1 md:w-80 min-w-[240px]">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                         <input
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Search patient or type..."
+                            placeholder="Search patient..."
                             className={`w-full pl-12 pr-6 py-4 rounded-2xl text-sm font-medium outline-none transition-all border`}
                             style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }}
                         />
