@@ -1,10 +1,37 @@
 import { MapPin, Phone, Mail, Award, Edit3, Image as ImageIcon } from 'lucide-react';
 import { useToast } from '../Toast';
+import { useState, useEffect } from 'react';
+import { supabase } from '../../supabase';
 
 type UserRole = 'master' | 'admin' | 'staff' | 'patient';
 
 export function Profile({ userRole, theme }: { userRole: UserRole; theme?: 'light' | 'dark' }) {
     const { showToast } = useToast();
+    const [profileData, setProfileData] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchProfile = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                if (userRole === 'staff') {
+                     const { data } = await supabase.from('staff').select('*').eq('id', user.id).maybeSingle();
+                     if (data) setProfileData(data);
+                } else {
+                     const { data: clinic } = await supabase.from('clinics').select('name').eq('owner_id', user.id).maybeSingle();
+                     setProfileData({ 
+                         name: clinic?.name || "Clinic Admin", 
+                         role: "Management", 
+                         email: user.email 
+                     });
+                }
+            }
+            setLoading(false);
+        };
+        fetchProfile();
+    }, [userRole]);
+
+    if (loading) return <div className="p-12 text-center text-slate-400">Loading Profile...</div>;
 
     return (
         <div className="animate-slide-up space-y-8">
@@ -20,7 +47,7 @@ export function Profile({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
             <div className="flex flex-col md:flex-row gap-8 px-6 -mt-16 relative z-10 w-full">
                 <div className="flex flex-col items-center flex-shrink-0 w-48">
                     <div className="w-32 h-32 rounded-full border-4 border-background bg-white overflow-hidden shadow-premium relative group">
-                        <img src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=300" alt="Doctor" className="w-full h-full object-cover" />
+                        <img src={profileData?.profile_photo_url || "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=300"} alt="Avatar" className="w-full h-full object-cover" />
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer">
                             <Edit3 className="text-white" size={24} onClick={() => showToast('Avatar upload opened')} />
                         </div>
@@ -28,7 +55,7 @@ export function Profile({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
 
                     <div className="mt-6 w-full space-y-4">
                         <div className="bg-surface rounded-xl p-4 border border-slate-200 shadow-sm text-center">
-                            <p className="font-sans font-bold text-lg text-text-dark">12+</p>
+                            <p className="font-sans font-bold text-lg text-text-dark">{profileData?.grad_year ? (new Date().getFullYear() - parseInt(profileData.grad_year)) + '+' : '12+'}</p>
                             <p className="text-[10px] text-slate-500 font-bold  ">Years Exp.</p>
                         </div>
                         <div className="bg-primary/5 rounded-xl p-4 border border-primary/20 shadow-sm text-center">
@@ -43,24 +70,24 @@ export function Profile({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                         <Edit3 size={18} />
                     </button>
                     <div className="flex items-center gap-3 mb-2">
-                        <h2 className="text-3xl font-sans font-bold text-text-dark tracking-tight">Dr. Sarah Jenkins</h2>
+                        <h2 className="text-3xl font-sans font-bold text-text-dark tracking-tight">{profileData?.name || 'Clinic Profile'}</h2>
                         <div className="bg-success/10 text-success border border-success/20 px-2.5 py-1 rounded-full text-[10px] font-bold   flex items-center gap-1.5">
                             <div className="w-1.5 h-1.5 bg-success rounded-full" /> Verified
                         </div>
                     </div>
 
-                    <p className="text-lg font-medium text-primary mb-6">Chief Cardiologist & Interventional Specialist</p>
+                    <p className="text-lg font-medium text-primary mb-6">{profileData?.role}</p>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8 mb-8 border-b border-slate-100 pb-8">
                         <div className="flex items-center gap-3 text-slate-600 font-medium">
-                            <Phone size={18} className="text-slate-400" /> +91 98765 43210
+                            <Phone size={18} className="text-slate-400" /> {profileData?.mobile || '+91 -'}
                         </div>
                         <div className="flex items-center gap-3 text-slate-600 font-medium">
-                            <Mail size={18} className="text-slate-400" /> dr.sarah@cityclinic.com
+                            <Mail size={18} className="text-slate-400" /> {profileData?.email}
                         </div>
                         <div className="flex items-start gap-3 text-slate-600 font-medium sm:col-span-2">
                             <MapPin size={18} className="text-slate-400 mt-1 flex-shrink-0" />
-                            <span>45, Health Avenue Sector 14, Bangalore, 560014 <br /><span className="text-xs text-primary font-bold cursor-pointer hover:underline">View on Map</span></span>
+                            <span>Clinic Location Address <br /><span className="text-xs text-primary font-bold cursor-pointer hover:underline">View on Map</span></span>
                         </div>
                     </div>
 
@@ -72,13 +99,8 @@ export function Profile({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                             <ul className="space-y-4 pl-8 border-l-2 border-slate-100 ml-3">
                                 <li className="relative">
                                     <div className="w-3 h-3 bg-white border-2 border-primary rounded-full absolute -left-10 top-1.5" />
-                                    <p className="font-bold text-slate-700">MD in Cardiology</p>
-                                    <p className="text-sm text-slate-500 font-medium">AIIMS, New Delhi • 2012</p>
-                                </li>
-                                <li className="relative">
-                                    <div className="w-3 h-3 bg-white border-2 border-slate-300 rounded-full absolute -left-10 top-1.5" />
-                                    <p className="font-bold text-slate-700">MBBS</p>
-                                    <p className="text-sm text-slate-500 font-medium">KMC, Manipal • 2008</p>
+                                    <p className="font-bold text-slate-700">{profileData?.qualifications || 'Qual_Details'}</p>
+                                    <p className="text-sm text-slate-500 font-medium">{profileData?.degree || '-'} • Hired {profileData?.grad_year || '-'}</p>
                                 </li>
                             </ul>
                         </div>
@@ -88,11 +110,11 @@ export function Profile({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                             <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
                                 <div className="flex justify-between items-center mb-3 pb-3 border-b border-slate-200/60">
                                     <span className="text-xs font-bold text-slate-500  ">Reg. Number</span>
-                                    <span className="font-mono text-text-dark font-bold">MCI-847291</span>
+                                    <span className="font-mono text-text-dark font-bold">{profileData?.license_number || '-'}</span>
                                 </div>
                                 <div className="flex justify-between items-center">
                                     <span className="text-xs font-bold text-slate-500  ">State Council</span>
-                                    <span className="font-medium text-text-dark text-sm">Karnataka Medical Council</span>
+                                    <span className="font-medium text-text-dark text-sm">Medical Registration Council</span>
                                 </div>
                             </div>
                         </div>

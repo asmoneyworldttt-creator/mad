@@ -26,6 +26,7 @@
     "axios": "^1.13.6",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "face-api.js": "^0.22.2",
     "framer-motion": "^12.34.4",
     "jspdf": "^4.2.0",
     "jspdf-autotable": "^5.0.7",

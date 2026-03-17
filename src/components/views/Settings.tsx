@@ -7,6 +7,14 @@ import { Modal } from '../../components/Modal';
 import { EmptyState } from '../EmptyState';
 import { SkeletonList } from '../SkeletonLoader';
 import { CustomSelect, CustomSlider } from '../ui/CustomControls';
+import * as faceapi from 'face-api.js';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseAdmin = createClient(
+    import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co',
+    import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || '',
+    { auth: { autoRefreshToken: false, persistSession: false } }
+);
 
 type UserRole = 'master' | 'admin' | 'staff' | 'patient';
 
@@ -23,12 +31,86 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
     const [isBiometricEnabled, setIsBiometricEnabled] = useState(false);
     const [thresholdValue, setThresholdValue] = useState(15);
     const [supportCat, setSupportCat] = useState('Bug Report');
+    const [isFaceApiLoaded, setIsFaceApiLoaded] = useState(false);
+    const [faceDetectionStatus, setFaceDetectionStatus] = useState<'idle' | 'detecting' | 'success' | 'error'>('idle');
+    const [faceDetectionMessage, setFaceDetectionMessage] = useState('');
+
+    useEffect(() => {
+        const loadModels = async () => {
+            try {
+                const MODEL_URL = '/models';
+                await Promise.all([
+                    faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+                ]);
+                setIsFaceApiLoaded(true);
+            } catch (err) {
+                console.error('Failed to load Face Recognition models:', err);
+            }
+        };
+        loadModels();
+    }, []);
+
+    const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setFaceDetectionStatus('detecting');
+        setFaceDetectionMessage('Analyzing image for face detection...');
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            const imgUrl = event.target?.result as string;
+            setStaffForm(prev => ({ ...prev, profile_photo_url: imgUrl }));
+
+            const img = new Image();
+            img.src = imgUrl;
+            img.onload = async () => {
+                try {
+                    const detections = await faceapi.detectSingleFace(img).withFaceLandmarks().withFaceDescriptor();
+                    
+                    if (!detections) {
+                        setFaceDetectionStatus('error');
+                        setFaceDetectionMessage('No face detected. Please upload a clear front-facing photo.');
+                        setStaffForm(prev => ({ ...prev, face_descriptor: null }));
+                        return;
+                    }
+
+                    setFaceDetectionStatus('success');
+                    setFaceDetectionMessage('Face detected successfully.');
+                    setStaffForm(prev => ({ ...prev, face_descriptor: Array.from(detections.descriptor) }));
+                } catch (err) {
+                    setFaceDetectionStatus('error');
+                    setFaceDetectionMessage('Face analysis failed. Please try a different photo.');
+                }
+            };
+        };
+        reader.readAsDataURL(file);
+    };
 
     // Form State
     const [staffForm, setStaffForm] = useState({
         name: '', role: 'Associate Dentist', email: '', mobile: '', qualifications: '',
         degree: '', grad_year: '', license_number: '', password: '',
-        permissions: { dashboard: true, appointments: true, emr: true, billing: false, settings: false, inventory: false }
+        permissions: { 
+            dashboard: true, appointments: true, 'doctor-calendar': true, patients: true,
+            quickbills: false, emr: true, gallery: false, labwork: false,
+            prescriptions: true, 'treatment-plans': true, soap: false, vitals: true,
+            'risk-score': true, 'voice-charting': false, reminders: true, earnings: false,
+            accounts: false, inventory: false, suppliers: false, reports: false,
+            tasks: false, 'team-hub': false, installments: false, 'consent-forms': false,
+            loyalty: true, sterilization: false, 'equipment-log': false, 'operatory-status': false,
+            'perio-charting': false, 'recall-engine': false, 'waitlist-engine': false, resources: false,
+            teledentistry: false, kiosk: false, settings: false
+        },
+        profile_photo_url: '',
+        face_descriptor: null as any,
+        assigned_location_id: '',
+        assigned_location_type: 'default', // 'default', 'branch', 'custom'
+        custom_latitude: '',
+        custom_longitude: '',
+        custom_radius: 100
     });
 
     const [clinicDetails, setClinicDetails] = useState({
@@ -40,7 +122,16 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
 
     const [branches, setBranches] = useState<any[]>([]);
     const [isBranchModalOpen, setIsBranchModalOpen] = useState(false);
-    const [branchForm, setBranchForm] = useState({ name: '', address: '', city: 'Chennai', is_primary: false });
+    const [branchForm, setBranchForm] = useState({ 
+        name: '', 
+        address: '', 
+        city: 'Chennai', 
+        is_primary: false,
+        latitude: '',
+        longitude: '',
+        radius: 100,
+        is_default: false
+    });
 
     useEffect(() => {
         if (activeTab === 'staff') fetchStaff();
@@ -56,11 +147,39 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
         }
     };
 
+    const handleGetCurrentLocation = () => {
+        if (!navigator.geolocation) return showToast('Geolocation is not supported by your browser', 'error');
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                setBranchForm(prev => ({
+                    ...prev,
+                    latitude: position.coords.latitude.toFixed(8),
+                    longitude: position.coords.longitude.toFixed(8)
+                }));
+                showToast('Location fetched successfully', 'success');
+            },
+            (err) => showToast('Permission denied or error fetching location: ' + err.message, 'error'),
+            { enableHighAccuracy: true }
+        );
+    };
+
     const handleSaveBranch = async () => {
         if (!branchForm.name) return showToast('Name is mandatory', 'error');
-        const { error } = await supabase.from('branches').insert([branchForm]);
+        
+        const branchData = {
+            name: branchForm.name,
+            address: branchForm.address,
+            city: branchForm.city,
+            is_primary: branchForm.is_primary,
+            latitude: parseFloat(branchForm.latitude) || null,
+            longitude: parseFloat(branchForm.longitude) || null,
+            radius: branchForm.radius || 100,
+            is_default: branchForm.is_default
+        };
+
+        const { error } = await supabase.from('branches').insert([branchData]);
         if (!error) {
-            showToast('Branch added successfully', 'success');
+            showToast('Branch/Location added successfully', 'success');
             setIsBranchModalOpen(false);
             fetchBranches();
         } else showToast(error.message, 'error');
@@ -115,7 +234,14 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
             degree: staffForm.degree,
             grad_year: staffForm.grad_year ? parseInt(staffForm.grad_year) : null,
             license_number: staffForm.license_number,
-            permissions: staffForm.permissions
+            permissions: staffForm.permissions,
+            profile_photo_url: staffForm.profile_photo_url,
+            face_descriptor: staffForm.face_descriptor,
+            assigned_location_id: staffForm.assigned_location_type === 'branch' ? staffForm.assigned_location_id : null,
+            custom_latitude: staffForm.assigned_location_type === 'custom' ? parseFloat(staffForm.custom_latitude) : null,
+            custom_longitude: staffForm.assigned_location_type === 'custom' ? parseFloat(staffForm.custom_longitude) : null,
+            custom_radius: staffForm.assigned_location_type === 'custom' ? staffForm.custom_radius : null,
+            assigned_location_type: staffForm.assigned_location_type
         };
 
         if (editingStaffId) {
@@ -123,8 +249,29 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
             if (!error) showToast(`Profile for ${staffForm.name} updated successfully`, 'success');
             else showToast(error.message, 'error');
         } else {
-            const { error } = await supabase.from('staff').insert(staffData);
-            if (!error) showToast(`Invitation sent to ${staffForm.name}`, 'success');
+            if (!staffForm.password) {
+                return showToast('Mandatory field: Password required to link Auth', 'error');
+            }
+
+            // 1. Create User in Supabase Auth Admin (so session stays)
+            const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+                email: staffForm.email,
+                password: staffForm.password,
+                email_confirm: true,
+                user_metadata: { role: 'staff', full_name: staffForm.name }
+            });
+
+            if (authError) {
+                return showToast('Auth Signup Failed: ' + authError.message, 'error');
+            }
+
+            // 2. Insert into staff table with auth user id
+            const { error } = await supabase.from('staff').insert({
+                ...staffData,
+                id: authData.user.id // Sync Auth ID directly
+            });
+
+            if (!error) showToast(`Invitation sent and Account activated for ${staffForm.name}`, 'success');
             else showToast(error.message, 'error');
         }
 
@@ -144,7 +291,14 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
             grad_year: staff.grad_year?.toString() || '',
             license_number: staff.license_number || '',
             password: '',
-            permissions: staff.permissions || { dashboard: true, appointments: true, emr: true, billing: false, settings: false, inventory: false }
+            permissions: staff.permissions || { dashboard: true, appointments: true, emr: true, billing: false, settings: false, inventory: false },
+            profile_photo_url: staff.profile_photo_url || '',
+            face_descriptor: staff.face_descriptor || null,
+            assigned_location_id: staff.assigned_location_id || '',
+            assigned_location_type: staff.assigned_location_type || 'default',
+            custom_latitude: staff.custom_latitude?.toString() || '',
+            custom_longitude: staff.custom_longitude?.toString() || '',
+            custom_radius: staff.custom_radius || 100
         });
         setEditingStaffId(staff.id);
         setView('onboard');
@@ -193,6 +347,31 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
                         <div className="space-y-4">
+                            {/* Profile Photo Upload */}
+                            <div>
+                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 block">Profile Photo (for Face Recognition)</label>
+                                <div className="flex items-center gap-4 p-3 rounded-2xl border bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/10">
+                                    <div className={`w-14 h-14 rounded-xl border flex items-center justify-center overflow-hidden bg-white dark:bg-slate-800 shadow-inner ${faceDetectionStatus === 'success' ? 'border-emerald-500' : faceDetectionStatus === 'error' ? 'border-rose-500' : 'border-slate-200'}`}>
+                                        {staffForm.profile_photo_url ? (
+                                            <img src={staffForm.profile_photo_url} alt="Profile" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <Users size={20} className="text-slate-400" />
+                                        )}
+                                    </div>
+                                    <div className="flex-1">
+                                        <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" id="photo-upload" />
+                                        <label htmlFor="photo-upload" className="inline-block px-3 py-1.5 border rounded-lg text-[10px] font-bold cursor-pointer bg-white hover:bg-slate-50 dark:bg-white/5 dark:hover:bg-white/10 transition-all shadow-sm">
+                                            Choose Image
+                                        </label>
+                                        {faceDetectionStatus !== 'idle' && (
+                                            <p className={`text-[8px] font-bold mt-1 ${faceDetectionStatus === 'success' ? 'text-emerald-500' : faceDetectionStatus === 'error' ? 'text-rose-500' : 'text-primary animate-pulse'}`}>
+                                                {faceDetectionMessage}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
                             <div>
                                 <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-2 block">Full Name</label>
                                 <input
@@ -228,6 +407,60 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
                                         'Nursing Staff'
                                     ]}
                                 />
+                            </div>
+
+                            {/* Work Location Assignment */}
+                            <div>
+                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-2 block">Working Location Assignment</label>
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        <input 
+                                            type="radio" name="location_type" id="loc_default"
+                                            checked={staffForm.assigned_location_type === 'default'}
+                                            onChange={() => setStaffForm({...staffForm, assigned_location_type: 'default', assigned_location_id: ''})}
+                                        />
+                                        <label htmlFor="loc_default" className="text-[10px] font-bold text-slate-600 dark:text-slate-300">Use Saved Default Location</label>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <input 
+                                            type="radio" name="location_type" id="loc_branch"
+                                            checked={staffForm.assigned_location_type === 'branch'}
+                                            onChange={() => setStaffForm({...staffForm, assigned_location_type: 'branch'})}
+                                        />
+                                        <label htmlFor="loc_branch" className="text-[10px] font-bold text-slate-600 dark:text-slate-300">Assign Branch Node</label>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <input 
+                                            type="radio" name="location_type" id="loc_custom"
+                                            checked={staffForm.assigned_location_type === 'custom'}
+                                            onChange={() => setStaffForm({...staffForm, assigned_location_type: 'custom', assigned_location_id: ''})}
+                                        />
+                                        <label htmlFor="loc_custom" className="text-[10px] font-bold text-slate-600 dark:text-slate-300">Custom GPS Coordinates</label>
+                                    </div>
+                                </div>
+
+                                {staffForm.assigned_location_type === 'branch' && (
+                                    <div className="mt-2">
+                                        <CustomSelect 
+                                            value={staffForm.assigned_location_id}
+                                            onChange={val => setStaffForm({...staffForm, assigned_location_id: val})}
+                                            options={branches.map(b => ({ value: b.id.toString(), label: b.name }))}
+                                        />
+                                    </div>
+                                )}
+
+                                {staffForm.assigned_location_type === 'custom' && (
+                                    <div className="mt-2 space-y-2">
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <input type="text" placeholder="Lat" value={staffForm.custom_latitude} onChange={e => setStaffForm({...staffForm, custom_latitude: e.target.value})} className="border rounded-lg px-3 py-2 text-xs font-bold bg-slate-50 border-slate-200" />
+                                            <input type="text" placeholder="Lng" value={staffForm.custom_longitude} onChange={e => setStaffForm({...staffForm, custom_longitude: e.target.value})} className="border rounded-lg px-3 py-2 text-xs font-bold bg-slate-50 border-slate-200" />
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <input type="range" min={10} max={300} step={10} value={staffForm.custom_radius} onChange={e => setStaffForm({...staffForm, custom_radius: parseInt(e.target.value)})} className="flex-1 accent-primary" />
+                                            <span className="text-xs font-black text-primary">{staffForm.custom_radius}m</span>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -374,19 +607,24 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
                                     <button onClick={() => setIsBranchModalOpen(true)} className="bg-white/10 hover:bg-white/20 text-white text-[9px] font-bold uppercase tracking-wider px-5 py-2.5 rounded-xl transition-all border border-white/10 hover:scale-105 active:scale-95 shadow-lg">Add Branch</button>
                                 </div>
                                 <div className="space-y-4 relative z-10">
-                                    <div className="p-4 bg-white/5 border border-white/10 rounded-2xl flex justify-between items-center group transition-all hover:bg-white/10 shadow-lg">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 rounded-xl bg-primary text-white flex items-center justify-center font-bold text-xl">HQ</div>
-                                            <div>
-                                                <p className="font-bold text-base tracking-tight">Main Hub</p>
-                                                <p className="text-[10px] opacity-50 font-medium">Cathedral Road, Chennai</p>
+                                    {branches.map((b) => (
+                                        <div key={b.id} className="p-4 bg-white/5 border border-white/20 rounded-2xl flex justify-between items-center group transition-all hover:bg-white/10 shadow-lg">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-12 h-12 rounded-xl bg-primary text-white flex items-center justify-center font-black text-xl">{b.name.charAt(0).toUpperCase()}</div>
+                                                <div>
+                                                    <p className="font-bold text-base tracking-tight text-white">{b.name}</p>
+                                                    <p className="text-[10px] opacity-60 font-medium text-slate-300">{b.address || 'Location Address unspecified'}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col items-end gap-1">
+                                                {b.is_primary && <span className="text-[7px] bg-primary text-white px-2 py-0.5 rounded-full font-bold tracking-wider">PRIMARY</span>}
+                                                {b.is_default && <span className="text-[7px] bg-emerald-500 text-white px-2 py-0.5 rounded-full font-bold tracking-wider">DEFAULT</span>}
                                             </div>
                                         </div>
-                                        <div className="flex flex-col items-end gap-1">
-                                            <span className="text-[7px] bg-primary text-white px-2 py-0.5 rounded-full font-bold tracking-wider">PRIMARY</span>
-                                            <span className="text-[8px] opacity-40 font-bold uppercase tracking-wider">Certified</span>
-                                        </div>
-                                    </div>
+                                    ))}
+                                    {branches.length === 0 && (
+                                        <p className="text-center text-white/50 text-[10px] font-bold py-6">No branch Node grids initialized.</p>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -402,7 +640,7 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
                                     </h3>
                                     <p className="text-[9px] font-medium opacity-60" style={{ color: 'var(--text-muted)' }}>Manage clinician roles and access.</p>
                                 </div>
-                                <button onClick={() => { setEditingStaffId(null); setStaffForm({ name: '', role: 'Associate Dentist', email: '', mobile: '', qualifications: '', degree: '', grad_year: '', license_number: '', password: '', permissions: { dashboard: true, appointments: true, emr: true, billing: false, settings: false, inventory: false } }); setView('onboard'); }} className="bg-primary hover:scale-105 active:scale-95 text-white text-[8px] font-bold uppercase tracking-wider px-4 py-2 rounded-xl shadow-lg shadow-primary/20 transition-all flex items-center gap-1.5">
+                                <button onClick={() => { setEditingStaffId(null); setStaffForm({ name: '', role: 'Associate Dentist', email: '', mobile: '', qualifications: '', degree: '', grad_year: '', license_number: '', password: '', permissions: { dashboard: true, appointments: true, 'doctor-calendar': true, patients: true, quickbills: false, emr: true, gallery: false, labwork: false, prescriptions: true, 'treatment-plans': true, soap: false, vitals: true, 'risk-score': true, 'voice-charting': false, reminders: true, earnings: false, accounts: false, inventory: false, suppliers: false, reports: false, tasks: false, 'team-hub': false, installments: false, 'consent-forms': false, loyalty: true, sterilization: false, 'equipment-log': false, 'operatory-status': false, 'perio-charting': false, 'recall-engine': false, 'waitlist-engine': false, resources: false, teledentistry: false, kiosk: false, settings: false }, profile_photo_url: '', face_descriptor: null as any, assigned_location_id: '', assigned_location_type: 'default', custom_latitude: '', custom_longitude: '', custom_radius: 100 }); setView('onboard'); }} className="bg-primary hover:scale-105 active:scale-95 text-white text-[8px] font-bold uppercase tracking-wider px-4 py-2 rounded-xl shadow-lg shadow-primary/20 transition-all flex items-center gap-1.5">
                                     <Plus size={14} /> New Clinician
                                 </button>
                             </div>
@@ -757,37 +995,88 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
                 >
                     <div className="space-y-4 p-2">
                         <div className="space-y-2">
-                            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Branch Identity</label>
+                            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Location Name / Branch Identity</label>
                             <input 
                                 type="text" value={branchForm.name} 
                                 onChange={e => setBranchForm({...branchForm, name: e.target.value})}
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold"
-                                placeholder="e.g. West Coast Wing"
+                                placeholder="e.g. West Coast Wing / Head Office"
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Physical Coordinates (Address)</label>
+                            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Physical Address</label>
                             <textarea 
                                 value={branchForm.address} 
                                 onChange={e => setBranchForm({...branchForm, address: e.target.value})}
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold resize-none"
                                 placeholder="Enter full address..."
-                                rows={3}
+                                rows={2}
                             />
                         </div>
-                        <div className="flex items-center gap-2 pt-2">
-                            <input 
-                                type="checkbox" id="is_primary"
-                                checked={branchForm.is_primary}
-                                onChange={e => setBranchForm({...branchForm, is_primary: e.target.checked})}
-                            />
-                            <label htmlFor="is_primary" className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Set as Primary Hub</label>
+
+                        {/* GPS Location Fields */}
+                        <div className="flex justify-between items-center pt-1">
+                            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">GPS Coordinates</label>
+                            <button onClick={handleGetCurrentLocation} className="text-[9px] font-bold text-primary flex items-center gap-1 hover:underline">
+                                <MapPin size={12} /> Get Current
+                            </button>
                         </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <input 
+                                    type="text" value={branchForm.latitude} 
+                                    onChange={e => setBranchForm({...branchForm, latitude: e.target.value})}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold"
+                                    placeholder="Latitude"
+                                />
+                            </div>
+                            <div>
+                                <input 
+                                    type="text" value={branchForm.longitude} 
+                                    onChange={e => setBranchForm({...branchForm, longitude: e.target.value})}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold"
+                                    placeholder="Longitude"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Allowed Radius (Meters)</label>
+                            <div className="flex items-center gap-3">
+                                <input 
+                                    type="range" min={10} max={500} step={10}
+                                    value={branchForm.radius || 100} 
+                                    onChange={e => setBranchForm({...branchForm, radius: parseInt(e.target.value)})}
+                                    className="flex-1 accent-primary"
+                                />
+                                <span className="text-sm font-black text-primary w-12 text-center">{branchForm.radius}m</span>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col gap-2 pt-2">
+                            <div className="flex items-center gap-2">
+                                <input 
+                                    type="checkbox" id="is_primary"
+                                    checked={branchForm.is_primary}
+                                    onChange={e => setBranchForm({...branchForm, is_primary: e.target.checked})}
+                                />
+                                <label htmlFor="is_primary" className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Set as Primary Hub</label>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <input 
+                                    type="checkbox" id="is_default"
+                                    checked={branchForm.is_default}
+                                    onChange={e => setBranchForm({...branchForm, is_default: e.target.checked})}
+                                />
+                                <label htmlFor="is_default" className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Set as Default Office Location</label>
+                            </div>
+                        </div>
+
                         <button 
                             onClick={handleSaveBranch}
                             className="w-full py-4 bg-primary text-white rounded-xl font-bold text-[10px] uppercase tracking-widest shadow-xl shadow-primary/20 mt-4 active:scale-95 transition-all"
                         >
-                            Sync Branch Node
+                            Sync Location Node
                         </button>
                     </div>
                 </Modal>

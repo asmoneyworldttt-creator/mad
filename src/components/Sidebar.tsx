@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import {
     LayoutDashboard, Calendar, Users,
     Activity, Settings, FileText, DollarSign, FlaskConical,
@@ -22,6 +23,18 @@ interface SidebarProps {
 
 export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen, userRole, theme, setTheme }: SidebarProps) {
     const isDark = theme === 'dark';
+    const [permissions, setPermissions] = useState<any>(null);
+
+    useEffect(() => {
+        const fetchPermissions = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user && userRole === 'staff') {
+                const { data } = await supabase.from('staff').select('permissions').eq('id', user.id).single();
+                if (data) setPermissions(data.permissions);
+            }
+        };
+        fetchPermissions();
+    }, [userRole]);
 
     const allMenus = [
         { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', roles: ['master', 'admin', 'staff', 'patient'] },
@@ -45,7 +58,7 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen, userRole, 
         { id: 'suppliers', icon: Truck, label: 'Suppliers', roles: ['master', 'admin', 'staff'] },
         { id: 'reports', icon: FileBarChart, label: 'Reports', roles: ['master', 'admin'] },
         { id: 'tasks', icon: ClipboardList, label: 'Tasks', roles: ['master', 'admin', 'staff'] },
-        { id: 'team-hub', icon: UserCog, label: 'Staff Management', roles: ['master', 'admin'] },
+        { id: 'team-hub', icon: UserCog, label: userRole === 'staff' ? 'Attendance' : 'Staff Management', roles: ['master', 'admin', 'staff'] },
         { id: 'installments', icon: CreditCard, label: 'Installments', roles: ['master', 'admin', 'staff'] },
         { id: 'consent-forms', icon: FileSignature, label: 'Consent Forms', roles: ['master', 'admin', 'staff'] },
         { id: 'loyalty', icon: Gift, label: 'Loyalty', roles: ['master', 'admin', 'staff', 'patient'] },
@@ -61,7 +74,15 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen, userRole, 
         { id: 'settings', icon: Settings, label: 'Settings', roles: ['master', 'admin', 'staff', 'patient'] }
     ];
 
-    const menus = allMenus.filter(m => m.roles.includes(userRole));
+    const menus = allMenus.filter(m => {
+        const roleMatches = m.roles.includes(userRole);
+        if (!roleMatches) return false;
+        if (userRole === 'staff' && permissions) {
+            if (m.id === 'team-hub') return true;
+            return permissions[m.id] === true;
+        }
+        return true;
+    });
 
     const handleLogout = async () => {
         await supabase.auth.signOut();

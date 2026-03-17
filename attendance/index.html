@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoFace - Attendance Management</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Outfit:wght@500;700;900&display=swap" rel="stylesheet">
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Face API -->
+    <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --primary-soft: rgba(59, 130, 246, 0.1);
+            --sidebar-bg: #0f172a;
+            --bg-light: #f8fafc;
+            --card-bg: #ffffff;
+            --text-dark: #1e293b;
+            --text-muted: #64748b;
+            --text-white: #ffffff;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --border-color: #e2e8f0;
+            --border-radius: 1rem;
+            --font-outfit: 'Outfit', sans-serif;
+            --font-dmsans: 'DM Sans', sans-serif;
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-dmsans);
+            background-color: var(--bg-light);
+            color: var(--text-dark);
+            overflow-x: hidden;
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Loading Overlay */
+        #loading-screen {
+            position: fixed;
+            inset: 0;
+            background: var(--sidebar-bg);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            transition: opacity 0.5s ease;
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px border-white/20;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1.5rem;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* Sidebar */
+        aside {
+            width: 260px;
+            background: var(--sidebar-bg);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            padding: 1.5rem;
+            height: 100%;
+        }
+        .logo {
+            font-family: var(--font-outfit);
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 3rem;
+        }
+        .logo i { color: var(--primary); }
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            color: #94a3b8;
+            text-decoration: none;
+            border-radius: 0.75rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .nav-link:hover, .nav-link.active {
+            color: white;
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .nav-link.active {
+            background: var(--primary);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Main Content */
+        main {
+            flex: 1;
+            height: 100%;
+            overflow-y: auto;
+            padding: 2rem;
+        }
+        .app-view { display: none; }
+        .app-view.active { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } }
+
+        /* General Layout */
+        h1, h2, h3 { font-family: var(--font-outfit); font-weight: 700; color: var(--text-dark); }
+        .page-header { margin-bottom: 2rem; }
+        .page-header p { color: var(--text-muted); font-size: 0.875rem; margin-top: 0.25rem; }
+
+        /* Dashboard Cards */
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .stat-card { background: white; padding: 1.5rem; border-radius: var(--border-radius); border: 1px solid var(--border-color); display: flex; align-items: center; gap: 1rem; }
+        .stat-icon { width: 48px; height: 48px; border-radius: 0.75rem; display: flex; alignItems: center; justify-content: center; font-size: 1.25rem; }
+        .stat-icon.staff { background: rgba(59, 130, 246, 0.1); color: var(--primary); }
+        .stat-icon.present { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+        .stat-icon.absent { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+        .stat-icon.late { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+        .stat-num { font-size: 1.5rem; font-weight: 700; font-family: var(--font-outfit); }
+        .stat-label { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+        /* Tables & Lists */
+        .table-container { background: white; border-radius: var(--border-radius); border: 1px solid var(--border-color); overflow-x: auto; margin-top: 1.5rem; }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th { padding: 1rem 1.5rem; background: #f8fafc; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+        td { padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); font-size: 0.875rem; }
+        .badge { display: inline-flex; padding: 4px 8px; font-weight: 700; font-size: 0.65rem; border-radius: 9999px; text-transform: uppercase; }
+        .badge.default { background: #eff6ff; color: #1e40af; }
+        .badge.custom { background: #fef2f2; color: #991b1b; }
+        .badge.present { background: #d1fae5; color: #065f46; }
+
+        /* Forms / Inputs */
+        .form-card { background: white; padding: 2rem; border-radius: var(--border-radius); border: 1px solid var(--border-color); max-width: 600px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem; }
+        .form-col { display: flex; flex-direction: column; gap: 0.5rem; }
+        label { font-size: 0.75rem; font-weight: 700; color: var(--text-dark); text-transform: uppercase; }
+        input[type="text"], input[type="number"], select { width: 100%; padding: 10px 14px; border-radius: 0.5rem; border: 1px solid var(--border-color); outline: none; font-size: 0.875rem; transition: var(--transition); }
+        input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 18px; border-radius: 0.5rem; font-weight: 700; font-size: 0.875rem; cursor: pointer; border: none; transition: var(--transition); }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        /* Photo Upload & Preview */
+        .upload-container { display: flex; align-items: center; gap: 1.5rem; margin: 1rem 0; }
+        .photo-preview { width: 100px; height: 100px; border-radius: 50%; background: #f1f5f9; border: 2px dashed #cbd5e1; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
+        .photo-preview img { width: 100%; height: 100%; object-fit: cover; }
+        .upload-btn-wrapper { position: relative; overflow: hidden; display: inline-block; }
+        .upload-btn-wrapper input[type=file] { position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; }
+
+        /* Staff Grid */
+        .staff-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin-top: 1.5rem; }
+        .staff-card { background: white; padding: 1.5rem; border-radius: var(--border-radius); border: 1px solid var(--border-color); text-align: center; position: relative; }
+        .staff-circle { width: 80px; height: 80px; border-radius: 50%; overflow: hidden; margin: 0 auto 1rem; border: 3px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .staff-circle img { width: 100%; height: 100%; object-fit: cover; }
+
+        /* Attendance Check-in Section */
+        .checkin-container { max-width: 500px; margin: 2rem auto; text-align: center; }
+        .big-btn { width: 160px; height: 160px; border-radius: 50%; border: none; color: white; font-family: var(--font-outfit); font-size: 1.25rem; font-weight: 900; cursor: pointer; transition: all 0.2s; box-shadow: 0 10px 25px rgba(0,0,0,0.1); margin: 2rem auto; display: flex; align-items: center; justify-content: center; }
+        .big-btn.checkin { background: var(--success); box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3); }
+        .big-btn.checkout { background: var(--danger); box-shadow: 0 10px 25px rgba(239, 68, 68, 0.3); }
+        .big-btn:hover { transform: scale(1.05); }
+
+        /* Modal Camera UI Overlay */
+        #camera-modal { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.95); z-index: 500; display: none; align-items: center; justify-content: center; }
+        .camera-container { width: 90%; max-width: 480px; background: #1e293b; border-radius: 1.5rem; padding: 1.5rem; text-align: center; color: white; position: relative; }
+        .video-box { position: relative; width: 100%; border-radius: 1rem; overflow: hidden; background: black; aspect-ratio: 3/4; }
+        video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+        .guide-ring { position: absolute; inset: 15%; border: 3px dashed var(--primary); border-radius: 50%; pointer-events: none; animation: pulse 2s ease-in-out infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); } 100% { transform: scale(1); } }
+        .scan-line { position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: var(--primary); opacity: 0.6; animation: scan 3s linear infinite; }
+        @keyframes scan { 0% { top: 15%; } 50% { top: 85%; } 100% { top: 15%; } }
+
+        /* Toast notifications */
+        .toast { position: fixed; bottom: 2rem; right: 2rem; background: white; padding: 12px 20px; border-radius: 0.75rem; border-left: 4px solid var(--success); box-shadow: 0 10px 30px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 0.875rem; transform: translateY(120%); transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28); z-index: 999; }
+        .toast.show { transform: translateY(0); }
+        .toast.error { border-left-color: var(--danger); }
+    </style>
+</head>
+<body>
+
+    <!-- Loading Screen for faceapi models -->
+    <div id="loading-screen">
+        <div class="spinner" id="load-spinner"></div>
+        <h2 id="load-title">Loading Models...</h2>
+        <p style="color: #64748b; font-size: 0.875rem; fill: transparent; margin-top: 0.5rem;">Syncing frame templates inside absolute loading setups</p>
+    </div>
+
+    <!-- Sidebar Navigation -->
+    <aside>
+        <div class="logo"><i class="fa-solid fa-bolt"></i> GeoFace</div>
+        <div class="nav-link active" onclick="switchView('dashboard')"><i class="fa-solid fa-chart-pie"></i> Dashboard</div>
+        <div class="nav-link" onclick="switchView('staff')"><i class="fa-solid fa-users"></i> Staff</div>
+        <div class="nav-link" onclick="switchView('attendance')"><i class="fa-solid fa-fingerprint"></i> Attendance</div>
+        <div class="nav-link" onclick="switchView('settings')"><i class="fa-solid fa-gear"></i> Settings</div>
+    </aside>
+
+    <!-- Main Views Controller -->
+    <main>
+        <!-- 1. DASHBOARD VIEW -->
+        <div id="view-dashboard" class="app-view active">
+            <div class="page-header"><h2>Overview</h2><p>Today's metrics and summary tracking items</p></div>
+            
+            <div class="stat-grid">
+                <div class="stat-card">
+                    <div class="stat-icon staff"><i class="fa-solid fa-users"></i></div>
+                    <div><div class="stat-num" id="stat-total-staff">0</div><div class="stat-label">Total Staff</div></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon present"><i class="fa-solid fa-circle-check"></i></div>
+                    <div><div class="stat-num" id="stat-present">0</div><div class="stat-label">Present</div></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon absent"><i class="fa-solid fa-circle-xmark"></i></div>
+                    <div><div class="stat-num" id="stat-absent">0</div><div class="stat-label">Absent</div></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon late"><i class="fa-solid fa-clock"></i></div>
+                    <div><div class="stat-num" id="stat-late">0</div><div class="stat-label">Late</div></div>
+                </div>
+            </div>
+
+            <h3>Recent Logs Today</h3>
+            <div class="table-container">
+                <table id="dash-attendance-table">
+                    <thead><tr><th>Name</th><th>ID</th><th>Check In</th><th>Check Out</th><th>Distance</th><th>Status</th></tr></thead>
+                    <tbody><!-- Rendered dynamically --></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 2. STAFF VIEW -->
+        <div id="view-staff" class="app-view">
+            <div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <div><h2>Staff Directory</h2><p>Manage list details template layouts</p></div>
+                <button class="btn btn-primary" onclick="toggleStaffForm()"><i class="fa-solid fa-plus"></i> Add Staff</button>
+            </div>
+
+            <!-- Add Staff Form -->
+            <div id="staff-form-panel" class="form-card" style="display: none; margin-bottom: 2rem;">
+                <h3>Add New Profile</h3><br>
+                <div class="form-row">
+                    <div class="form-col"><label>Full Name</label><input type="text" id="staff-name" required></div>
+                    <div class="form-col"><label>Employee ID</label><input type="text" id="staff-empid" required></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-col"><label>Department</label><input type="text" id="staff-dept" required></div>
+                    <div class="form-col"><label>Phone</label><input type="text" id="staff-phone" required></div>
+                </div>
+
+                <div class="form-col"><label>Profile Layout</label>
+                    <div class="upload-container">
+                        <div class="photo-preview" id="photo-preview"><i class="fa-solid fa-user-circle fa-3x" style="color: #cbd5e1;"></i></div>
+                        <div class="upload-btn-wrapper">
+                            <button class="btn" style="border: 1px solid var(--border-color); background: white;"><i class="fa-solid fa-camera"></i> Scan File</button>
+                            <input type="file" id="staff-photo" accept="image/*" onchange="handlePhotoUpload(this)">
+                        </div>
+                    </div>
+                    <span id="face-status" style="font-size: 0.75rem; font-weight: 700;"></span>
+                </div><br>
+
+                <div class="form-col"><label>Location Mapping</label>
+                    <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
+                        <label style="display: flex; align-items: center; gap: 4px;"><input type="radio" name="loc-type" value="default" checked onchange="toggleCustomLoc(false)"> Default Office</label>
+                        <label style="display: flex; align-items: center; gap: 4px;"><input type="radio" name="loc-type" value="custom" onchange="toggleCustomLoc(true)"> Custom Location</label>
+                    </div>
+                </div><br>
+
+                <div id="custom-loc-fields" style="display: none; border-top: 1px solid #f1f5f9; padding-top: 1rem; margin-top: 1rem;">
+                    <button class="btn btn-primary" style="font-size: 0.75rem; padding: 6px 12px; margin-bottom: 1rem;" onclick="getGeoLocation('custom')"><i class="fa-solid fa-location-dot"></i> User Current Location</button>
+                    <div class="form-row">
+                        <div class="form-col"><label>Latitude</label><input type="number" id="custom-lat" step="any"></div>
+                        <div class="form-col"><label>Longitude</label><input type="number" id="custom-lng" step="any"></div>
+                    </div>
+                    <div class="form-col"><label>Allowed Radius (m)</label><input type="number" id="custom-radius" value="50"></div>
+                </div><br>
+
+                <div style="display: flex; gap: 1rem;">
+                    <button class="btn btn-primary" id="btn-save-staff" onclick="saveStaff()">Create Profile</button>
+                    <button class="btn" style="border: 1px solid #e2e8f0; background: white;" onclick="toggleStaffForm()">Cancel</button>
+                </div>
+            </div>
+
+            <div class="staff-grid" id="staff-grid-box"><!-- Loaded dynamically --></div>
+        </div>
+
+        <!-- 3. ATTENDANCE VIEW -->
+        <div id="view-attendance" class="app-view">
+            <div class="page-header"><h2>Check-In Tracker</h2><p>Verify coordinates scanning feeds transparency</p></div>
+            
+            <div class="checkin-container form-card" style="margin: 0 auto;">
+                <div class="form-col"><label>Select Profile</label>
+                    <select id="attendance-staff-select" onchange="updateStaffStatusPanel()">
+                        <option value="">-- Select Member --</option>
+                    </select>
+                </div><br>
+
+                <div id="staff-status-panel" style="margin: 1.5rem 0; padding: 1rem; background: #f8fafc; border-radius: 0.75rem; display: none;">
+                    <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted);">Today Status</div>
+                    <div id="status-panel-text" style="font-weight: 700; margin-top: 5px;">Not Verified Yet</div>
+                </div>
+
+                <div style="display: flex; justify-content: center; gap: 1rem;">
+                    <button class="big-btn checkin" id="btn-checkin" onclick="startVerification('in')">🟢 CHECK IN</button>
+                    <button class="big-btn checkout" id="btn-checkout" onclick="startVerification('out')">🔴 CHECK OUT</button>
+                </div>
+
+                <div id="verify-logs" style="margin-top: 1.5rem; text-align: left; font-size: 0.825rem; space-y-2;"></div>
+            </div>
+        </div>
+
+        <!-- 4. SETTINGS VIEW -->
+        <div id="view-settings" class="app-view">
+            <div class="page-header"><h2>Default Configuration</h2><p>Set up coordinates threshold settings perfectly</p></div>
+
+            <div class="form-card">
+                <div class="form-col" style="margin-bottom: 1.5rem;"><label>Office Alias Name</label><input type="text" id="set-name" required placeholder="Headquarters"></div>
+                <button class="btn btn-primary" style="margin-bottom: 1rem;" onclick="getGeoLocation('default')"><i class="fa-solid fa-location-dot"></i> Auto Use Current Location</button>
+                
+                <div class="form-row">
+                    <div class="form-col"><label>Latitude</label><input type="number" id="set-lat" step="any" required></div>
+                    <div class="form-col"><label>Longitude</label><input type="number" id="set-lng" step="any" required></div>
+                </div>
+                <div class="form-col" style="margin-bottom: 1.5rem;"><label>Allowed Threshold Radius (meters)</label><input type="number" id="set-radius" value="50" required></div>
+
+                <button class="btn btn-primary" onclick="saveSettings()"><i class="fa-solid fa-save"></i> Save Settings</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Camera Overlay Interface -->
+    <div id="camera-modal">
+        <div class="camera-container">
+            <h3>Facial Verification</h3>
+            <p style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 1rem;" id="cam-sub">Align face inside pointer frame loop</p>
+            <div class="video-box">
+                <video id="live-video" autoplay muted playsinline></video>
+                <div class="guide-ring"></div>
+                <div class="scan-line"></div>
+            </div>
+            <div style="margin-top: 1rem; font-weight: 700; font-size: 0.875rem;" id="cam-status">Starting Camera layout...</div><br>
+            <button class="btn" style="background: white; border: 1px solid #e2e8f0; color: #ef4444;" onclick="stopCamera()">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Toast Modal -->
+    <div id="toast" class="toast">✅ Action Success!</div>
+
+    <script>
+        // --- 1. GLOBALS & STATE ---
+        const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+        let staffList = JSON.parse(localStorage.getItem('staff_list')) || [];
+        let attendanceLogs = JSON.parse(localStorage.getItem('attendance_logs')) || [];
+        let settings = JSON.parse(localStorage.getItem('office_settings')) || null;
+        
+        let modelsLoaded = false;
+        let activeDescriptor = null; // Buffer array for face additions 
+        let videoStream = null;
+        let scanInterval = null;
+        let activeStaffCheck = null;
+        let checkType = 'in'; // or 'out'
+
+        // --- 2. STARTUP / MODEL LOADS ---
+        window.onload = async () => {
+            if (settings) fillSettingsForm();
+            renderStaff();
+            renderDashboard();
+            loadSelectDropdown();
+
+            try {
+                await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+                await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+                await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+                modelsLoaded = true;
+                document.getElementById('loading-screen').style.opacity = '0';
+                setTimeout(() => document.getElementById('loading-screen').style.display = 'none', 500);
+            } catch (err) {
+                document.getElementById('load-title').innerText = "⚠️ Model Loading Failed!";
+                document.getElementById('load-spinner').style.borderTopColor = "#ef4444";
+            }
+        };
+
+        // --- 3. VIEW CONTROLLER ---
+        function switchView(viewId) {
+            document.querySelectorAll('.app-view').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            document.getElementById(`view-${viewId}`).classList.add('active');
+            event.currentTarget.classList.add('active');
+            if (viewId === 'dashboard') renderDashboard();
+            if (viewId === 'attendance') loadSelectDropdown();
+        }
+
+        function triggerToast(msg, type = 'success') {
+            const t = document.getElementById('toast');
+            t.className = `toast show ${type === 'error' ? 'error' : ''}`;
+            t.innerHTML = `${type === 'error' ? '❌' : '✅'} ${msg}`;
+            setTimeout(() => t.classList.remove('show'), 4000);
+        }
+
+        // --- 4. GEOLOCATION HANDLERS ---
+        function getGeoLocation(type) {
+            if (!navigator.geolocation) return triggerToast("Geo unsupported inner absolute lists!", 'error');
+            navigator.geolocation.getCurrentPosition(
+                p => {
+                    const lat = p.coords.latitude.toFixed(6);
+                    const lng = p.coords.longitude.toFixed(6);
+                    if (type === 'default') {
+                        document.getElementById('set-lat').value = lat;
+                        document.getElementById('set-lng').value = lng;
+                    } else {
+                        document.getElementById('custom-lat').value = lat;
+                        document.getElementById('custom-lng').value = lng;
+                    }
+                    triggerToast("Coordinates mapped accurately template flawlessly!");
+                },
+                err => triggerToast(err.message, 'error'),
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        }
+
+        // --- 5. SETTINGS HANDLERS ---
+        function fillSettingsForm() {
+            document.getElementById('set-name').value = settings.name;
+            document.getElementById('set-lat').value = settings.lat;
+            document.getElementById('set-lng').value = settings.lng;
+            document.getElementById('set-radius').value = settings.radius;
+        }
+
+        function saveSettings() {
+            const name = document.getElementById('set-name').value;
+            const lat = parseFloat(document.getElementById('set-lat').value);
+            const lng = parseFloat(document.getElementById('set-lng').value);
+            const radius = parseInt(document.getElementById('set-radius').value);
+
+            if (!name || isNaN(lat) || isNaN(lng) || isNaN(radius)) return triggerToast("All setups parameters missing layout sets!", 'error');
+            settings = { name, lat, lng, radius };
+            localStorage.setItem('office_settings', JSON.stringify(settings));
+            triggerToast("Default Layout synchronized correctly flawlessly!");
+        }
+
+        // --- 6. STAFF HANDLERS ---
+        function toggleStaffForm() { const f = document.getElementById('staff-form-panel'); f.style.display = f.style.display === 'none' ? 'block' : 'none'; }
+        function toggleCustomLoc(val) { document.getElementById('custom-loc-fields').style.display = val ? 'block' : 'none'; }
+
+        async function handlePhotoUpload(input) {
+            const status = document.getElementById('face-status');
+            status.innerHTML = "👀 Detecting face descriptor loaded streams...";
+            status.style.color = "var(--warning)";
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const imgNode = document.createElement('img');
+                imgNode.src = e.target.result;
+                document.getElementById('photo-preview').innerHTML = `<img src="${e.target.result}">`;
+
+                imgNode.onload = async () => {
+                    const detection = await faceapi.detectSingleFace(imgNode).withFaceLandmarks().withFaceDescriptor();
+                    if (detection) {
+                        activeDescriptor = Array.from(detection.descriptor);
+                        status.innerHTML = "✅ Face detected transparent loaded flawlessly!";
+                        status.style.color = "var(--success)";
+                    } else {
+                        activeDescriptor = null;
+                        status.innerHTML = "⚠️ No face detected. Please uploads cleared setups!";
+                        status.style.color = "var(--danger)";
+                    }
+                };
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function saveStaff() {
+            const name = document.getElementById('staff-name').value;
+            const empid = document.getElementById('staff-empid').value;
+            const dept = document.getElementById('staff-dept').value;
+            const phone = document.getElementById('staff-phone').value;
+            const locType = document.querySelector('input[name="loc-type"]:checked').value;
+            let photo = document.getElementById('photo-preview').querySelector('img')?.src || '';
+
+            if (staffList.some(s => s.id === empid)) return triggerToast("Employee ID absolute replicates trigger set!", 'error');
+            if (!activeDescriptor) return triggerToast("Face descriptors buffers not validated yet!", 'error');
+
+            const location = { type: locType };
+            if (locType === 'custom') {
+                 location.lat = parseFloat(document.getElementById('custom-lat').value);
+                 location.lng = parseFloat(document.getElementById('custom-lng').value);
+                 location.radius = parseInt(document.getElementById('custom-radius').value);
+            }
+
+            const staffObj = { id: empid, name, department: dept, phone, photoBase64: photo, faceDescriptor: activeDescriptor, location };
+            staffList.push(staffObj);
+            localStorage.setItem('staff_list', JSON.stringify(staffList));
+            triggerToast("Profile synchronous loaded flawlessly!");
+            toggleStaffForm();
+            renderStaff();
+            loadSelectDropdown();
+        }
+
+        function renderStaff() {
+            const grid = document.getElementById('staff-grid-box');
+            grid.innerHTML = staffList.map(s => `<div class="staff-card"><div class="staff-circle"><img src="${s.photoBase64 || 'https://via.placeholder.com/100'}"></div><h4>${s.name}</h4><p style="font-size: 0.75rem; color: #94a3b8">${s.department} (${s.id})</p><span class="badge ${s.location.type}">${s.location.type}</span></div>`).join('');
+        }
+
+        // --- 7. ATTENDANCE & MODAL LOADS ---
+        function loadSelectDropdown() {
+             const sel = document.getElementById('attendance-staff-select');
+             sel.innerHTML = '<option value="">-- Select Member --</option>' + staffList.map(s => `<option value="${s.id}">${s.name} (${s.id})</option>`).join('');
+        }
+
+        function updateStaffStatusPanel() {
+            const id = document.getElementById('attendance-staff-select').value;
+            const panel = document.getElementById('staff-status-panel');
+            if (!id) { panel.style.display = 'none'; return; }
+            panel.style.display = 'block';
+            const today = new Date().toISOString().split('T')[0];
+            const log = attendanceLogs.find(l => l.staffId === id && l.date === today);
+            document.getElementById('status-panel-text').innerHTML = log ? `Checked-In: ${log.checkIn} | Check-Out: ${log.checkOut || 'Active'}` : 'No Log setups loaded today!';
+        }
+
+        function haversineDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371000;
+            const toRad = deg => deg * Math.PI / 180;
+            const dLat = toRad(lat2 - lat1); const dLon = toRad(lon2 - lon1);
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2) * Math.sin(dLon/2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+
+        function startVerification(type) {
+             const id = document.getElementById('attendance-staff-select').value;
+             if (!id) return triggerToast("Select or assign member buffers layouts!", 'error');
+             checkType = type;
+             
+             if (!settings && staffList.find(s => s.id === id).location.type === 'default') {
+                 return triggerToast("Default Office Settings layouts missed setups!", 'error');
+             }
+
+             const logs = document.getElementById('verify-logs');
+             logs.innerHTML = "⌛ Validating coordinate frames feeds...";
+             activeStaffCheck = staffList.find(s => s.id === id);
+
+             if (!navigator.geolocation) return triggerToast("Geo feeds unsupported absolute setups!", 'error');
+             navigator.geolocation.getCurrentPosition(
+                 p => {
+                     const distance = validateGeoFencing(p.coords.latitude, p.coords.longitude);
+                     if (distance !== null) {
+                         verifyFaceRecognition();
+                     }
+                 },
+                 err => { logs.innerHTML = `<span style="color: #ef4444">${err.message}</span>`; },
+                 { enableHighAccuracy: true, timeout: 10000 }
+             );
+        }
+
+        function validateGeoFencing(currentLat, currentLng) {
+             const loc = activeStaffCheck.location.type === 'custom' ? activeStaffCheck.location : settings;
+             const distance = haversineDistance(currentLat, currentLng, loc.lat, loc.lng);
+             const logs = document.getElementById('verify-logs');
+
+             if (distance > loc.radius) {
+                 logs.innerHTML = `<span style="color: #ef4444">❌ Out of Zone bounds sets: ${distance.toFixed(1)}m. Allowed: ${loc.radius}m</span>`;
+                 return null;
+             }
+             logs.innerHTML = `<span style="color: var(--success)">✅ Geo mapped successfully sets template layout! Distance: ${distance.toFixed(1)}m</span>`;
+             activeStaffCheck.lastDistance = Math.round(distance);
+             return distance;
+        }
+
+        async function verifyFaceRecognition() {
+             const modal = document.getElementById('camera-modal');
+             modal.style.display = 'flex';
+             document.getElementById('cam-status').innerText = "Streaming live triggers feeds view loaded...";
+
+             try {
+                  const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                  const v = document.getElementById('live-video');
+                  v.srcObject = stream;
+                  v.play();
+                  videoStream = stream;
+
+                  scanInterval = setInterval(async () => {
+                      const detection = await faceapi.detectSingleFace(v).withFaceLandmarks().withFaceDescriptor();
+                      if (detection) {
+                           const descriptor = new Float32Array(activeStaffCheck.faceDescriptor);
+                           const dist = faceapi.euclideanDistance(detection.descriptor, descriptor);
+                           
+                           if (dist <= 0.45) {
+                                document.getElementById('cam-status').innerHTML = "✅ <span style='color: var(--success)'>Match Verified seamlessly layout!</span>";
+                                stopCamera();
+                                finalizeAttendance();
+                           } else {
+                               document.getElementById('cam-status').innerHTML = `🔍 Comparing inputs... dist: ${dist.toFixed(2)}`;
+                           }
+                      }
+                  }, 500);
+             } catch (e) {
+                  document.getElementById('cam-status').innerText = "Camera streams permissions denied indexes loading crashes!";
+             }
+        }
+
+        function stopCamera() {
+             if (videoStream) videoStream.getTracks().forEach(t => t.stop());
+             if (scanInterval) clearInterval(scanInterval);
+             document.getElementById('camera-modal').style.display = 'none';
+        }
+
+        function finalizeAttendance() {
+             const today = new Date().toISOString().split('T')[0];
+             const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+             let log = attendanceLogs.find(l => l.staffId === activeStaffCheck.id && l.date === today);
+             if (checkType === 'in') {
+                  if (log) return triggerToast("Check-in already logged setup sets template!", 'error');
+                  log = { staffId: activeStaffCheck.id, staffName: activeStaffCheck.name, date: today, checkIn: now, checkOut: null, distance: activeStaffCheck.lastDistance };
+                  attendanceLogs.push(log);
+                  triggerToast(`Checked synchronized loaded perfectly at ${now}`);
+             } else {
+                  if (!log) return triggerToast("Check-in record loads index frames missed templates layout sets!", 'error');
+                  log.checkOut = now;
+                  triggerToast(`Checked-Out mapped flawlessly index absolute at ${now}`);
+             }
+
+             localStorage.setItem('attendance_logs', JSON.stringify(attendanceLogs));
+             updateStaffStatusPanel();
+             renderDashboard();
+        }
+
+        // --- 8. DASHBOARD RENDERS ---
+        function renderDashboard() {
+            const total = staffList.length;
+            const today = new Date().toISOString().split('T')[0];
+            const logs = attendanceLogs.filter(l => l.date === today);
+            const present = logs.length;
+
+            document.getElementById('stat-total-staff').innerText = total;
+            document.getElementById('stat-present').innerText = present;
+            document.getElementById('stat-absent').innerText = total - present;
+
+            const table = document.getElementById('dash-attendance-table').querySelector('tbody');
+            table.innerHTML = logs.map(l => `<tr><td>${l.staffName}</td><td>${l.staffId}</td><td>${l.checkIn}</td><td>${l.checkOut || '—'}</td><td>${l.distance}m</td><td><span class="badge present">Present</span></td></tr>`).join('');
+        }
+
+    </script>
+</body>
+</html>

@@ -1,14 +1,16 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { 
     Users, Clock, CheckCircle, XCircle, Download, QrCode, 
     Coffee, Play, FileText, Table, Calendar, ChevronRight,
-    Search, Filter, UserCog, History, TrendingUp, AlertCircle
+    Search, Filter, UserCog, History, TrendingUp, AlertCircle, MapPin
 } from 'lucide-react';
 import { supabase } from '../../supabase';
 import { useToast } from '../Toast';
 import { QRCodeSVG } from 'qrcode.react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import * as faceapi from 'face-api.js';
+import { Modal } from '../../components/Modal';
 
 const ROLES = ['All', 'Doctor', 'Practice Manager', 'Nurse', 'Receptionist', 'Hygienist'];
 
@@ -28,21 +30,176 @@ export function TeamHub({ userRole, theme }: { userRole: string; theme?: 'light'
     const [loading, setLoading] = useState(false);
     const [clockingId, setClockingId] = useState<number | null>(null);
     const [stats, setStats] = useState<any>({ total_days: 0, total_hours: 0, total_leaves: 0 });
+    const [branches, setBranches] = useState<any[]>([]);
+    const [activeStaff, setActiveStaff] = useState<any>(null);
+
+    useEffect(() => {
+        const fetchActiveStaff = async () => {
+             const { data: { user } } = await supabase.auth.getUser();
+             if (user && userRole === 'staff') {
+                  const { data } = await supabase.from('staff').select('*').eq('id', user.id).maybeSingle();
+                  if (data) setActiveStaff(data);
+             }
+        };
+        if (userRole === 'staff') fetchActiveStaff();
+    }, [userRole]);
+    
+    // Face-api States
+    const [isFaceApiLoaded, setIsFaceApiLoaded] = useState(false);
+    const [isScanning, setIsScanning] = useState(false);
+    const [scanMessage, setScanMessage] = useState('');
+    const [scanningStaff, setScanningStaff] = useState<any>(null);
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+
+    useEffect(() => {
+        const loadModels = async () => {
+            try {
+                const MODEL_URL = '/models';
+                await Promise.all([
+                    faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+                ]);
+                setIsFaceApiLoaded(true);
+            } catch (err) {
+                console.error('Failed to load Face Recognition models:', err);
+            }
+        };
+        loadModels();
+        fetchBranches();
+    }, []);
+
+    const fetchBranches = async () => {
+        const { data } = await supabase.from('branches').select('*');
+        if (data) setBranches(data);
+    };
+
+    const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+        const R = 6371e3; // radius in metres
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c; // metres
+    };
+
+    const startCamera = async () => {
+        if (!videoRef.current) return;
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 } });
+            videoRef.current.srcObject = stream;
+        } catch (err) {
+            showToast('Unable to access camera: ' + (err as Error).message, 'error');
+        }
+    };
+
+    const stopCamera = () => {
+        if (videoRef.current && videoRef.current.srcObject) {
+            const stream = videoRef.current.srcObject as MediaStream;
+            stream.getTracks().forEach(track => track.stop());
+        }
+    };
+
+    useEffect(() => {
+        if (isScanning && scanningStaff) {
+            startCamera();
+            const interval = setInterval(handleFaceScan, 1000);
+            return () => {
+                clearInterval(interval);
+                stopCamera();
+            };
+        }
+    }, [isScanning, scanningStaff]);
+
+    const handleFaceScan = async () => {
+        if (!videoRef.current || !scanningStaff?.face_descriptor) return;
+
+        const detections = await faceapi.detectSingleFace(videoRef.current).withFaceLandmarks().withFaceDescriptor();
+
+        if (detections) {
+            const matchScore = faceapi.euclideanDistance(detections.descriptor, scanningStaff.face_descriptor);
+            // Smaller score is better (0 = identical)
+            if (matchScore <= 0.45) {
+                setScanMessage('Face Verified!');
+                setTimeout(() => {
+                    executeCheckIn(scanningStaff, true, matchScore);
+                    setIsScanning(false);
+                    setScanningStaff(null);
+                }, 1000);
+            } else {
+                setScanMessage(`Mismatch score: ${(matchScore * 10).toFixed(1)} / 4.5`);
+            }
+        } else {
+            setScanMessage('Evaluating environment...');
+        }
+    };
+
+    const executeCheckIn = async (staff: any, faceVerified: boolean, matchScore: number) => {
+        setClockingId(staff.id);
+        const activeLog = getStaffLog(staff.id);
+
+        if (activeLog && activeLog.status === 'Checked-in' && !activeLog.clock_out) {
+            // ── Check Out Action ──
+            const clockOutTime = new Date();
+            const clockInTime = new Date(activeLog.clock_in);
+            const workingHours = (clockOutTime.getTime() - clockInTime.getTime()) / (1000 * 60 * 60);
+
+            const { error } = await supabase.from('attendance_logs').update({
+                clock_out: clockOutTime.toISOString(),
+                status: 'Checked-out',
+                working_hours: parseFloat(workingHours.toFixed(2)),
+                face_verified: faceVerified,
+                face_match_score: parseFloat(matchScore.toFixed(4))
+            }).eq('id', activeLog.id);
+
+            if (!error) {
+                showToast(`Shift ended successfully. Hours: ${workingHours.toFixed(1)}h`, 'success');
+                fetchLogs();
+            } else {
+                showToast('Check-out failed', 'error');
+            }
+            setClockingId(null);
+            return;
+        }
+
+        // ── Check In Action ──
+        const { error } = await supabase.from('attendance_logs').insert({
+            staff_id: staff.id,
+            clock_in: new Date().toISOString(),
+            date: today,
+            status: 'Checked-in',
+            method: 'Face-api.js',
+            face_verified: faceVerified,
+            face_match_score: parseFloat(matchScore.toFixed(4)),
+            location_verified: true
+        });
+
+        if (!error) {
+            showToast('Shift started successfully (Geo-fenced)', 'success');
+            fetchLogs();
+        } else {
+            showToast('Check-in failed', 'error');
+        }
+        setClockingId(null);
+    };
 
     useEffect(() => {
         fetchStaff();
         fetchLogs();
-        if (view === 'history') fetchHistory();
+        if (view === 'history' || userRole === 'staff') fetchHistory();
 
         const channel = supabase.channel('attendance-live-updates')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_logs' }, () => {
                 fetchLogs();
-                if (view === 'history') fetchHistory();
+                if (view === 'history' || userRole === 'staff') fetchHistory();
             })
             .subscribe();
 
         return () => { supabase.removeChannel(channel); };
-    }, [view]);
+    }, [view, userRole]);
 
     useEffect(() => {
         if (showStaffDetails) {
@@ -97,22 +254,74 @@ export function TeamHub({ userRole, theme }: { userRole: string; theme?: 'light'
 
     const getStaffLog = (staffId: number) => logs.find(l => l.staff_id === staffId);
 
-    const handleCheckIn = async (staffId: number) => {
-        setClockingId(staffId);
-        const { error } = await supabase.from('attendance_logs').insert({
-            staff_id: staffId,
-            clock_in: new Date().toISOString(),
-            date: today,
-            status: 'Checked-in',
-            method: 'manual'
-        });
-        if (!error) {
-            showToast('Shift started successfully', 'success');
-            fetchLogs();
-        } else {
-            showToast('Check-in failed', 'error');
+    const handleCheckIn = async (staff: any) => {
+        if (!isFaceApiLoaded) return showToast('Initializing face scanning metrics, wait...', 'warning');
+        setClockingId(staff.id);
+
+        if (!navigator.geolocation) {
+            showToast('Browser lacks GPS nodes', 'error');
+            setClockingId(null);
+            return;
         }
-        setClockingId(null);
+
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                const currentLat = position.coords.latitude;
+                const currentLng = position.coords.longitude;
+
+                let targetLat = 0, targetLng = 0, targetRadius = 100;
+
+                if (staff.assigned_location_type === 'custom') {
+                    targetLat = parseFloat(staff.custom_latitude);
+                    targetLng = parseFloat(staff.custom_longitude);
+                    targetRadius = staff.custom_radius || 100;
+                } else if (staff.assigned_location_type === 'branch') {
+                    const branch = branches.find(b => b.id === staff.assigned_location_id);
+                    if (branch) {
+                        targetLat = branch.latitude;
+                        targetLng = branch.longitude;
+                        targetRadius = branch.radius || 100;
+                    }
+                } else {
+                    const defaultBranch = branches.find(b => b.is_default);
+                    if (defaultBranch) {
+                        targetLat = defaultBranch.latitude;
+                        targetLng = defaultBranch.longitude;
+                        targetRadius = defaultBranch.radius || 100;
+                    }
+                }
+
+                if (!targetLat || !targetLng) {
+                    showToast('Admin has not configured valid GPS coordinate references', 'error');
+                    setClockingId(null);
+                    return;
+                }
+
+                const distance = calculateDistance(currentLat, currentLng, targetLat, targetLng);
+                const isWithinRange = distance <= targetRadius;
+
+                if (!isWithinRange) {
+                    showToast(`Security Fence Denied: ${(distance - targetRadius).toFixed(1)}m boundaries exceeded.`, 'error');
+                    setClockingId(null);
+                    return;
+                }
+
+                if (!staff.face_descriptor) {
+                    showToast('No enrolled face descriptor. Reverting to manual check-in.', 'warning');
+                    executeCheckIn(staff, false, 0);
+                    return;
+                }
+
+                setScanningStaff(staff);
+                setIsScanning(true);
+                setScanMessage('Positioning node scanner...');
+            },
+            (err) => {
+                showToast('Geo-coordinates acquisition failed: ' + err.message, 'error');
+                setClockingId(null);
+            },
+            { enableHighAccuracy: true }
+        );
     };
 
     const handleCheckOut = async (logId: string, staffId: number) => {
@@ -225,6 +434,70 @@ export function TeamHub({ userRole, theme }: { userRole: string; theme?: 'light'
         link.click();
         showToast('CSV Exported for Excel', 'success');
     };
+
+    if (userRole === 'staff' && activeStaff) {
+        const log = getStaffLog(activeStaff.id);
+        const staffHistory = history.filter(h => h.staff_id === activeStaff.id);
+        
+        return (
+            <div className="animate-slide-up space-y-6 pb-20 max-w-lg mx-auto p-4">
+                <div className="text-center py-12 rounded-[2.5rem] bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 shadow-2xl backdrop-blur-3xl">
+                    <h3 className="text-xl font-black mb-1">Punch Attendance</h3>
+                    <p className="text-[10px] text-slate-400 font-bold mb-8 uppercase tracking-wider">Coordinates Location + Face Scan</p>
+                    
+                    <button 
+                         onClick={() => {
+                             setScanningStaff(activeStaff);
+                             setIsScanning(true);
+                         }}
+                         className={`w-36 h-36 rounded-full flex flex-col items-center justify-center gap-2 border-4 text-white font-black text-[12px] uppercase shadow-2xl transition-all mx-auto duration-500 hover:scale-105 active:scale-95 ${
+                             log && !log.clock_out ? 'bg-rose-500 border-rose-400 shadow-rose-500/40' : 'bg-emerald-500 border-emerald-400 shadow-emerald-500/40'
+                         }`}
+                    >
+                         {log && !log.clock_out ? <XCircle size={36} /> : <CheckCircle size={36} />}
+                         <span>{log && !log.clock_out ? 'Check Out' : 'Check In'}</span>
+                    </button>
+                    {log && !log.clock_out && (
+                        <p className="text-[11px] font-bold text-slate-500 mt-5 flex items-center justify-center gap-1.5"><Clock size={12} /> Shift started at {new Date(log.clock_in).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</p>
+                    )}
+                </div>
+
+                <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[2rem] p-6">
+                    <h3 className="font-bold text-base mb-4 flex items-center gap-2" style={{ color: 'var(--text-main)' }}><History size={18} /> Attendance History</h3>
+                    <div className="space-y-3">
+                         {staffHistory.length === 0 && (
+                             <p className="text-center text-xs text-slate-400 py-12 font-medium">No attending records found setup.</p>
+                         )}
+                         {staffHistory.map((h, i) => (
+                             <div key={i} className="flex justify-between items-center p-4 bg-slate-50 dark:bg-white/3 rounded-2xl border border-slate-100 dark:border-white/5">
+                                 <div>
+                                     <p className="text-xs font-black">{h.date}</p>
+                                     <p className="text-[10px] text-slate-400 font-medium mt-1">{new Date(h.clock_in).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} - {h.clock_out ? new Date(h.clock_out).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 'Active'}</p>
+                                 </div>
+                                 {h.working_hours ? (
+                                     <span className="text-xs font-black text-primary bg-primary/10 px-3 py-1 rounded-lg">{h.working_hours}h</span>
+                                 ) : (
+                                     <span className="text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-lg">Active</span>
+                                 )}
+                             </div>
+                         ))}
+                    </div>
+                </div>
+
+                {isScanning && scanningStaff && (
+                    <Modal isOpen={isScanning} onClose={() => { setIsScanning(false); setScanningStaff(null); }} title="Face Verification Node">
+                        <div className="space-y-4 p-4 flex flex-col items-center">
+                            <div className="relative w-64 h-64 rounded-3xl overflow-hidden border-4 border-primary shadow-xl bg-black flex items-center justify-center">
+                                <video ref={videoRef} autoPlay playsInline className="absolute top-0 left-0 w-full h-full object-cover scale-x-[-1]" />
+                                <div className="absolute inset-0 border-2 border-dashed border-white/40 rounded-2xl m-6 animate-pulse"></div>
+                            </div>
+                            <p className={`text-[10px] font-black uppercase tracking-wider text-center ${scanMessage.includes('Verified') ? 'text-emerald-500' : 'text-primary animate-bounce'}`}>{scanMessage}</p>
+                        </div>
+                    </Modal>
+                )}
+            </div>
+        );
+    }
 
     return (
         <div className="animate-slide-up space-y-6 pb-20">
@@ -359,11 +632,13 @@ export function TeamHub({ userRole, theme }: { userRole: string; theme?: 'light'
                                     <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Breaks</th>
                                     <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Work Hours</th>
                                     <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Status</th>
+                                    <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Location</th>
+                                    <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Verification</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                                 {loading ? (
-                                    <tr><td colSpan={6} className="px-6 py-12 text-center text-slate-400 animate-pulse">Synchronizing records...</td></tr>
+                                    <tr><td colSpan={8} className="px-6 py-12 text-center text-slate-400 animate-pulse">Synchronizing records...</td></tr>
                                 ) : history.map(l => (
                                     <tr key={l.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
                                         <td className="px-6 py-4">
@@ -395,6 +670,20 @@ export function TeamHub({ userRole, theme }: { userRole: string; theme?: 'light'
                                             <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full border ${l.status === 'Checked-in' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-slate-100 text-slate-400 border-slate-200'}`}>
                                                 {l.status}
                                             </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            {l.location_verified ? (
+                                                <span className="text-emerald-500 flex items-center gap-1 text-[10px] font-bold"><MapPin size={10} /> Verified</span>
+                                            ) : (
+                                                <span className="text-slate-400 text-[10px] font-bold">Manual</span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            {l.face_verified ? (
+                                                <span className="text-emerald-500 text-[10px] font-bold flex items-center gap-1"><CheckCircle size={10} /> Match {typeof l.face_match_score === 'number' ? ((1 - l.face_match_score) * 100).toFixed(0) : '100'}%</span>
+                                            ) : (
+                                                <span className="text-slate-400 text-[10px] font-bold">Unverified</span>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}
@@ -538,6 +827,29 @@ export function TeamHub({ userRole, theme }: { userRole: string; theme?: 'light'
                         <button onClick={() => setShowStaffDetails(null)} className="mt-10 w-full py-4 bg-primary text-white rounded-2xl font-bold hover:bg-primary-hover shadow-xl shadow-primary/30 transition-all">Close Profile View</button>
                     </div>
                 </div>
+            )}
+            {isScanning && scanningStaff && (
+                <Modal
+                    isOpen={isScanning}
+                    onClose={() => { setIsScanning(false); setScanningStaff(null); }}
+                    title="Face Verification Node"
+                >
+                    <div className="space-y-4 p-4 flex flex-col items-center">
+                        <div className="relative w-64 h-64 rounded-3xl overflow-hidden border-4 border-primary shadow-xl bg-black flex items-center justify-center">
+                            <video 
+                                ref={videoRef} 
+                                autoPlay 
+                                playsInline 
+                                className="absolute top-0 left-0 w-full h-full object-cover scale-x-[-1]" 
+                            />
+                            <div className="absolute inset-0 border-2 border-dashed border-white/40 rounded-2xl m-6 animate-pulse pointer-events-none"></div>
+                        </div>
+                        <p className={`text-[10px] font-black uppercase tracking-wider text-center ${scanMessage.includes('Verified') ? 'text-emerald-500' : 'text-primary animate-bounce'}`}>
+                            {scanMessage}
+                        </p>
+                        <p className="text-[8px] font-bold text-slate-400 text-center">Center position within grid frame.</p>
+                    </div>
+                </Modal>
             )}
         </div>
     );

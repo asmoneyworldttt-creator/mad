@@ -1,0 +1,21 @@
+58: setStaffForm(prev => ({ ...prev, profile_photo_url: imgUrl }));
+69: setStaffForm(prev => ({ ...prev, face_descriptor: null }));
+75: setStaffForm(prev => ({ ...prev, face_descriptor: Array.from(detections.descriptor) }));
+86: const [staffForm, setStaffForm] = useState({
+193: setStaffForm(prev => ({
+239: setStaffForm({
+328: onChange={e => setStaffForm({ ...staffForm, name: e.target.value })}
+336: <input type="email" value={staffForm.email} onChange={e => setStaffForm({ ...staffForm, email: e.target.value })} className={`w-full border rounded-xl px-4 py-3 text-xs font-bold outline-none shadow-inner ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} />
+340: <input type="text" value={staffForm.mobile} onChange={e => setStaffForm({ ...staffForm, mobile: e.target.value })} className={`w-full border rounded-xl px-4 py-3 text-xs font-bold outline-none shadow-inner ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} />
+347: onChange={val => setStaffForm({ ...staffForm, role: val })}
+368: onChange={() => setStaffForm({...staffForm, assigned_location_type: 'default', assigned_location_id: ''})}
+376: onChange={() => setStaffForm({...staffForm, assigned_location_type: 'branch'})}
+384: onChange={() => setStaffForm({...staffForm, assigned_location_type: 'custom', assigned_location_id: ''})}
+394: onChange={val => setStaffForm({...staffForm, assigned_location_id: val})}
+403: <input type="text" placeholder="Lat" value={staffForm.custom_latitude} onChange={e => setStaffForm({...staffForm, custom_latitude: e.target.value})} className="border rounded-lg px-3 py-2 text-xs font-bold bg-slate-50 border-slate-200" />
+404: <input type="text" placeholder="Lng" value={staffForm.custom_longitude} onChange={e => setStaffForm({...staffForm, custom_longitude: e.target.value})} className="border rounded-lg px-3 py-2 text-xs font-bold bg-slate-50 border-slate-200" />
+407: <input type="range" min={10} max={300} step={10} value={staffForm.custom_radius} onChange={e => setStaffForm({...staffForm, custom_radius: parseInt(e.target.value)})} className="flex-1 accent-primary" />
+422: onClick={() => setStaffForm({ ...staffForm, permissions: { ...staffForm.permissions, [key]: !val } })}
+434: <input type="text" value={staffForm.license_number} onChange={e => setStaffForm({ ...staffForm, license_number: e.target.value })} className={`w-full border rounded-xl px-4 py-3 text-xs font-bold outline-none shadow-inner ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} />
+438: <input type="password" value={staffForm.password} onChange={e => setStaffForm({ ...staffForm, password: e.target.value })} className={`w-full border rounded-xl px-4 py-3 text-xs font-bold outline-none shadow-inner ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} placeholder="Set secure key" />
+586: <button onClick={() => { setEditingStaffId(null); setStaffForm({ name: '', role: 'Associate Dentist', email: '', mobile: '', qualifications: '', degree: '', grad_year: '', license_number: '', password: '', permissions: { dashboard: true, appointments: true, emr: true, billing: false, settings: false, inventory: false } }); setView('onboard'); }} className="bg-primary hover:scale-105 active:scale-95 text-white text-[8px] font-bold uppercase tracking-wider px-4 py-2 rounded-xl shadow-lg shadow-primary/20 transition-all flex items-center gap-1.5">
