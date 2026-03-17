@@ -49,8 +49,16 @@ export function TeamHub({ userRole, theme }: { userRole: string; theme?: 'light'
     const [isScanning, setIsScanning] = useState(false);
     const [scanMessage, setScanMessage] = useState('');
     const [scanningStaff, setScanningStaff] = useState<any>(null);
+    const [isVerified, setIsVerified] = useState(false);
+    const [livenessTask, setLivenessTask] = useState<'none' | 'blink'>('none');
+    const [hasBlinked, setHasBlinked] = useState(false);
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+
+    const getEAR = (eye: any[]) => {
+        const dist = (p1: any, p2: any) => Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+        return (dist(eye[1], eye[5]) + dist(eye[2], eye[4])) / (2 * dist(eye[0], eye[3]));
+    };
 
     useEffect(() => {
         const loadModels = async () => {
@@ -105,8 +113,11 @@ export function TeamHub({ userRole, theme }: { userRole: string; theme?: 'light'
 
     useEffect(() => {
         if (isScanning && scanningStaff) {
+            setIsVerified(false);
+            setHasBlinked(false);
+            setLivenessTask('none');
             startCamera();
-            const interval = setInterval(handleFaceScan, 1000);
+            const interval = setInterval(handleFaceScan, 300); // Faster sampling
             return () => {
                 clearInterval(interval);
                 stopCamera();
@@ -115,25 +126,76 @@ export function TeamHub({ userRole, theme }: { userRole: string; theme?: 'light'
     }, [isScanning, scanningStaff]);
 
     const handleFaceScan = async () => {
-        if (!videoRef.current || !scanningStaff?.face_descriptor) return;
+        if (!videoRef.current || !scanningStaff?.face_descriptor || isVerified) return;
 
-        const detections = await faceapi.detectSingleFace(videoRef.current).withFaceLandmarks().withFaceDescriptor();
+        const detections = await faceapi.detectSingleFace(videoRef.current)
+            .withFaceLandmarks()
+            .withFaceDescriptor();
 
         if (detections) {
-            const matchScore = faceapi.euclideanDistance(detections.descriptor, scanningStaff.face_descriptor);
-            // Smaller score is better (0 = identical)
-            if (matchScore <= 0.45) {
-                setScanMessage('Face Verified!');
+            const { landmarks, descriptor } = detections;
+            const box = detections.detection.box;
+            
+            // 1. Distance Check (Face size relative to 320x240)
+            if (box.width < 100) {
+                setScanMessage('Come closer to camera');
+                return;
+            }
+            if (box.width > 220) {
+                setScanMessage('Too close. Move back.');
+                return;
+            }
+
+            // 2. Lighting/Confidence Check
+            if (detections.detection.score < 0.6) {
+                setScanMessage('Low light or unclear view');
+                return;
+            }
+
+            // 3. Face Match Check
+            const matchScore = faceapi.euclideanDistance(descriptor, scanningStaff.face_descriptor);
+            if (matchScore > 0.45) {
+                // User requirement: Say clearly it's not the right person for this profile
+                setScanMessage('ACCESS DENIED: Face mismatch. You are not the authorized user.');
+                return;
+            }
+
+            // 4. Liveness Task (Blink Detection)
+            if (livenessTask === 'none') {
+                setLivenessTask('blink');
+                setScanMessage('Liveness Check: Blink your eyes');
+                return;
+            }
+
+            if (livenessTask === 'blink' && !hasBlinked) {
+                const leftEye = landmarks.getLeftEye();
+                const rightEye = landmarks.getRightEye();
+                const ear = (getEAR(leftEye) + getEAR(rightEye)) / 2;
+                
+                // EAR < 0.22 usually means eyes are closed/blinking
+                if (ear < 0.22) {
+                    setHasBlinked(true);
+                    setScanMessage('Blink detected! Verifying...');
+                } else {
+                    setScanMessage('Please blink naturally');
+                }
+                return;
+            }
+
+            // 5. Final Success
+            if (hasBlinked) {
+                setIsVerified(true);
+                setScanMessage('Verification Successful!');
                 setTimeout(() => {
                     executeCheckIn(scanningStaff, true, matchScore);
                     setIsScanning(false);
                     setScanningStaff(null);
-                }, 1000);
-            } else {
-                setScanMessage(`Mismatch score: ${(matchScore * 10).toFixed(1)} / 4.5`);
+                }, 1500);
             }
         } else {
-            setScanMessage('Evaluating environment...');
+            setScanMessage('Detecting face geometry...');
+            setLivenessTask('none');
+            setHasBlinked(false);
         }
     };
 
@@ -264,23 +326,29 @@ export function TeamHub({ userRole, theme }: { userRole: string; theme?: 'light'
             return;
         }
 
+        setScanMessage('Verifying GPS Coordinates...');
+        showToast('Acquiring location permission...', 'info');
+
         navigator.geolocation.getCurrentPosition(
             async (position) => {
                 const currentLat = position.coords.latitude;
                 const currentLng = position.coords.longitude;
 
                 let targetLat = 0, targetLng = 0, targetRadius = 100;
+                let locationName = "the branch";
 
                 if (staff.assigned_location_type === 'custom') {
                     targetLat = parseFloat(staff.custom_latitude);
                     targetLng = parseFloat(staff.custom_longitude);
                     targetRadius = staff.custom_radius || 100;
+                    locationName = "your assigned custom location";
                 } else if (staff.assigned_location_type === 'branch') {
                     const branch = branches.find(b => b.id === staff.assigned_location_id);
                     if (branch) {
                         targetLat = branch.latitude;
                         targetLng = branch.longitude;
                         targetRadius = branch.radius || 100;
+                        locationName = branch.name;
                     }
                 } else {
                     const defaultBranch = branches.find(b => b.is_default);
@@ -288,11 +356,12 @@ export function TeamHub({ userRole, theme }: { userRole: string; theme?: 'light'
                         targetLat = defaultBranch.latitude;
                         targetLng = defaultBranch.longitude;
                         targetRadius = defaultBranch.radius || 100;
+                        locationName = defaultBranch.name;
                     }
                 }
 
                 if (!targetLat || !targetLng) {
-                    showToast('Admin has not configured valid GPS coordinate references', 'error');
+                    showToast('Admin has not configured valid GPS references', 'error');
                     setClockingId(null);
                     return;
                 }
@@ -301,7 +370,9 @@ export function TeamHub({ userRole, theme }: { userRole: string; theme?: 'light'
                 const isWithinRange = distance <= targetRadius;
 
                 if (!isWithinRange) {
-                    showToast(`Security Fence Denied: ${(distance - targetRadius).toFixed(1)}m boundaries exceeded.`, 'error');
+                    // Specific message requested by user: "நீங்க இந்த லொகேஷன்ல இல்ல.. லொகேஷன் வந்துட்டு அட்டனன்ஸ் போடுங்க"
+                    const errorMsg = `ACCESS DENIED: You are not at ${locationName}. Please arrive at the designated location to punch attendance. (Dist: ${distance.toFixed(0)}m)`;
+                    showToast(errorMsg, 'error');
                     setClockingId(null);
                     return;
                 }
@@ -314,13 +385,19 @@ export function TeamHub({ userRole, theme }: { userRole: string; theme?: 'light'
 
                 setScanningStaff(staff);
                 setIsScanning(true);
-                setScanMessage('Positioning node scanner...');
-            },
-            (err) => {
-                showToast('Geo-coordinates acquisition failed: ' + err.message, 'error');
+                setScanMessage('GPS Verified. Initializing face scan...');
                 setClockingId(null);
             },
-            { enableHighAccuracy: true }
+            (err) => {
+                const errorMap: Record<number, string> = {
+                    1: "Location permission denied. Please enable GPS access in browser settings.",
+                    2: "Position unavailable. Check your internet/GPS connection.",
+                    3: "Request timed out while acquiring GPS signal."
+                };
+                showToast('Geo-coordinates failed: ' + (errorMap[err.code] || err.message), 'error');
+                setClockingId(null);
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
     };
 
@@ -445,15 +522,13 @@ export function TeamHub({ userRole, theme }: { userRole: string; theme?: 'light'
                     <h3 className="text-xl font-black mb-1">Punch Attendance</h3>
                     <p className="text-[10px] text-slate-400 font-bold mb-8 uppercase tracking-wider">Coordinates Location + Face Scan</p>
                     
-                    <button 
-                         onClick={() => {
-                             setScanningStaff(activeStaff);
-                             setIsScanning(true);
-                         }}
-                         className={`w-36 h-36 rounded-full flex flex-col items-center justify-center gap-2 border-4 text-white font-black text-[12px] uppercase shadow-2xl transition-all mx-auto duration-500 hover:scale-105 active:scale-95 ${
-                             log && !log.clock_out ? 'bg-rose-500 border-rose-400 shadow-rose-500/40' : 'bg-emerald-500 border-emerald-400 shadow-emerald-500/40'
-                         }`}
-                    >
+                     <button 
+                          onClick={() => handleCheckIn(activeStaff)}
+                          disabled={clockingId === activeStaff.id}
+                          className={`w-36 h-36 rounded-full flex flex-col items-center justify-center gap-2 border-4 text-white font-black text-[12px] uppercase shadow-2xl transition-all mx-auto duration-500 hover:scale-105 active:scale-95 disabled:opacity-50 ${
+                              log && !log.clock_out ? 'bg-rose-500 border-rose-400 shadow-rose-500/40' : 'bg-emerald-500 border-emerald-400 shadow-emerald-500/40'
+                          }`}
+                     >
                          {log && !log.clock_out ? <XCircle size={36} /> : <CheckCircle size={36} />}
                          <span>{log && !log.clock_out ? 'Check Out' : 'Check In'}</span>
                     </button>
@@ -484,17 +559,7 @@ export function TeamHub({ userRole, theme }: { userRole: string; theme?: 'light'
                     </div>
                 </div>
 
-                {isScanning && scanningStaff && (
-                    <Modal isOpen={isScanning} onClose={() => { setIsScanning(false); setScanningStaff(null); }} title="Face Verification Node">
-                        <div className="space-y-4 p-4 flex flex-col items-center">
-                            <div className="relative w-64 h-64 rounded-3xl overflow-hidden border-4 border-primary shadow-xl bg-black flex items-center justify-center">
-                                <video ref={videoRef} autoPlay playsInline className="absolute top-0 left-0 w-full h-full object-cover scale-x-[-1]" />
-                                <div className="absolute inset-0 border-2 border-dashed border-white/40 rounded-2xl m-6 animate-pulse"></div>
-                            </div>
-                            <p className={`text-[10px] font-black uppercase tracking-wider text-center ${scanMessage.includes('Verified') ? 'text-emerald-500' : 'text-primary animate-bounce'}`}>{scanMessage}</p>
-                        </div>
-                    </Modal>
-                )}
+
             </div>
         );
     }
@@ -832,22 +897,41 @@ export function TeamHub({ userRole, theme }: { userRole: string; theme?: 'light'
                 <Modal
                     isOpen={isScanning}
                     onClose={() => { setIsScanning(false); setScanningStaff(null); }}
-                    title="Face Verification Node"
+                    title="AI Face Verification"
                 >
-                    <div className="space-y-4 p-4 flex flex-col items-center">
-                        <div className="relative w-64 h-64 rounded-3xl overflow-hidden border-4 border-primary shadow-xl bg-black flex items-center justify-center">
+                    <div className="space-y-6 p-6 flex flex-col items-center">
+                        <div className={`relative w-72 h-72 rounded-[3.5rem] overflow-hidden border-8 transition-all duration-500 shadow-2xl bg-black flex items-center justify-center ${isVerified ? 'border-emerald-500 scale-105 shadow-emerald-500/20' : 'border-primary'}`}>
                             <video 
                                 ref={videoRef} 
                                 autoPlay 
                                 playsInline 
                                 className="absolute top-0 left-0 w-full h-full object-cover scale-x-[-1]" 
                             />
-                            <div className="absolute inset-0 border-2 border-dashed border-white/40 rounded-2xl m-6 animate-pulse pointer-events-none"></div>
+                            {!isVerified && (
+                                <div className="absolute inset-0 border-2 border-dashed border-white/40 rounded-[2.5rem] m-8 animate-pulse pointer-events-none flex items-center justify-center">
+                                    <div className="w-48 h-48 border-2 border-primary/20 rounded-full animate-ping" />
+                                </div>
+                            )}
+                            {isVerified && (
+                                <div className="absolute inset-0 bg-emerald-500/10 backdrop-blur-[2px] flex items-center justify-center animate-in fade-in duration-700">
+                                    <div className="bg-white rounded-full p-4 shadow-xl animate-bounce">
+                                        <CheckCircle className="text-emerald-500" size={48} />
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                        <p className={`text-[10px] font-black uppercase tracking-wider text-center ${scanMessage.includes('Verified') ? 'text-emerald-500' : 'text-primary animate-bounce'}`}>
-                            {scanMessage}
-                        </p>
-                        <p className="text-[8px] font-bold text-slate-400 text-center">Center position within grid frame.</p>
+                        
+                        <div className="text-center space-y-2 w-full">
+                            <div className={`text-xs font-black uppercase tracking-[0.2em] py-2 px-4 rounded-full inline-block ${isVerified ? 'bg-emerald-500 text-white' : 'bg-primary/10 text-primary'}`}>
+                                {isVerified ? 'Session Authenticated' : 'Live Scanner Active'}
+                            </div>
+                            <h4 className={`text-lg font-bold transition-colors ${isVerified ? 'text-emerald-600' : 'text-slate-800'}`}>
+                                {scanMessage}
+                            </h4>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                {isVerified ? 'Identity Match confirmed' : 'AI Node: Processing Landmarks...'}
+                            </p>
+                        </div>
                     </div>
                 </Modal>
             )}
