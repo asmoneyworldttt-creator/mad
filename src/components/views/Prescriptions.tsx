@@ -89,6 +89,15 @@ export function Prescriptions({ userRole, theme }: { userRole: UserRole; theme?:
         if (error) {
             showToast('Error saving prescription', 'error');
         } else {
+            // Also insert into patient_history for the timeline
+            await supabase.from('patient_history').insert({
+                patient_id: selectedPatient.id,
+                treatment: 'New Prescription',
+                cost: 0,
+                notes: newPresc.notes || 'Prescription authorized',
+                date: new Date().toISOString().split('T')[0]
+            });
+
             showToast('Prescription saved successfully!', 'success');
             setIsPrescModalOpen(false);
             setNewPresc({ doctorName: 'Dr. Sarah Jenkins', clinicName: 'DentiSphere Clinic', drugs: [{ name: '', dosage: '', frequency: 'Twice daily', duration: '5 days' }], notes: '' });

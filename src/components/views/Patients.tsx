@@ -57,6 +57,10 @@ export function Patients({ userRole, setActiveTab, theme }: { userRole: UserRole
     const [patientsData, setPatientsData] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [view, setView] = useState<'list' | 'register'>('list');
+    const [dateFilter, setDateFilter] = useState<'All' | 'Today' | 'Yesterday' | 'Last Month' | 'Custom'>('All');
+    const [customStartDate, setCustomStartDate] = useState('');
+    const [customEndDate, setCustomEndDate] = useState('');
+    const [treatmentFilter, setTreatmentFilter] = useState('All');
 
     const fetchPatients = useCallback(async () => {
         setIsLoading(true);
@@ -76,9 +80,44 @@ export function Patients({ userRole, setActiveTab, theme }: { userRole: UserRole
 
     const filteredPatients = patientsData.filter(p => {
         const nameMatcher = (p.name || '') + ' ' + (p.last_name || '');
-        return nameMatcher.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        const matchesSearch = nameMatcher.toLowerCase().includes(searchTerm.toLowerCase()) ||
             p.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (p.phone && p.phone.includes(searchTerm));
+
+        if (!matchesSearch) return false;
+
+        // Date Range Filter (by created_at)
+        if (dateFilter !== 'All') {
+            const createdAt = new Date(p.created_at);
+            const today = new Date();
+            const yesterday = new Date();
+            yesterday.setDate(today.getDate() - 1);
+            
+            const lastMonth = new Date();
+            lastMonth.setMonth(today.getMonth() - 1);
+
+            if (dateFilter === 'Today') {
+                if (createdAt.toDateString() !== today.toDateString()) return false;
+            } else if (dateFilter === 'Yesterday') {
+                if (createdAt.toDateString() !== yesterday.toDateString()) return false;
+            } else if (dateFilter === 'Last Month') {
+                if (createdAt < lastMonth || createdAt > today) return false;
+            } else if (dateFilter === 'Custom' && customStartDate && customEndDate) {
+                const start = new Date(customStartDate);
+                const end = new Date(customEndDate);
+                end.setHours(23, 59, 59, 999);
+                if (createdAt < start || createdAt > end) return false;
+            }
+        }
+
+        // Treatment Filter (using patient_history)
+        if (treatmentFilter !== 'All') {
+            const history = p.patient_history || [];
+            const hasTreatment = history.some((h: any) => h.treatment?.toLowerCase().includes(treatmentFilter.toLowerCase()));
+            if (!hasTreatment) return false;
+        }
+
+        return true;
     });
 
     if (selectedPatient) {
@@ -115,14 +154,51 @@ export function Patients({ userRole, setActiveTab, theme }: { userRole: UserRole
                         </button>
                     </div>
                 </div>
+
+                <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t dark:border-white/5">
+                    <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+                        {['All', 'Today', 'Yesterday', 'Last Month', 'Custom'].map(f => (
+                            <button 
+                                key={f} 
+                                onClick={() => setDateFilter(f as any)} 
+                                className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${dateFilter === f ? 'bg-primary text-white shadow-sm' : 'bg-slate-50 dark:bg-white/5 text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10'}`}
+                            >
+                                {f}
+                            </button>
+                        ))}
+                    </div>
+
+                    {dateFilter === 'Custom' && (
+                        <div className="flex items-center gap-1 px-1.5">
+                            <input type="date" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)} className="bg-slate-50 dark:bg-white/5 border-none rounded-lg px-2 py-1 text-[10px] outline-none text-slate-500" />
+                            <span className="text-[10px] text-slate-400">to</span>
+                            <input type="date" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)} className="bg-slate-50 dark:bg-white/5 border-none rounded-lg px-2 py-1 text-[10px] outline-none text-slate-500" />
+                         </div>
+                    )}
+
+                    <div className="ms-auto w-full sm:w-auto mt-2 sm:mt-0 flex gap-2">
+                        <select 
+                            value={treatmentFilter} 
+                            onChange={(e) => setTreatmentFilter(e.target.value)}
+                            className="flex-1 sm:w-44 bg-slate-50 dark:bg-white/5 border-none rounded-lg text-[10px] font-bold px-3 py-1.5 outline-none text-slate-500"
+                        >
+                            <option value="All">Filter by Treatment</option>
+                            <option value="Consultation">Consultation</option>
+                            <option value="Scaling">Scaling</option>
+                            <option value="Root Canal">Root Canal</option>
+                            <option value="Fillings">Fillings</option>
+                            <option value="Extraction">Extraction</option>
+                        </select>
+                    </div>
+                </div>
             </div>
 
             {isLoading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     {[...Array(8)].map((_, i) => <div key={i} className="h-32 rounded-xl bg-slate-100 dark:bg-white/5 animate-pulse" />)}
                 </div>
             ) : filteredPatients.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     {filteredPatients.map(p => (
                         <PatientCard key={p.id} p={p} onClick={() => setSelectedPatient(p)} theme={theme} />
                     ))}

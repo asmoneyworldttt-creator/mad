@@ -251,7 +251,15 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
                             </div>
                             <div>
                                 <label className={labelCls} style={{ color: 'var(--text-muted)' }}>Doctor</label>
-                                <input type="text" value={clinicInfo.doctor} onChange={e => setClinicInfo({ ...clinicInfo, doctor: e.target.value })} className={inputCls} style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }} />
+                                <CustomSelect
+                                    value={clinicInfo.doctor}
+                                    onChange={val => setClinicInfo({ ...clinicInfo, doctor: val })}
+                                    options={[
+                                        'Dr. S. Jenkins',
+                                        'Dr. Michael Chen',
+                                        'Dr. Mark Sloan'
+                                    ]}
+                                />
                             </div>
                             <div>
                                 <label className={labelCls} style={{ color: 'var(--text-muted)' }}>Center</label>

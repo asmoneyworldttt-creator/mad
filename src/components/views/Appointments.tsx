@@ -50,6 +50,9 @@ export function Appointments({ userRole, theme, setActiveTab }: { userRole: User
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
     const [doctorFilter, setDoctorFilter] = useState('All');
+    const [startDate, setStartDate] = useState(today);
+    const [endDate, setEndDate] = useState(today);
+    const [useDateRange, setUseDateRange] = useState(false);
     const { showToast } = useToast();
     const dateStripRef = useRef<HTMLDivElement>(null);
 
@@ -87,7 +90,7 @@ export function Appointments({ userRole, theme, setActiveTab }: { userRole: User
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [selectedDate, statusFilter, doctorFilter]);
+    }, [selectedDate, statusFilter, doctorFilter, startDate, endDate, useDateRange]);
 
     useEffect(() => {
         const searchTimer = setTimeout(async () => {
@@ -124,8 +127,14 @@ export function Appointments({ userRole, theme, setActiveTab }: { userRole: User
         let query = supabase
             .from('appointments')
             .select('*')
-            .eq('date', selectedDate)
+            .order('date', { ascending: true })
             .order('time', { ascending: true });
+
+        if (useDateRange) {
+            query = query.gte('date', startDate).lte('date', endDate);
+        } else {
+            query = query.eq('date', selectedDate);
+        }
 
         if (statusFilter !== 'All') {
             const mappedStatus = statusFilter === 'Completed' ? 'Visited' : statusFilter;
@@ -408,6 +417,28 @@ export function Appointments({ userRole, theme, setActiveTab }: { userRole: User
                             <input type="text" placeholder="Quick find..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-slate-50 dark:bg-white/5 border-none rounded-lg pl-8 pr-3 py-1.5 text-[11px] outline-none" />
                         </div>
                         <div className="flex flex-col gap-0.5">
+                            <div className="border-b dark:border-white/5 pb-2 mb-1.5 px-0.5">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Date Range</p>
+                                <label className="flex items-center gap-1.5 mb-1.5 cursor-pointer">
+                                    <input type="checkbox" checked={useDateRange} onChange={e => setUseDateRange(e.target.checked)} className="rounded text-primary focus:ring-primary/20 w-3 h-3" />
+                                    <span className="text-[10px] font-medium">Use Range</span>
+                                </label>
+                                {useDateRange && (
+                                    <div className="space-y-1.5 mt-1">
+                                        <div className="grid grid-cols-2 gap-1">
+                                            <div>
+                                                <p className="text-[8px] font-bold text-slate-400 mb-0.5">Start</p>
+                                                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full bg-slate-50 dark:bg-white/5 border-none rounded-md px-1.5 py-1 text-[10px] outline-none" />
+                                            </div>
+                                            <div>
+                                                <p className="text-[8px] font-bold text-slate-400 mb-0.5">End</p>
+                                                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full bg-slate-50 dark:bg-white/5 border-none rounded-md px-1.5 py-1 text-[10px] outline-none" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase mb-1 px-1">Status</p>
                             {['All', 'Confirmed', 'Completed', 'Cancelled', 'Missed'].map(status => (
                                 <button key={status} onClick={() => setStatusFilter(status)} className={`text-left px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all ${statusFilter === status ? 'bg-primary text-white shadow-sm' : 'hover:bg-slate-50 dark:hover:bg-white/5 text-slate-500'}`}>{status === 'Completed' ? 'Completed' : status}</button>
                             ))}

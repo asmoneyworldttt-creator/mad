@@ -371,7 +371,7 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
                                     <h3 className="font-bold text-lg flex items-center gap-3 tracking-tight">
                                         <MapPin size={24} className="text-primary" /> Branch Network
                                     </h3>
-                                    <button onClick={() => showToast('Coming soon.', 'success')} className="bg-white/10 hover:bg-white/20 text-white text-[9px] font-bold uppercase tracking-wider px-5 py-2.5 rounded-xl transition-all border border-white/10 hover:scale-105 active:scale-95 shadow-lg">Add Branch</button>
+                                    <button onClick={() => setIsBranchModalOpen(true)} className="bg-white/10 hover:bg-white/20 text-white text-[9px] font-bold uppercase tracking-wider px-5 py-2.5 rounded-xl transition-all border border-white/10 hover:scale-105 active:scale-95 shadow-lg">Add Branch</button>
                                 </div>
                                 <div className="space-y-4 relative z-10">
                                     <div className="p-4 bg-white/5 border border-white/10 rounded-2xl flex justify-between items-center group transition-all hover:bg-white/10 shadow-lg">

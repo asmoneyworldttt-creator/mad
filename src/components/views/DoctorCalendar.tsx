@@ -28,6 +28,14 @@ export function DoctorCalendar({ theme, setActiveTab }: { theme?: 'light' | 'dar
     const [searchPatients, setSearchPatients] = useState<any[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
 
+    const [selectedPatient, setSelectedPatient] = useState<any>(null);
+
+    useEffect(() => {
+        if (selectedPatient) {
+            setSearchTerm(`${selectedPatient.name} ${selectedPatient.last_name || ''}`);
+        }
+    }, [selectedPatient]);
+
     useEffect(() => {
         fetchInitialData();
         const sub = supabase.channel('doc_cal')
@@ -77,13 +85,12 @@ export function DoctorCalendar({ theme, setActiveTab }: { theme?: 'light' | 'dar
     };
 
     const handleSaveQuickSession = async () => {
-        if (!isQuickBooking) return;
-        const selectedPatient = searchPatients.find(p => p.id === quickFormData.patient_id) || searchPatients[0];
+        if (!isQuickBooking || !selectedPatient) return;
         
         const newApt = {
-            patient_id: quickFormData.patient_id,
-            name: selectedPatient ? `${selectedPatient.name} ${selectedPatient.last_name || ''}` : 'Quick Patient',
-            doctor_id: isQuickBooking.doc.id,
+            patient_id: selectedPatient.id?.length > 20 ? selectedPatient.id : null,
+            name: `${selectedPatient.name} ${selectedPatient.last_name || ''}`,
+            doctor_id: isQuickBooking.doc.id?.length > 20 ? isQuickBooking.doc.id : null,
             doctor_name: isQuickBooking.doc.name,
             date: date,
             time: isQuickBooking.time,
@@ -94,11 +101,13 @@ export function DoctorCalendar({ theme, setActiveTab }: { theme?: 'light' | 'dar
 
         const { error } = await supabase.from('appointments').insert(newApt);
         if (error) {
-            showToast('Failed to record session', 'error');
+            showToast(error.message, 'error');
         } else {
             showToast(`Recording book session for ${isQuickBooking.doc.name}`, 'success');
             setIsQuickBooking(null);
             setQuickFormData({ patient_id: '', type: 'Consultation', notes: '' });
+            setSelectedPatient(null);
+            setSearchTerm('');
             fetchAppointments();
         }
     };
@@ -139,10 +148,12 @@ export function DoctorCalendar({ theme, setActiveTab }: { theme?: 'light' | 'dar
                 <div className="flex items-center gap-3">
                     <div className={`flex items-center p-1 rounded-xl border ${isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
                         <button onClick={prevDay} className="p-2 rounded-lg hover:bg-primary/10 hover:text-primary transition-all text-slate-400"><ChevronLeft size={18} /></button>
-                        <div className="px-4 flex flex-col items-center">
-                            <span className="text-[10px] font-bold text-slate-500 mb-0.5">{new Date(date).toLocaleDateString('en-IN', { month: 'short' })}</span>
-                            <span className="text-base font-bold leading-none">{new Date(date).getDate()}</span>
-                        </div>
+                        <input 
+                            type="date" 
+                            value={date} 
+                            onChange={(e) => setDate(e.target.value)} 
+                            className={`bg-transparent border-none text-center font-bold text-xs outline-none px-2 cursor-pointer ${isDark ? 'text-white' : 'text-slate-900'}`} 
+                        />
                         <button onClick={nextDay} className="p-2 rounded-lg hover:bg-primary/10 hover:text-primary transition-all text-slate-400"><ChevronRight size={18} /></button>
                     </div>
                     <button onClick={fetchInitialData} className={`p-3 rounded-xl border ${isDark ? 'bg-white/5 border-white/10 text-slate-400 hover:text-white' : 'bg-white border-slate-200 text-slate-500'}`}><RefreshCw size={18} /></button>
@@ -286,6 +297,7 @@ export function DoctorCalendar({ theme, setActiveTab }: { theme?: 'light' | 'dar
                                         <input 
                                             type="text" 
                                             placeholder="Search name..."
+                                            value={searchTerm}
                                             onChange={(e) => handleSearchPatients(e.target.value)}
                                             className={`w-full pl-12 pr-4 py-3.5 rounded-2xl border text-sm font-bold outline-none transition-all ${isDark ? 'bg-white/5 border-white/10 text-white focus:border-primary' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-primary focus:bg-white shadow-inner'}`}
                                         />
@@ -295,7 +307,7 @@ export function DoctorCalendar({ theme, setActiveTab }: { theme?: 'light' | 'dar
                                             {searchPatients.map(p => (
                                                 <button 
                                                     key={p.id}
-                                                    onClick={() => { setQuickFormData({ ...quickFormData, patient_id: p.id }); setSearchPatients([]); }}
+                                                    onClick={() => { setQuickFormData({ ...quickFormData, patient_id: p.id }); setSelectedPatient(p); setSearchPatients([]); }}
                                                     className={`w-full p-4 text-left flex items-center gap-3 transition-colors ${quickFormData.patient_id === p.id ? 'bg-primary text-white' : 'hover:bg-primary/5'}`}
                                                 >
                                                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${quickFormData.patient_id === p.id ? 'bg-white/20' : 'bg-primary/10 text-primary'}`}>
@@ -344,7 +356,7 @@ export function DoctorCalendar({ theme, setActiveTab }: { theme?: 'light' | 'dar
                                     </button>
                                     <button 
                                         onClick={handleSaveQuickSession}
-                                        disabled={!quickFormData.patient_id}
+                                        disabled={!selectedPatient}
                                         className="flex-[2] py-4 rounded-2xl bg-primary text-white font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-primary/30 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:grayscale"
                                     >
                                         Commit Record

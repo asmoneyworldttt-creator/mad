@@ -59,16 +59,22 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
     const [patientNotes, setPatientNotes] = useState<any[]>([]);
     const [patientVitals, setPatientVitals] = useState<any[]>([]);
     const [patientConsents, setPatientConsents] = useState<any[]>([]);
+    const [patientHistory, setPatientHistory] = useState<any[]>([]);
     const [isLoadingData, setIsLoadingData] = useState(false);
     const [clinicalSubTab, setClinicalSubTab] = useState<'soap' | 'vitals' | 'consents'>('soap');
+    
+    // SOAP Note Modal State
+    const [isSoapModalOpen, setIsSoapModalOpen] = useState(false);
+    const [newNote, setNewNote] = useState({ subjective: '', objective: '', assessment: '', plan: '', doctor_name: 'Dr. Sarah Jenkins' });
+    const [isSavingNote, setIsSavingNote] = useState(false);
 
     const treatmentCounts = useMemo(() => {
-        if (!patient) return {};
-        return (patient.patient_history || []).reduce((acc: any, curr: any) => {
+        if (!patientHistory) return {};
+        return patientHistory.reduce((acc: any, curr: any) => {
             acc[curr.treatment] = (acc[curr.treatment] || 0) + 1;
             return acc;
         }, {});
-    }, [patient?.patient_history]);
+    }, [patientHistory]);
 
     const repeatedTreatments = Object.entries(treatmentCounts).filter(([_, count]: any) => count > 1);
 
@@ -83,7 +89,8 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
             { data: prescriptions },
             { data: notes },
             { data: vitals },
-            { data: consents }
+            { data: consents },
+            { data: history }
         ] = await Promise.all([
             supabase.from('bills').select('*').eq('patient_id', patient.id).order('date', { ascending: false }),
             supabase.from('treatment_plans').select('*, treatment_plan_items(*)').eq('patient_id', patient.id).order('created_at', { ascending: false }),
@@ -91,7 +98,8 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
             supabase.from('prescriptions').select('*').eq('patient_id', patient.id).order('created_at', { ascending: false }),
             supabase.from('clinical_notes').select('*').eq('patient_id', patient.id).order('created_at', { ascending: false }),
             supabase.from('vital_signs').select('*').eq('patient_id', patient.id).order('recorded_at', { ascending: false }),
-            supabase.from('consent_forms').select('*').eq('patient_id', patient.id).order('created_at', { ascending: false })
+            supabase.from('consent_forms').select('*').eq('patient_id', patient.id).order('created_at', { ascending: false }),
+            supabase.from('patient_history').select('*').eq('patient_id', patient.id).order('date', { ascending: false })
         ]);
 
         setPatientBills(bills || []);
@@ -101,6 +109,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
         setPatientNotes(notes || []);
         setPatientVitals(vitals || []);
         setPatientConsents(consents || []);
+        setPatientHistory(history || []);
         setIsLoadingData(false);
     };
 
@@ -130,12 +139,44 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
             .on('postgres_changes', { event: '*', schema: 'public', table: 'clinical_notes', filter: `patient_id=eq.${patient.id}` }, fetchData)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'vital_signs', filter: `patient_id=eq.${patient.id}` }, fetchData)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'consent_forms', filter: `patient_id=eq.${patient.id}` }, fetchData)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'prescriptions', filter: `patient_id=eq.${patient.id}` }, fetchData)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'patient_history', filter: `patient_id=eq.${patient.id}` }, fetchData)
             .subscribe();
 
         return () => {
             supabase.removeChannel(channel);
         };
     }, [patient.id]);
+
+    const handleSaveNote = async () => {
+        if (!newNote.subjective && !newNote.objective && !newNote.assessment && !newNote.plan) {
+            return; // Needs content
+        }
+        setIsSavingNote(true);
+        const { error } = await supabase.from('clinical_notes').insert({
+            patient_id: patient.id,
+            subjective: newNote.subjective,
+            objective: newNote.objective,
+            assessment: newNote.assessment,
+            plan: newNote.plan,
+            doctor_name: newNote.doctor_name
+        });
+
+        if (!error) {
+            await supabase.from('patient_history').insert({
+                patient_id: patient.id,
+                date: new Date().toISOString().split('T')[0],
+                treatment: 'SOAP Note Recorded',
+                notes: `Subj: ${newNote.subjective.substring(0, 30)}...`,
+                category: 'Clinical',
+                doctor_name: newNote.doctor_name
+            });
+            setIsSoapModalOpen(false);
+            setNewNote({ subjective: '', objective: '', assessment: '', plan: '', doctor_name: 'Dr. Sarah Jenkins' });
+            fetchData();
+        }
+        setIsSavingNote(false);
+    };
 
     const handleTabChange = (tabId: string) => {
         setActiveTab(tabId);
@@ -175,7 +216,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
         if (format === 'pdf') {
             // Simplified PDF-like text for now
             content = `DENTORA CLINICAL REPORT\n========================\n\nPATIENT: ${patient.name} ${patient.last_name || ''}\nID: ${patient.id}\nDATE: ${timestamp}\n\nRECORDS SUMMARY:\n` +
-                (patient.patient_history || []).map((v: any) => `- ${v.date}: ${v.treatment} (₹${v.cost})`).join('\n') +
+                patientHistory.map((v: any) => `- ${v.date}: ${v.treatment} (₹${v.cost})`).join('\n') +
                 `\n\nOUTSTANDING BALANCE: ₹${totalDue}`;
             const blob = new Blob([content], { type: 'application/pdf' });
             const url = URL.createObjectURL(blob);
@@ -186,7 +227,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
             URL.revokeObjectURL(url);
         } else {
             const headers = ['Date', 'Treatment', 'Cost', 'Notes'];
-            const rows = (patient.patient_history || []).map((v: any) => 
+            const rows = patientHistory.map((v: any) => 
                 `"${v.date}","${v.treatment}","${v.cost}","${(v.notes || '').replace(/"/g, '""')}"`
             );
             content = [headers.join(','), ...rows].join('\n');
@@ -387,7 +428,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                     <button className="text-[11px] font-black text-primary uppercase tracking-widest hover:underline">View All Records</button>
                                 </div>
                                 <div className="space-y-4">
-                                    {(patient.patient_history || []).map((visit: any, i: number) => (
+                                    {patientHistory.map((visit: any, i: number) => (
                                         <div key={i} className="p-7 rounded-[2.5rem] transition-all hover:scale-[1.01] overflow-hidden relative group shadow-sm" style={{ background: 'var(--card-bg-alt)', border: '1.5px solid var(--border-color)' }}>
                                             <div className="flex justify-between items-center mb-6">
                                                 <div className="flex items-center gap-5">
@@ -747,6 +788,11 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
 
                         {clinicalSubTab === 'soap' && (
                             <div className="space-y-4">
+                                <div className="flex justify-end mb-2">
+                                    <button onClick={() => setIsSoapModalOpen(true)} className="bg-primary text-white px-4 py-2 rounded-xl flex items-center gap-1.5 text-xs font-bold transition-all shadow-lg shadow-primary/20 hover:scale-105 active:scale-95">
+                                        <Plus size={14} /> New SOAP Note
+                                    </button>
+                                </div>
                                 {patientNotes.length > 0 ? patientNotes.map(note => (
                                     <div key={note.id} className="p-8 rounded-[2.5rem] border shadow-sm" style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
                                         <div className="flex justify-between items-start mb-6">
@@ -1007,6 +1053,53 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                             </div>
                             <h4 className="text-xl font-bold mb-2" style={{ color: 'var(--text-dark)' }}>Payments</h4>
                             <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Collect payment from patient.</p>
+                        </div>
+                    </div>
+                )}
+                {isSoapModalOpen && (
+                    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+                        <div className={`p-8 rounded-[2.5rem] w-full max-w-xl shadow-2xl animate-scale-up space-y-4 max-h-[85vh] overflow-y-auto ${theme === 'dark' ? 'bg-slate-900 text-white' : 'bg-white text-slate-900'}`} style={{ border: '1px solid var(--border-color)' }}>
+                            <div className="flex justify-between items-center mb-2 border-b pb-4" style={{ borderColor: 'var(--border-color)' }}>
+                                <h3 className="font-black text-xl tracking-tight">New SOAP Note</h3>
+                                <button onClick={() => setIsSoapModalOpen(false)} className={`p-2 rounded-xl transition-all ${theme === 'dark' ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}>×</button>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Practitioner</label>
+                                    <div className="relative">
+                                        <select value={newNote.doctor_name} onChange={e => setNewNote({ ...newNote, doctor_name: e.target.value })} className={`w-full px-5 py-3 rounded-2xl border font-bold text-sm outline-none ${theme === 'dark' ? 'bg-slate-800 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
+                                            <option value="Dr. Sarah Jenkins">Dr. Sarah Jenkins</option>
+                                            <option value="Dr. Michael Chen">Dr. Michael Chen</option>
+                                            <option value="Dr. Mark Sloan">Dr. Mark Sloan</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Subjective (Symptoms)</label>
+                                    <textarea value={newNote.subjective} onChange={e => setNewNote({ ...newNote, subjective: e.target.value })} className={`w-full h-16 rounded-2xl p-4 text-xs font-bold outline-none border transition-all ${theme === 'dark' ? 'bg-slate-800 border-white/10' : 'bg-slate-50 border-slate-200'}`} placeholder="Patient reports..." />
+                                </div>
+                                
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Objective (Signs & Findings)</label>
+                                    <textarea value={newNote.objective} onChange={e => setNewNote({ ...newNote, objective: e.target.value })} className={`w-full h-16 rounded-2xl p-4 text-xs font-bold outline-none border transition-all ${theme === 'dark' ? 'bg-slate-800 border-white/10' : 'bg-slate-50 border-slate-200'}`} placeholder="I/O exam reveals..." />
+                                </div>
+
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Assessment (Diagnosis)</label>
+                                    <textarea value={newNote.assessment} onChange={e => setNewNote({ ...newNote, assessment: e.target.value })} className={`w-full h-16 rounded-2xl p-4 text-xs font-bold outline-none border transition-all ${theme === 'dark' ? 'bg-slate-800 border-white/10' : 'bg-slate-50 border-slate-200'}`} placeholder="Diagnosis details..." />
+                                </div>
+
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Plan (Proposed Treatment)</label>
+                                    <textarea value={newNote.plan} onChange={e => setNewNote({ ...newNote, plan: e.target.value })} className={`w-full h-16 rounded-2xl p-4 text-xs font-bold outline-none border transition-all ${theme === 'dark' ? 'bg-slate-800 border-white/10' : 'bg-slate-50 border-slate-200'}`} placeholder="Proposed setup..." />
+                                </div>
+
+                                <button onClick={handleSaveNote} disabled={isSavingNote} className="w-full py-4 bg-primary hover:bg-primary-hover text-white rounded-2xl font-bold text-xs shadow-lg transition-all flex items-center justify-center gap-2">
+                                    {isSavingNote ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={14} />} Save Record
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}

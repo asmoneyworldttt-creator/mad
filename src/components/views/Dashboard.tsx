@@ -13,7 +13,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, 
 import { useToast } from '../Toast';
 
 type UserRole = 'master' | 'admin' | 'staff' | 'patient';
-type DateFilter = 'day' | 'week' | 'month' | 'custom';
+type DateFilter = 'all' | 'day' | 'week' | 'month' | 'custom';
 
 const formatINR = (v: number) => new Intl.NumberFormat('en-IN', {
     style: 'currency', currency: 'INR', maximumFractionDigits: 0
@@ -73,26 +73,36 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }
     );
 }
 
-function DateFilterTabs({ active, onChange }: { active: DateFilter; onChange: (f: DateFilter) => void }) {
+function DateFilterTabs({ active, onChange, customStart, setCustomStart, customEnd, setCustomEnd }: { active: DateFilter; onChange: (f: DateFilter) => void; customStart?: string; setCustomStart?: (s: string) => void; customEnd?: string; setCustomEnd?: (s: string) => void }) {
     const tabs: { id: DateFilter; label: string }[] = [
+        { id: 'all', label: 'All' },
         { id: 'day', label: 'Today' },
         { id: 'week', label: 'This Week' },
         { id: 'month', label: 'This Month' },
         { id: 'custom', label: 'Custom' },
     ];
     return (
-        <div className="flex items-center gap-1 p-1 rounded-xl" style={{ background: 'var(--card-bg-alt)', border: '1px solid var(--border-color)' }}>
-              {tabs.map(t => (
-                  <button key={t.id} onClick={() => onChange(t.id)}
-                      className="px-4 py-2 rounded-lg text-sm font-bold transition-all"
-                      style={{
-                          background: active === t.id ? 'var(--primary)' : 'transparent',
-                          color: active === t.id ? 'white' : 'var(--text-muted)',
-                          boxShadow: active === t.id ? '0 2px 8px var(--primary-glow)' : 'none',
-                      }}>
-                      {t.label}
-                  </button>
-              ))}
+        <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1 p-1 rounded-xl" style={{ background: 'var(--card-bg-alt)', border: '1px solid var(--border-color)' }}>
+                {tabs.map(t => (
+                    <button key={t.id} onClick={() => onChange(t.id)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+                        style={{
+                            background: active === t.id ? 'var(--primary)' : 'transparent',
+                            color: active === t.id ? 'white' : 'var(--text-muted)',
+                            boxShadow: active === t.id ? '0 2px 8px var(--primary-glow)' : 'none',
+                        }}>
+                        {t.label}
+                    </button>
+                ))}
+            </div>
+            {active === 'custom' && setCustomStart && setCustomEnd && (
+                <div className="flex items-center gap-2 p-1.5 rounded-xl border" style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)' }}>
+                    <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="bg-transparent border-none text-[10px] font-bold px-1 outline-none text-slate-400" />
+                    <span className="text-[9px] font-bold text-slate-500">to</span>
+                    <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="bg-transparent border-none text-[10px] font-bold px-1 outline-none text-slate-400" />
+                </div>
+            )}
         </div>
     );
 }
@@ -113,12 +123,15 @@ export function Dashboard({ setActiveTab, userRole, theme }: { setActiveTab?: (t
     const [revenueChartData, setRevenueChartData] = useState<any[]>([]);
     const [collectionChartData, setCollectionChartData] = useState<any[]>([]);
     const [pendingLabCases, setPendingLabCases] = useState<any[]>([]);
-    const [dateFilter, setDateFilter] = useState<DateFilter>('week');
+    const [dateFilter, setDateFilter] = useState<DateFilter>('all');
+    const [customStart, setCustomStart] = useState('');
+    const [customEnd, setCustomEnd] = useState('');
     const [isLoading, setIsLoading] = useState(true);
 
     const getDateRange = useCallback((filter: DateFilter) => {
         const now = new Date();
         const today = now.toLocaleDateString('en-CA');
+        if (filter === 'all') return { start: '2020-01-01', end: '2099-12-31' };
         if (filter === 'day') return { start: today, end: today };
         if (filter === 'week') {
             const start = new Date(now); start.setDate(now.getDate() - 6);
@@ -128,30 +141,34 @@ export function Dashboard({ setActiveTab, userRole, theme }: { setActiveTab?: (t
             const start = new Date(now.getFullYear(), now.getMonth(), 1);
             return { start: start.toLocaleDateString('en-CA'), end: today };
         }
+        if (filter === 'custom') {
+            return { start: customStart || today, end: customEnd || today };
+        }
         return { start: today, end: today };
-    }, []);
+    }, [customStart, customEnd]);
 
-    const fetchAll = useCallback(async () => {
+    const fetchAll = useCallback(async (filter: DateFilter) => {
         setIsLoading(true);
+        const { start, end } = getDateRange(filter);
         const today = new Date().toLocaleDateString('en-CA');
         const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toLocaleDateString('en-CA');
         const lastMonth = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toLocaleDateString('en-CA');
 
         const [
-            { count: todayCount }, { data: allApts }, { count: missedCount },
+            { count: apptCount }, { data: allApts }, { count: missedCount },
             { count: totalVisitsCount }, { count: newPatCount }, { count: totalPatCount },
             { data: billsData }, { count: pendingLabCount },
             { data: expensesData }, { count: doctorCount }, { data: staffData }, { data: labCasesData }
         ] = await Promise.all([
-            supabase.from('appointments').select('*', { count: 'exact', head: true }).eq('date', today),
+            supabase.from('appointments').select('*', { count: 'exact', head: true }).gte('date', start).lte('date', end),
             supabase.from('appointments').select('*'),
-            supabase.from('appointments').select('*', { count: 'exact', head: true }).eq('status', 'Missed'),
-            supabase.from('patient_history').select('*', { count: 'exact', head: true }),
-            supabase.from('patients').select('*', { count: 'exact', head: true }).gte('created_at', startOfMonth),
+            supabase.from('appointments').select('*', { count: 'exact', head: true }).eq('status', 'Missed').gte('date', start).lte('date', end),
+            supabase.from('patient_history').select('*', { count: 'exact', head: true }).gte('date', start).lte('date', end),
+            supabase.from('patients').select('*', { count: 'exact', head: true }).gte('created_at', start).lte('created_at', end + 'T23:59:59'),
             supabase.from('patients').select('*', { count: 'exact', head: true }),
-            supabase.from('bills').select('amount, date'),
-            supabase.from('lab_orders').select('*', { count: 'exact', head: true }).neq('order_status', 'Delivered to Patient'),
-            supabase.from('accounts').select('amount').eq('type', 'expense'),
+            supabase.from('bills').select('amount, date').gte('date', start).lte('date', end),
+            supabase.from('lab_orders').select('*', { count: 'exact', head: true }).neq('order_status', 'Delivered to Patient').gte('created_at', start).lte('created_at', end + 'T23:59:59'),
+            supabase.from('accounts').select('amount').eq('type', 'expense').gte('created_at', start).lte('created_at', end + 'T23:59:59'),
             supabase.from('staff').select('role', { count: 'exact', head: true }).eq('role', 'doctor'),
             supabase.from('staff').select('id'), // Fetch IDs for general staff info
             supabase.from('lab_orders').select('patient_name, order_status, created_at').neq('order_status', 'Delivered to Patient').order('created_at', { ascending: false }).limit(5),
@@ -176,7 +193,7 @@ export function Dashboard({ setActiveTab, userRole, theme }: { setActiveTab?: (t
         const lastMonthPats = (await supabase.from('patients').select('*', { count: 'exact', head: true }).lt('created_at', startOfMonth).gte('created_at', lastMonth)).count || 0;
 
         setStats({
-            todayAppointments: todayCount || 0,
+            todayAppointments: apptCount || 0,
             totalVisits: totalVisitsCount || 0,
             completedApts: completedCountManaged,
             missedApts: missedCount || 0,
@@ -241,9 +258,9 @@ export function Dashboard({ setActiveTab, userRole, theme }: { setActiveTab?: (t
     }, [getDateRange]);
 
     useEffect(() => {
-        fetchAll();
+        fetchAll(dateFilter);
         fetchCharts(dateFilter);
-    }, [fetchAll, fetchCharts, dateFilter]);
+    }, [fetchAll, fetchCharts, dateFilter, customStart, customEnd]);
 
     // Patient view
     if (userRole === 'patient') {
@@ -332,7 +349,7 @@ export function Dashboard({ setActiveTab, userRole, theme }: { setActiveTab?: (t
                     >
                         <Smartphone size={12} /> Direct APK
                     </button>
-                    <button onClick={fetchAll}
+                    <button onClick={() => fetchAll(dateFilter)}
                         className="w-9 h-9 rounded-lg flex items-center justify-center transition-all bg-white/5 hover:bg-white/10 active:scale-95 shadow-sm duration-500"
                         style={{ border: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
                         <RefreshCw size={12} />
@@ -342,6 +359,18 @@ export function Dashboard({ setActiveTab, userRole, theme }: { setActiveTab?: (t
                         <Plus size={12} className="inline mr-0.5" /> Book Slot
                     </button>
                 </div>
+            </div>
+
+            {/* ── Global Date Filters ── */}
+            <div className="flex justify-start sm:justify-end p-2 bg-transparent">
+                <DateFilterTabs 
+                    active={dateFilter} 
+                    onChange={setDateFilter} 
+                    customStart={customStart} 
+                    setCustomStart={setCustomStart} 
+                    customEnd={customEnd} 
+                    setCustomEnd={setCustomEnd} 
+                />
             </div>
 
             {/* ── KPI Cards – Row 1: Appointments ── */}
@@ -382,7 +411,6 @@ export function Dashboard({ setActiveTab, userRole, theme }: { setActiveTab?: (t
             <div>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                     <SectionHeader title="Performance Analytics" subtitle="Visual trends" />
-                    <DateFilterTabs active={dateFilter} onChange={(f) => { setDateFilter(f); fetchCharts(f); }} />
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
