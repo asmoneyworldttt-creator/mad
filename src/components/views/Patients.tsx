@@ -10,6 +10,28 @@ import { useAuditLog } from '../../hooks/useAuditLog';
 
 type UserRole = 'master' | 'admin' | 'staff' | 'patient';
 
+const DEFAULT_TREATMENTS = [
+    "Oral examination", "Periodontal charting", "Pulp vitality testing", 
+    "Intraoral periapical radiograph (IOPA)", "Bitewing radiograph", "Occlusal radiograph", 
+    "Orthopantomogram (OPG)", "CBCT", "Study models / intraoral scan", 
+    "Oral prophylaxis (Scaling & polishing)", "Fluoride therapy", "Pit & fissure sealants", 
+    "Desensitization therapy", "Oral hygiene instruction", "Composite restoration", 
+    "Glass ionomer restoration", "Temporary restoration", "Core build-up", 
+    "Post & core", "Pulpotomy", "Pulpectomy", 
+    "RCT – Started (Access opening + BMP initiated)", "Same RCT – Dressing / Cleaning & shaping visit", "RCT – Completed (Obturation done)", 
+    "Retreatment RCT", "Apexification", "Apicoectomy", 
+    "Scaling & root planing", "Gingivectomy", "Flap surgery", 
+    "Crown lengthening", "Bone graft / GTR", "Simple extraction", 
+    "Surgical extraction", "Impacted tooth removal", "Frenectomy", 
+    "Biopsy", "Alveoloplasty", "Crown (PFM / Zirconia / E-max)", 
+    "Fixed partial denture (Bridge)", "Removable partial denture", "Complete denture", 
+    "Veneers", "Full mouth rehabilitation", "Implant placement", 
+    "Immediate implant placement", "Healing abutment placement", "Implant crown / bridge", 
+    "Sinus lift", "Ridge augmentation", "Removable orthodontic appliance", 
+    "Fixed orthodontic treatment (Braces)", "Clear aligners", "Retainers", 
+    "Space maintainer", "Stainless steel crown (Primary teeth)", "Habit breaking appliance"
+];
+
 const PatientCard = memo(function PatientCard({ p, onClick, theme }: { p: any; onClick: () => void; theme?: string }) {
     const isDark = theme === 'dark';
     return (
@@ -61,6 +83,19 @@ export function Patients({ userRole, setActiveTab, theme }: { userRole: UserRole
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');
     const [treatmentFilter, setTreatmentFilter] = useState('All');
+    const [treatments, setTreatments] = useState<string[]>(DEFAULT_TREATMENTS);
+
+    useEffect(() => {
+        if (patientsData.length > 0) {
+            const uniqueHistoryTreatments = patientsData.flatMap(p => 
+                (p.patient_history || [])
+                  .map((h: any) => h.treatment)
+                  .filter(Boolean)
+            );
+            const allUnique = Array.from(new Set([...DEFAULT_TREATMENTS, ...uniqueHistoryTreatments]));
+            setTreatments(allUnique);
+        }
+    }, [patientsData]);
 
     const fetchPatients = useCallback(async () => {
         setIsLoading(true);
@@ -179,15 +214,24 @@ export function Patients({ userRole, setActiveTab, theme }: { userRole: UserRole
                     <div className="ms-auto w-full sm:w-auto mt-2 sm:mt-0 flex gap-2">
                         <select 
                             value={treatmentFilter} 
-                            onChange={(e) => setTreatmentFilter(e.target.value)}
+                            onChange={(e) => {
+                                if (e.target.value === 'ADD_NEW') {
+                                    const newT = prompt('Enter new treatment name:');
+                                    if (newT && !treatments.includes(newT)) {
+                                        setTreatments([...treatments, newT]);
+                                        setTreatmentFilter(newT);
+                                    }
+                                } else {
+                                    setTreatmentFilter(e.target.value);
+                                }
+                            }}
                             className="flex-1 sm:w-44 bg-slate-50 dark:bg-white/5 border-none rounded-lg text-[10px] font-bold px-3 py-1.5 outline-none text-slate-500"
                         >
                             <option value="All">Filter by Treatment</option>
-                            <option value="Consultation">Consultation</option>
-                            <option value="Scaling">Scaling</option>
-                            <option value="Root Canal">Root Canal</option>
-                            <option value="Fillings">Fillings</option>
-                            <option value="Extraction">Extraction</option>
+                            <option value="ADD_NEW">+ Add a New Treatment</option>
+                            {treatments.map((t, i) => (
+                                <option key={i} value={t}>{t}</option>
+                            ))}
                         </select>
                     </div>
                 </div>
