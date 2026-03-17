@@ -95,7 +95,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
             { data: history }
         ] = await Promise.all([
             supabase.from('bills').select('*').eq('patient_id', patient.id).order('date', { ascending: false }),
-            supabase.from('treatment_plans').select('*, treatment_plan_items(*)').eq('patient_id', patient.id).order('created_at', { ascending: false }),
+            supabase.from('treatment_plans').select('*').eq('patient_id', patient.id).order('created_at', { ascending: false }),
             supabase.from('lab_orders').select('*').eq('patient_id', patient.id).order('order_date', { ascending: false }),
             supabase.from('prescriptions').select('*').eq('patient_id', patient.id).order('created_at', { ascending: false }),
             supabase.from('clinical_notes').select('*').eq('patient_id', patient.id).order('created_at', { ascending: false }),
@@ -105,7 +105,17 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
         ]);
 
         setPatientBills(bills || []);
-        setPatientPlans(plans || []);
+                 let mappedPlans = plans || [];
+         if (plans && plans.length > 0) {
+             const planIds = plans.map((p: any) => p.id);
+             const { data: itemsData } = await supabase.from('treatment_plan_items').select('*').in('plan_id', planIds);
+             mappedPlans = plans.map((p: any) => ({
+                 ...p,
+                 treatment_plan_items: itemsData?.filter((item: any) => item.plan_id === p.id) || []
+             }));
+         }
+
+        setPatientPlans(mappedPlans);
         setPatientLabOrders(labOrders || []);
         setPatientPrescriptions(prescriptions || []);
         setPatientNotes(notes || []);

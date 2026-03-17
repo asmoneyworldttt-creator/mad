@@ -48,8 +48,23 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
 
     const fetchBills = async () => {
         setIsLoadingBills(true);
-        const { data } = await supabase.from('bills').select('*, patients(name, phone)').order('date', { ascending: false }).limit(50);
-        setBills(data || []);
+        const { data: billsData } = await supabase.from('bills').select('*').order('date', { ascending: false }).limit(50);
+        
+        const mapped: any[] = [];
+        if (billsData && billsData.length > 0) {
+            const patientIds = [...new Set(billsData.map(b => b.patient_id))];
+            const { data: ptData } = await supabase.from('patients').select('id, name, phone').in('id', patientIds);
+
+            billsData.forEach(b => {
+                mapped.push({
+                    ...b,
+                    patients: ptData?.find(pt => pt.id === b.patient_id)
+                });
+            });
+            setBills(mapped);
+        } else {
+            setBills([]);
+        }
         setIsLoadingBills(false);
     };
 

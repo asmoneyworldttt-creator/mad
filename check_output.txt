@@ -1,0 +1,10 @@
+Fetching rows with absolute keys...
+
+--- Patient Overview Plans Check ---
+Error: {
+  code: 'PGRST200',
+  details: "Searched for a foreign key relationship between 'treatment_plans' and 'treatment_plan_items' in the schema 'public', but no matches were found.",
+  hint: null,
+  message: "Could not find a relationship between 'treatment_plans' and 'treatment_plan_items' in the schema cache"
+}
+Plans Count: 0

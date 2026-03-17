@@ -22,8 +22,23 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
 
     const fetchLabOrders = async () => {
         setIsLoading(true);
-        const { data } = await supabase.from('lab_orders').select('*, patients!patient_id(name)').order('order_date', { ascending: false });
-        if (data) setOrders(data);
+        const { data: ordersData } = await supabase.from('lab_orders').select('*').order('order_date', { ascending: false });
+        
+        const mapped: any[] = [];
+        if (ordersData && ordersData.length > 0) {
+            const patientIds = [...new Set(ordersData.map(o => o.patient_id))];
+            const { data: ptData } = await supabase.from('patients').select('id, name').in('id', patientIds);
+
+            ordersData.forEach(o => {
+                mapped.push({
+                    ...o,
+                    patients: ptData?.find(pt => pt.id === o.patient_id)
+                });
+            });
+            setOrders(mapped);
+        } else {
+            setOrders([]);
+        }
         setIsLoading(false);
     };
 

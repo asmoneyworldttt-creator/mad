@@ -80,11 +80,31 @@ export function TreatmentPlans({ userRole, theme, setActiveTab }: { userRole: Us
 
     const fetchPlans = async () => {
         setIsLoading(true);
-        const { data } = await supabase
+        const { data: plansData, error: pError } = await supabase
             .from('treatment_plans')
-            .select('*, patients(name, phone)')
+            .select('*')
             .order('created_at', { ascending: false });
-        setPlans(data || []);
+
+        if (pError) console.error('Fetch Plans Error:', pError);
+
+        const mapped: any[] = [];
+        if (plansData && plansData.length > 0) {
+            const patientIds = [...new Set(plansData.map(p => p.patient_id))];
+            const { data: ptData } = await supabase
+                .from('patients')
+                .select('id, name, phone')
+                .in('id', patientIds);
+
+            plansData.forEach(p => {
+                mapped.push({
+                    ...p,
+                    patients: ptData?.find(pt => pt.id === p.patient_id)
+                });
+            });
+            setPlans(mapped);
+        } else {
+            setPlans([]);
+        }
         setIsLoading(false);
     };
 
