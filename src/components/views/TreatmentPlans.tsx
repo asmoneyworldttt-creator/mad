@@ -40,6 +40,7 @@ export function TreatmentPlans({ userRole, theme, setActiveTab }: { userRole: Us
     const [isLoading, setIsLoading] = useState(true);
     const [view, setView] = useState<'list' | 'detail' | 'new'>('list');
     const [search, setSearch] = useState('');
+    const [itemDateFilter, setItemDateFilter] = useState<'All' | 'Today' | 'This Month'>('All');
 
     // New plan form
     const [newPlan, setNewPlan] = useState({ 
@@ -164,8 +165,46 @@ export function TreatmentPlans({ userRole, theme, setActiveTab }: { userRole: Us
     };
 
     const handleUpdateItemStatus = async (itemId: string, newStatus: string) => {
-        await supabase.from('treatment_plan_items').update({ status: newStatus }).eq('id', itemId);
+        const updateObj: any = { status: newStatus };
+        if (newStatus === 'Done') {
+            updateObj.scheduled_date = new Date().toISOString().split('T')[0]; // Record Completion Date
+        }
+        await supabase.from('treatment_plan_items').update(updateObj).eq('id', itemId);
         if (selectedPlan) fetchPlanItems(selectedPlan.id);
+    };
+
+    const handleLoadRecommendedPlan = async () => {
+        if (!newPlan.patientId) return showToast('Please select a patient first', 'error');
+        setIsLoading(true);
+        const { data } = await supabase.from('clinical_notes')
+            .select('plan')
+            .eq('patient_id', newPlan.patientId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+        setIsLoading(false);
+
+        let advised = [];
+        if (data?.plan) {
+            try {
+                const parsed = JSON.parse(data.plan);
+                if (parsed && typeof parsed === 'object' && parsed.advised) {
+                    advised = parsed.advised;
+                }
+            } catch (e) { }
+        }
+
+        if (advised && advised.length > 0) {
+            const loadedItems = advised.map((a: any) => ({
+                treatment_name: a.treatment,
+                selected_teeth: [a.tooth],
+                unit_cost: 0, estimated_sessions: 1, cost: 0, status: 'Pending', scheduled_date: '', notes: ''
+            }));
+            setNewItems(loadedItems);
+            showToast('Pulled recommended plan items from clinical notes!', 'success');
+        } else {
+            showToast('No advised treatments found in recent clinical notes.', 'info');
+        }
     };
 
     const handleUpdatePlanStatus = async (planId: string, newStatus: string) => {
@@ -258,12 +297,29 @@ export function TreatmentPlans({ userRole, theme, setActiveTab }: { userRole: Us
                 </div>
 
                 <div className={`rounded-[2rem] border overflow-hidden ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
-                    <div className={`px-6 py-5 border-b flex justify-between items-center ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
-                        <h3 className="font-bold text-lg">Treatment Items</h3>
-                        <span className={`text-xs font-bold px-3 py-1 rounded-lg ${isDark ? 'bg-white/5 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>{planItems.length} procedures</span>
+                    <div className={`px-6 py-5 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
+                        <div>
+                            <h3 className="font-bold text-lg">Treatment Items</h3>
+                            <span className={`text-xs font-bold px-3 py-1 rounded-lg ${isDark ? 'bg-white/5 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>{planItems.length} procedures</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 p-1 bg-slate-100/50 dark:bg-white/5 rounded-xl border">
+                            {['All', 'Today', 'This Month'].map(f => (
+                                <button key={f} onClick={() => setItemDateFilter(f as any)} className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${itemDateFilter === f ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:text-primary'}`}>
+                                    {f}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                     <div className="divide-y divide-slate-100/10">
-                        {planItems.map((item, i) => {
+                        {planItems.filter(i => {
+                            if (itemDateFilter === 'All') return true;
+                            if (!i.scheduled_date) return false;
+                            const d = new Date(i.scheduled_date);
+                            const now = new Date();
+                            if (itemDateFilter === 'Today') return d.toDateString() === now.toDateString();
+                            if (itemDateFilter === 'This Month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+                            return true;
+                        }).map((item, i) => {
                             const cfg = ITEM_STATUS_CONFIG[item.status] || ITEM_STATUS_CONFIG.Pending;
                             return (
                                 <div key={item.id} className={`p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4 ${isDark ? 'hover:bg-white/5' : 'hover:bg-slate-50'} transition-all`}>
@@ -273,7 +329,7 @@ export function TreatmentPlans({ userRole, theme, setActiveTab }: { userRole: Us
                                         <p className="text-xs text-slate-400 font-medium mt-0.5">
                                             {item.tooth_reference && `Tooth: ${item.tooth_reference} · `}
                                             {item.estimated_sessions} session(s)
-                                            {item.scheduled_date && ` · Scheduled: ${new Date(item.scheduled_date).toLocaleDateString('en-IN')}`}
+                                            {item.scheduled_date && ` · ${item.status === 'Done' ? 'Completed' : 'Scheduled'}: ${new Date(item.scheduled_date).toLocaleDateString('en-IN')}`}
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-3">
@@ -370,6 +426,18 @@ export function TreatmentPlans({ userRole, theme, setActiveTab }: { userRole: Us
                                                 Pediatric
                                             </button>
                                         </div>
+                                    </div>
+                                )}
+
+                                {newPlan.patientId && (
+                                    <div className="flex justify-between items-center p-3 border border-dashed rounded-xl bg-emerald-500/5 border-emerald-500/10">
+                                        <div className="flex items-center gap-2">
+                                            <Zap size={14} className="text-emerald-500" />
+                                            <span className="text-xs font-bold text-emerald-600">Sync advised treatments list</span>
+                                        </div>
+                                        <button onClick={handleLoadRecommendedPlan} className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-black uppercase text-[9px] shadow-sm transition-all active:scale-95">
+                                            Pull Recommended
+                                        </button>
                                     </div>
                                 )}
                                 <input type="text" placeholder="Plan Title (e.g. Full Smile Makeover)" value={newPlan.title} onChange={e => setNewPlan({ ...newPlan, title: e.target.value })}

@@ -67,6 +67,8 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
     const [isSoapModalOpen, setIsSoapModalOpen] = useState(false);
     const [newNote, setNewNote] = useState({ subjective: '', objective: '', assessment: '', plan: '', doctor_name: 'Dr. Sarah Jenkins' });
     const [isSavingNote, setIsSavingNote] = useState(false);
+    const [advisedTreatments, setAdvisedTreatments] = useState<{ tooth: string, treatment: string }[]>([]);
+    const [newAdvice, setNewAdvice] = useState({ tooth: '', treatment: '' });
 
     const treatmentCounts = useMemo(() => {
         if (!patientHistory) return {};
@@ -149,31 +151,40 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
     }, [patient.id]);
 
     const handleSaveNote = async () => {
-        if (!newNote.subjective && !newNote.objective && !newNote.assessment && !newNote.plan) {
+        if (!newNote.subjective && !newNote.objective && !newNote.assessment && !newNote.plan && advisedTreatments.length === 0) {
             return; // Needs content
         }
         setIsSavingNote(true);
+        const planData = JSON.stringify({
+            text: newNote.plan,
+            advised: advisedTreatments
+        });
+
         const { error } = await supabase.from('clinical_notes').insert({
             patient_id: patient.id,
             subjective: newNote.subjective,
             objective: newNote.objective,
             assessment: newNote.assessment,
-            plan: newNote.plan,
+            plan: planData,
             doctor_name: newNote.doctor_name
         });
 
         if (!error) {
+            const adviceStr = advisedTreatments.map(a => `${a.tooth}: ${a.treatment}`).join(', ');
             await supabase.from('patient_history').insert({
                 patient_id: patient.id,
                 date: new Date().toISOString().split('T')[0],
                 treatment: 'SOAP Note Recorded',
-                notes: `Subj: ${newNote.subjective.substring(0, 30)}...`,
+                notes: `Subj: ${newNote.subjective.substring(0, 30)}... Advice: ${adviceStr.substring(0, 50)}`,
                 category: 'Clinical',
                 doctor_name: newNote.doctor_name
             });
             setIsSoapModalOpen(false);
             setNewNote({ subjective: '', objective: '', assessment: '', plan: '', doctor_name: 'Dr. Sarah Jenkins' });
+            setAdvisedTreatments([]);
             fetchData();
+        } else {
+            showToast(error.message, 'error');
         }
         setIsSavingNote(false);
     };
@@ -249,11 +260,11 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
 
     const tabs = [
         { id: 'home', label: 'Home', icon: Activity },
+        { id: 'clinical', label: 'Clinical Notes', icon: ClipboardCheck },
         { id: 'billing', label: 'Invoices', icon: FileText },
         { id: 'treatment_plans', label: 'Plans', icon: FileSignature },
         { id: 'prescriptions', label: 'Prescriptions', icon: FileText },
         { id: 'lab_orders', label: 'Labs', icon: FlaskConical },
-        { id: 'clinical', label: 'Medical Records', icon: ClipboardCheck },
         { id: 'appointments', label: 'Appointments', icon: Calendar },
         { id: 'emr', label: 'EMR/Chart', icon: Activity },
         { id: 'gallery', label: 'Gallery', icon: ImageIcon },
@@ -781,7 +792,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                 {activeTab === 'clinical' && (
                     <div className="space-y-8">
                         <div className="flex items-center gap-3 p-1.5 bg-slate-100/50 dark:bg-white/5 rounded-2xl w-fit border border-slate-200 dark:border-white/10">
-                            <button onClick={() => setClinicalSubTab('soap')} className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${clinicalSubTab === 'soap' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-500 hover:text-primary'}`}>SOAP Notes</button>
+                            <button onClick={() => setClinicalSubTab('soap')} className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${clinicalSubTab === 'soap' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-500 hover:text-primary'}`}>Clinical Notes</button>
                             <button onClick={() => setClinicalSubTab('vitals')} className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${clinicalSubTab === 'vitals' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-500 hover:text-primary'}`}>Vital Signs</button>
                             <button onClick={() => setClinicalSubTab('consents')} className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${clinicalSubTab === 'consents' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-500 hover:text-primary'}`}>Consent Forms</button>
                         </div>
@@ -790,7 +801,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                             <div className="space-y-4">
                                 <div className="flex justify-end mb-2">
                                     <button onClick={() => setIsSoapModalOpen(true)} className="bg-primary text-white px-4 py-2 rounded-xl flex items-center gap-1.5 text-xs font-bold transition-all shadow-lg shadow-primary/20 hover:scale-105 active:scale-95">
-                                        <Plus size={14} /> New SOAP Note
+                                        <Plus size={14} /> New Clinical Note
                                     </button>
                                 </div>
                                 {patientNotes.length > 0 ? patientNotes.map(note => (
@@ -820,7 +831,33 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                                 </div>
                                                 <div>
                                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Plan</p>
-                                                    <p className="text-sm font-medium leading-relaxed" style={{ color: 'var(--text-muted)' }}>{note.plan}</p>
+                                                    {(() => {
+                                                        let description = note.plan;
+                                                        let advised = note.advised_treatments || [];
+                                                        try {
+                                                            const parsed = JSON.parse(note.plan);
+                                                            if (parsed && typeof parsed === 'object') {
+                                                                if (parsed.text !== undefined) description = parsed.text;
+                                                                if (parsed.advised) advised = parsed.advised;
+                                                            }
+                                                        } catch (e) { /* Fallback to raw string */ }
+
+                                                        return (
+                                                            <>
+                                                                <p className="text-sm font-medium leading-relaxed" style={{ color: 'var(--text-muted)' }}>{description}</p>
+                                                                {advised && advised.length > 0 && (
+                                                                    <div className="mt-2 border-t pt-2 border-dashed border-slate-200 dark:border-slate-700">
+                                                                        <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-1">Advised / Recommended Treatments</p>
+                                                                        <div className="space-y-1">
+                                                                            {advised.map((a: any, i: number) => (
+                                                                                <p key={i} className="text-xs font-black"><span className="text-slate-400">Tooth {a.tooth}:</span> {a.treatment}</p>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </>
+                                                        );
+                                                    })()}
                                                 </div>
                                             </div>
                                         </div>
@@ -828,7 +865,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                 )) : (
                                     <div className="py-20 text-center bg-slate-50/50 rounded-[3rem] border border-dashed border-slate-200">
                                         <ClipboardCheck size={48} className="mx-auto mb-4 text-slate-300" />
-                                        <p className="text-slate-500 font-bold">No clinical SOAP notes recorded yet.</p>
+                                        <p className="text-slate-500 font-bold">No clinical notes recorded yet.</p>
                                     </div>
                                 )}
                             </div>
@@ -1060,7 +1097,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
                         <div className={`p-8 rounded-[2.5rem] w-full max-w-xl shadow-2xl animate-scale-up space-y-4 max-h-[85vh] overflow-y-auto ${theme === 'dark' ? 'bg-slate-900 text-white' : 'bg-white text-slate-900'}`} style={{ border: '1px solid var(--border-color)' }}>
                             <div className="flex justify-between items-center mb-2 border-b pb-4" style={{ borderColor: 'var(--border-color)' }}>
-                                <h3 className="font-black text-xl tracking-tight">New SOAP Note</h3>
+                                <h3 className="font-black text-xl tracking-tight">New Clinical Note</h3>
                                 <button onClick={() => setIsSoapModalOpen(false)} className={`p-2 rounded-xl transition-all ${theme === 'dark' ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}>×</button>
                             </div>
 
@@ -1094,6 +1131,32 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                 <div>
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Plan (Proposed Treatment)</label>
                                     <textarea value={newNote.plan} onChange={e => setNewNote({ ...newNote, plan: e.target.value })} className={`w-full h-16 rounded-2xl p-4 text-xs font-bold outline-none border transition-all ${theme === 'dark' ? 'bg-slate-800 border-white/10' : 'bg-slate-50 border-slate-200'}`} placeholder="Proposed setup..." />
+                                </div>
+
+                                {/* ── Advised Treatments Row ── */}
+                                <div className="border border-dashed border-slate-200 dark:border-slate-700 p-4 rounded-2xl">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Advised Treatments (Conversion to Plan)</label>
+                                    <div className="flex gap-2">
+                                        <input type="text" placeholder="Tooth #" value={newAdvice.tooth} onChange={e => setNewAdvice({ ...newAdvice, tooth: e.target.value })} className="w-20 px-3 py-2 text-xs font-bold bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none" />
+                                        <input type="text" placeholder="Advised Treatment, e.g., RCT" value={newAdvice.treatment} onChange={e => setNewAdvice({ ...newAdvice, treatment: e.target.value })} className="flex-1 px-3 py-2 text-xs font-bold bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none" />
+                                        <button onClick={() => {
+                                            if (newAdvice.tooth && newAdvice.treatment) {
+                                                setAdvisedTreatments([...advisedTreatments, newAdvice]);
+                                                setNewAdvice({ tooth: '', treatment: '' });
+                                            }
+                                        }} className="p-2.5 rounded-xl bg-emerald-500 text-white flex items-center justify-center"><Plus size={16} /></button>
+                                    </div>
+                                    
+                                    {advisedTreatments.length > 0 && (
+                                        <div className="mt-3 space-y-1">
+                                            {advisedTreatments.map((a, i) => (
+                                                <div key={i} className="flex justify-between items-center bg-slate-100 dark:bg-white/5 p-2 rounded-xl">
+                                                    <span className="text-xs font-black"><span className="text-slate-400"># {a.tooth}:</span> {a.treatment}</span>
+                                                    <button onClick={() => setAdvisedTreatments(advisedTreatments.filter((_, idx) => idx !== i))} className="text-rose-500 hover:text-rose-600"><Trash2 size={12} /></button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
 
                                 <button onClick={handleSaveNote} disabled={isSavingNote} className="w-full py-4 bg-primary hover:bg-primary-hover text-white rounded-2xl font-bold text-xs shadow-lg transition-all flex items-center justify-center gap-2">
