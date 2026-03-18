@@ -122,28 +122,42 @@ export function Patients({ userRole, setActiveTab, theme }: { userRole: UserRole
 
         if (!matchesSearch) return false;
 
-        // Date Range Filter (by created_at)
+        // Combined Date Filter (checks creation, history, and notes)
         if (dateFilter !== 'All') {
-            const createdAt = new Date(p.created_at);
-            const today = new Date();
-            const yesterday = new Date();
-            yesterday.setDate(today.getDate() - 1);
-            
-            const lastMonth = new Date();
-            lastMonth.setMonth(today.getMonth() - 1);
+            const matchesDate = (dateStr: string) => {
+                if (!dateStr) return false;
+                let itemDate = new Date(dateStr);
+                if (dateStr.length === 10) { // "YYYY-MM-DD"
+                    itemDate = new Date(dateStr + 'T00:00:00');
+                }
+                const today = new Date();
+                const yesterday = new Date();
+                yesterday.setDate(today.getDate() - 1);
+                
+                if (dateFilter === 'Today') {
+                    return itemDate.toDateString() === today.toDateString();
+                } else if (dateFilter === 'Yesterday') {
+                    return itemDate.toDateString() === yesterday.toDateString();
+                } else if (dateFilter === 'Last Month') {
+                    const lastMonth = new Date();
+                    lastMonth.setMonth(today.getMonth() - 1);
+                    lastMonth.setHours(0, 0, 0, 0);
+                    const todayEnd = new Date();
+                    todayEnd.setHours(23, 59, 59, 999);
+                    return itemDate >= lastMonth && itemDate <= todayEnd;
+                } else if (dateFilter === 'Custom' && customStartDate && customEndDate) {
+                    const start = new Date(customStartDate + 'T00:00:00');
+                    const end = new Date(customEndDate + 'T23:59:59.999');
+                    return itemDate >= start && itemDate <= end;
+                }
+                return false;
+            };
 
-            if (dateFilter === 'Today') {
-                if (createdAt.toDateString() !== today.toDateString()) return false;
-            } else if (dateFilter === 'Yesterday') {
-                if (createdAt.toDateString() !== yesterday.toDateString()) return false;
-            } else if (dateFilter === 'Last Month') {
-                if (createdAt < lastMonth || createdAt > today) return false;
-            } else if (dateFilter === 'Custom' && customStartDate && customEndDate) {
-                const start = new Date(customStartDate);
-                const end = new Date(customEndDate);
-                end.setHours(23, 59, 59, 999);
-                if (createdAt < start || createdAt > end) return false;
-            }
+            const hasMatchDate = matchesDate(p.created_at) ||
+                (p.patient_history || []).some((h: any) => matchesDate(h.date)) ||
+                (p.clinical_notes || []).some((n: any) => matchesDate(n.created_at));
+            
+            if (!hasMatchDate) return false;
         }
 
         // Combined Treatment & Status Filter

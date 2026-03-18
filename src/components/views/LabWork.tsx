@@ -121,24 +121,58 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                 for (const note of notes) {
                     const parsed = JSON.parse(note.plan);
                     const pendingLabs = (parsed?.advised_labs || []).filter((a: any) => !a.status || a.status === 'Pending');
-                    
-                    if (pendingLabs.length > 0) {
-                        const teeth = pendingLabs.map((a: any) => parseInt(a.tooth)).filter(Number.isInteger);
-                        const items = pendingLabs.map((a: any) => a.item);
+                    const pendingAdvised = (parsed?.advised || []).filter((a: any) => {
+                        const standardLabs = ['Crown', 'Bridge', 'Denture', 'Inlay', 'Onlay', 'Veneer', 'Post'];
+                        return (!a.status || a.status === 'Pending') && standardLabs.some(l => (a.treatment || '').includes(l));
+                    });
+
+                    const allPending = [
+                        ...pendingLabs.map((a: any) => ({ tooth: a.tooth, item: a.item })),
+                        ...pendingAdvised.map((a: any) => ({ tooth: a.tooth, item: a.treatment }))
+                    ];
+
+                    if (allPending.length > 0) {
+                        const teeth = allPending.map((a: any) => parseInt(a.tooth)).filter(Number.isInteger);
+                        const items = allPending.map((a: any) => a.item).filter(Boolean);
                         
                         setFormData(prev => {
                             const newPreOp = [...prev.preOp];
                             const newProsthesis = [...prev.prosthesis];
                             items.forEach((i: string) => {
-                                if (['Bite Block', 'Special Tray', 'Bleaching Tray', 'Night Guard'].includes(i)) newPreOp.push(i);
-                                else newProsthesis.push(i);
+                                const lowerItem = i.toLowerCase();
+                                const preOpOptions = ['Bite Block', 'Special Tray', 'Bleaching Tray', 'Night Guard'];
+                                const preOpMatch = preOpOptions.find(o => lowerItem.includes(o.toLowerCase()));
+                                
+                                if (preOpMatch) {
+                                    if (!newPreOp.includes(preOpMatch)) newPreOp.push(preOpMatch);
+                                } else {
+                                    const prosthesisList = ['Crown', 'Bridge', 'Precision Denture', 'Inlay', 'Onlay', 'Veneer', 'Post & Core', 'Denture'];
+                                    const matched = prosthesisList.find(p => lowerItem.includes(p.toLowerCase()));
+                                    
+                                    if (matched) {
+                                        if (!newProsthesis.includes(matched)) newProsthesis.push(matched);
+                                    } else {
+                                        // Falls backs like 'Simcrown' or 'Multi-bridge' mapping
+                                        if (lowerItem.includes('crown') && !newProsthesis.includes('Crown')) newProsthesis.push('Crown');
+                                        if (lowerItem.includes('bridge') && !newProsthesis.includes('Bridge')) newProsthesis.push('Bridge');
+                                    }
+                                    
+                                    if (!newProsthesis.includes(i)) newProsthesis.push(i);
+                                }
                             });
                             
+                            const customItems = items.filter(i => !['Bite Block', 'Special Tray', 'Bleaching Tray', 'Night Guard', 'Crown', 'Bridge', 'Precision Denture', 'Inlay', 'Onlay', 'Veneer', 'Post & Core', 'Denture'].includes(i));
+                            const addedNotes = customItems.map(i => `Advice: ${i}`).join('\n');
+                            const updatedNotes = prev.delivery.notes 
+                                ? prev.delivery.notes.includes(addedNotes) ? prev.delivery.notes : prev.delivery.notes + '\n' + addedNotes 
+                                : addedNotes;
+
                             return {
                                 ...prev,
                                 selectedTeeth: [...new Set([...prev.selectedTeeth, ...teeth])],
                                 preOp: [...new Set(newPreOp)],
-                                prosthesis: [...new Set(newProsthesis)]
+                                prosthesis: [...new Set(newProsthesis)],
+                                delivery: { ...prev.delivery, notes: updatedNotes }
                             };
                         });
                         showToast('Advice synced from Clinical Notes', 'success');
