@@ -201,7 +201,7 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
             vendor_name: formData.vendor || 'Unknown Lab',
             order_status: formData.financial.status || 'Pending',
             order_date: formData.orderDate,
-            test_name: [...formData.prosthesis, ...formData.preOp].join(', ') || 'Custom Lab Order',
+
 
             metadata: {
                 time: formData.time,
