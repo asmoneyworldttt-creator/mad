@@ -633,6 +633,9 @@ export function downloadMedicalClearancePDF(data: MedicalClearanceData): void {
     doc.text(splitIntro, 14, y);
     y += (splitIntro.length * 5) + 6;
 
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(220, 38, 38); // Red Color
+    
     const examText = `On clinical examination, the patient has been diagnosed with ${data.provisionalDiagnosis || '________'}, for which ${data.proposedTreatment || '________'} is planned.`;
     const splitExam = doc.splitTextToSize(examText, 182);
     doc.text(splitExam, 14, y);
@@ -642,6 +645,8 @@ export function downloadMedicalClearancePDF(data: MedicalClearanceData): void {
     const splitMedical = doc.splitTextToSize(medicalText, 182);
     doc.text(splitMedical, 14, y);
     y += (splitMedical.length * 5) + 8;
+    
+    doc.setTextColor(26, 37, 48); // Reset dark color for points list header!
 
     doc.setFont('helvetica', 'bold');
     doc.text('In view of the patient’s medical status, I kindly request your expert opinion regarding:', 14, y);
