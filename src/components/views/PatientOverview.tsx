@@ -34,6 +34,7 @@ import {
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment } from '@react-three/drei';
 import { RealisticDentition } from './Dentition3D';
+import { VitalSignsPanel } from './VitalSignsPanel';
 import { 
     downloadInvoicePDF, 
     downloadTreatmentPlanPDF, 
@@ -1162,6 +1163,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
 
                         {clinicalSubTab === 'vitals' && (
                             <div className="space-y-4">
+                                <VitalSignsPanel patient={patient} theme={theme} />
                                 {patientVitals.length > 0 ? (
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                         {patientVitals.map(v => (
@@ -1181,17 +1183,17 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                                 <div className="grid grid-cols-2 gap-4">
                                                     <div className="p-4 rounded-2xl bg-slate-900/5 dark:bg-white/5 border border-black/5">
                                                         <p className="text-[9px] font-extrabold text-slate-400 uppercase mb-1">Blood Pressure</p>
-                                                        <p className="text-lg font-black">{v.bp_systolic}/{v.bp_diastolic}</p>
+                                                        <p className="text-lg font-black">{v.bp_systolic || '---'}/{v.bp_diastolic || '---'}</p>
                                                         <p className="text-[8px] font-bold text-slate-400">mmHg</p>
                                                     </div>
                                                     <div className="p-4 rounded-2xl bg-slate-900/5 dark:bg-white/5 border border-black/5">
                                                         <p className="text-[9px] font-extrabold text-slate-400 uppercase mb-1">Pulse Rate</p>
-                                                        <p className="text-lg font-black">{v.pulse}</p>
+                                                        <p className="text-lg font-black">{v.pulse || '---'}</p>
                                                         <p className="text-[8px] font-bold text-slate-400">BPM</p>
                                                     </div>
                                                     <div className="p-4 rounded-2xl bg-slate-900/5 dark:bg-white/5 border border-black/5">
                                                         <p className="text-[9px] font-extrabold text-slate-400 uppercase mb-1">Blood Oxygen</p>
-                                                        <p className="text-lg font-black">{v.spo2}%</p>
+                                                        <p className="text-lg font-black">{v.spo2 || '---'}%</p>
                                                         <p className="text-[8px] font-bold text-slate-400">SpO2</p>
                                                     </div>
                                                     <div className="p-4 rounded-2xl bg-slate-900/5 dark:bg-white/5 border border-black/5">
