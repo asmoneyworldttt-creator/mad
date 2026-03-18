@@ -170,7 +170,7 @@ export function MedicalClearance({ userRole, theme }: { userRole: string; theme?
                             </div>
 
                             <div>
-                                <label className={`text-[9px] font-extrabold uppercase tracking-widest block mb-1.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>To (Physician / Specialist Details)</label>
+                                <label className={`text-[9px] font-extrabold uppercase tracking-widest block mb-1.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>To (Physician / Specialist Details) <span className="text-amber-500 lowercase">(Optional)</span></label>
                                 <input type="text" value={physicianName} onChange={e => setPhysicianName(e.target.value)} placeholder="e.g. Dr. Jane Doe (Cardiologist)"
                                     className={`w-full px-4 py-3 rounded-xl border text-sm font-bold outline-none transition-all ${isDark ? 'bg-slate-950 border-white/10 text-white' : 'bg-slate-50 border-slate-200 focus:border-primary'}`} />
                             </div>
