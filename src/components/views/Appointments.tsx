@@ -37,6 +37,90 @@ const formatTime = (time: string) => {
         return time;
     }
 };
+const getDaysInMonth = (date: Date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const totalDays = new Date(year, month + 1, 0).getDate();
+    const days = [];
+    const prevMonthDays = new Date(year, month, 0).getDate();
+    for (let i = firstDay - 1; i >= 0; i--) { days.push({ dayNumber: prevMonthDays - i, currentMonth: false }); }
+    for (let i = 1; i <= totalDays; i++) {
+        const dStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+        days.push({ dayNumber: i, currentMonth: true, dateStr: dStr });
+    }
+    const remaining = 42 - days.length;
+    for (let i = 1; i <= remaining; i++) { days.push({ dayNumber: i, currentMonth: false }); }
+    return days;
+};
+
+function CustomScrollableCalendar({ selectedDate, onSelect, onClose, theme }: any) {
+    const calendarRef = useRef<HTMLDivElement>(null);
+    const [viewDate, setViewDate] = useState(new Date(selectedDate));
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => { if (calendarRef.current && !calendarRef.current.contains(e.target as Node)) onClose(); };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [onClose]);
+
+    const months: Date[] = [];
+    const currentYear = viewDate.getFullYear();
+    for (let i = 0; i < 12; i++) { months.push(new Date(currentYear, i, 1)); }
+
+    const handleScroll = (e: any) => {
+        const element = e.target;
+        const index = Math.floor((element.scrollTop + 50) / 180);
+        if (months[index]) setViewDate(months[index]);
+    };
+
+    return (
+        <div ref={calendarRef} className={`absolute top-full left-0 mt-1 z-50 p-3 rounded-2xl shadow-2xl border w-72 h-[320px] flex flex-col animate-slide-up ${theme === 'dark' ? 'bg-slate-900 border-white/10 text-white' : 'bg-white border-slate-100'}`}>
+            <div className="flex justify-between items-center mb-2 px-1">
+                <div className="flex items-center gap-1">
+                    <select 
+                        value={currentYear} 
+                        onChange={(e) => setViewDate(new Date(Number(e.target.value), viewDate.getMonth(), 1))}
+                        className="bg-slate-100 dark:bg-white/5 border-none font-extrabold text-[11px] text-primary rounded-md px-1 py-0.5 outline-none cursor-pointer"
+                    >
+                        {[2024, 2025, 2026, 2027, 2028].map(y => <option key={y} value={y} className="text-black bg-white">{y}</option>)}
+                    </select>
+                    <span className="font-extrabold text-xs text-primary">{viewDate.toLocaleString('default', { month: 'long' })}</span>
+                </div>
+                <button onClick={onClose} className="p-1 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full"><X size={12} /></button>
+            </div>
+            <div className="grid grid-cols-7 gap-1 text-center font-bold text-[9px] text-slate-400 mb-1 border-b pb-1">
+                {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => <span key={d}>{d}</span>)}
+            </div>
+            <div className="flex-1 overflow-y-auto space-y-4 snap-y snap-mandatory no-scrollbar pr-1" onScroll={handleScroll}>
+                {months.map((mDate, mIdx) => {
+                    const days = getDaysInMonth(mDate);
+                    return (
+                        <div key={mIdx} className="snap-start pt-1">
+                            <h5 className="text-[10px] font-black text-center text-slate-400 mb-1 tracking-wider">{mDate.toLocaleString('default', { month: 'long' })}</h5>
+                            <div className="grid grid-cols-7 gap-1">
+                                {days.map((d, dIdx) => {
+                                    const isSelected = d.currentMonth && d.dateStr === selectedDate;
+                                    const isToday = d.currentMonth && d.dateStr === new Date().toISOString().split('T')[0];
+                                    return (
+                                        <button key={dIdx} disabled={!d.currentMonth} onClick={() => { if (d.dateStr) onSelect(d.dateStr); }}
+                                            className={`h-7 flex font-black items-center justify-center rounded-xl text-[10px] transition-all ${
+                                                !d.currentMonth ? 'opacity-20 pointer-events-none' :
+                                                isSelected ? 'bg-primary text-white shadow-md' :
+                                                isToday ? 'border border-primary text-primary' : 'hover:bg-primary/10 text-slate-700 dark:text-slate-200'
+                                            }`}
+                                        >
+                                            {d.dayNumber}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
 
 export function Appointments({ userRole, theme, setActiveTab }: { userRole: UserRole; theme?: 'light' | 'dark'; setActiveTab?: (tab: string) => void }) {
     const today = new Date().toISOString().split('T')[0];
@@ -56,6 +140,21 @@ export function Appointments({ userRole, theme, setActiveTab }: { userRole: User
     const { showToast } = useToast();
     const dateStripRef = useRef<HTMLDivElement>(null);
     const datePickerRef = useRef<HTMLInputElement>(null);
+    const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+    const [isStartOpen, setIsStartOpen] = useState(false);
+    const [isEndOpen, setIsEndOpen] = useState(false);
+
+    useEffect(() => {
+        const el = dateStripRef.current;
+        if (!el) return;
+        let isDown = false; let startX: number; let scrollLeft: number;
+        const onDown = (e: MouseEvent) => { isDown = true; startX = e.pageX - el.offsetLeft; scrollLeft = el.scrollLeft; el.style.cursor = 'grabbing'; };
+        const onLeave = () => { isDown = false; el.style.cursor = 'default'; };
+        const onUp = () => { isDown = false; el.style.cursor = 'default'; };
+        const onMove = (e: MouseEvent) => { if (!isDown) return; e.preventDefault(); const walk = (e.pageX - el.offsetLeft - startX) * 1.5; el.scrollLeft = scrollLeft - walk; };
+        el.addEventListener('mousedown', onDown); el.addEventListener('mouseleave', onLeave); el.addEventListener('mouseup', onUp); el.addEventListener('mousemove', onMove);
+        return () => { el.removeEventListener('mousedown', onDown); el.removeEventListener('mouseleave', onLeave); el.removeEventListener('mouseup', onUp); el.removeEventListener('mousemove', onMove); };
+    }, []);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -239,7 +338,7 @@ export function Appointments({ userRole, theme, setActiveTab }: { userRole: User
     const renderDateStrip = () => {
         const dates = getDates();
         return (
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-2 custom-scrollbar-hide snap-x no-scrollbar" ref={dateStripRef}>
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-2 custom-scrollbar-hide snap-x snap-mandatory no-scrollbar cursor-grab" ref={dateStripRef}>
                 {dates.map((date, idx) => {
                     const dateStr = date.toISOString().split('T')[0];
                     const isSelected = dateStr === selectedDate;
@@ -393,22 +492,23 @@ export function Appointments({ userRole, theme, setActiveTab }: { userRole: User
             <div className={`p-3 sm:p-4 rounded-xl border ${theme === 'dark' ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                     <div className="flex items-center gap-3">
-                        <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
+                        <div onClick={() => setIsCalendarOpen(!isCalendarOpen)} className="p-1.5 rounded-lg bg-primary/10 text-primary cursor-pointer hover:bg-primary/20 transition-all">
                             <CalendarDays size={18} />
                         </div>
                         <div>
                             <h2 className="text-sm sm:text-base font-bold uppercase tracking-tight">Appointments</h2>
                                 <div className="relative">
-                                    <p onClick={() => datePickerRef.current?.showPicker()} className="text-[10px] font-medium text-slate-500 hover:text-primary cursor-pointer transition-all flex items-center gap-1">
+                                    <p onClick={() => setIsCalendarOpen(!isCalendarOpen)} className="text-[10px] font-medium text-slate-500 hover:text-primary cursor-pointer transition-all flex items-center gap-1">
                                         {new Date(selectedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} • {appointments.length} Total
                                     </p>
-                                    <input 
-                                        ref={datePickerRef}
-                                        type="date" 
-                                        value={selectedDate} 
-                                        onChange={e => { setSelectedDate(e.target.value); setUseDateRange(false); }} 
-                                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full pointer-events-none" 
-                                    />
+                                    {isCalendarOpen && (
+                                        <CustomScrollableCalendar 
+                                            selectedDate={selectedDate} 
+                                            onSelect={(date: string) => { setSelectedDate(date); setIsCalendarOpen(false); setUseDateRange(false); }} 
+                                            onClose={() => setIsCalendarOpen(false)} 
+                                            theme={theme} 
+                                        />
+                                    )}
                                 </div>
                         </div>
                     </div>
@@ -447,13 +547,19 @@ export function Appointments({ userRole, theme, setActiveTab }: { userRole: User
                                 {useDateRange && (
                                     <div className="space-y-1.5 mt-1">
                                         <div className="grid grid-cols-2 gap-1">
-                                            <div>
+                                            <div className="relative">
                                                 <p className="text-[8px] font-bold text-slate-400 mb-0.5">Start</p>
-                                                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full bg-slate-50 dark:bg-white/5 border-none rounded-md px-1.5 py-1 text-[10px] outline-none" />
+                                                <p onClick={() => { setIsStartOpen(!isStartOpen); setIsEndOpen(false); }} className="bg-slate-50 dark:bg-white/5 rounded-md px-1.5 py-1 text-[9px] font-bold cursor-pointer truncate hover:bg-slate-100">
+                                                    {new Date(startDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                                                </p>
+                                                {isStartOpen && ( <CustomScrollableCalendar selectedDate={startDate} onSelect={(d: string) => { setStartDate(d); setIsStartOpen(false); }} onClose={() => setIsStartOpen(false)} theme={theme} /> )}
                                             </div>
-                                            <div>
+                                            <div className="relative">
                                                 <p className="text-[8px] font-bold text-slate-400 mb-0.5">End</p>
-                                                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full bg-slate-50 dark:bg-white/5 border-none rounded-md px-1.5 py-1 text-[10px] outline-none" />
+                                                <p onClick={() => { setIsEndOpen(!isEndOpen); setIsStartOpen(false); }} className="bg-slate-50 dark:bg-white/5 rounded-md px-1.5 py-1 text-[9px] font-bold cursor-pointer truncate hover:bg-slate-100">
+                                                    {new Date(endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                                                </p>
+                                                {isEndOpen && ( <div className="absolute right-0 top-full mt-1 z-50"><CustomScrollableCalendar selectedDate={endDate} onSelect={(d: string) => { setEndDate(d); setIsEndOpen(false); }} onClose={() => setIsEndOpen(false)} theme={theme} /></div> )}
                                             </div>
                                         </div>
                                     </div>
