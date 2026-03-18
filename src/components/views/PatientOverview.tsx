@@ -1053,6 +1053,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                                         setNewNote(prev => ({ ...prev, plan: parsed.text || '' }));
                                                         setAdvisedTreatments(parsed.advised || []);
                                                         setAdvisedLabOrders(parsed.advised_labs || []);
+                                                        setTreatmentsDone(parsed.treatments_done || []); // Load state flaws trigger!
                                                     } catch (e) {
                                                         setNewNote(prev => ({ ...prev, plan: note.plan || '' }));
                                                     }
@@ -1085,12 +1086,14 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                                         let description = note.plan;
                                                         let advised = note.advised_treatments || [];
                                                         let advisedLabs = [];
+                                                        let treatmentsDoneListed = [];
                                                         try {
                                                             const parsed = JSON.parse(note.plan);
                                                             if (parsed && typeof parsed === 'object') {
                                                                 if (parsed.text !== undefined) description = parsed.text;
                                                                 if (parsed.advised) advised = parsed.advised;
                                                                 if (parsed.advised_labs) advisedLabs = parsed.advised_labs;
+                                                                if (parsed.treatments_done) treatmentsDoneListed = parsed.treatments_done;
                                                             }
                                                         } catch (e) { /* Fallback to raw string */ }
 
@@ -1123,6 +1126,19 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                                                         </div>
                                                                     </div>
                                                                 )}
+                                                                 {treatmentsDoneListed && treatmentsDoneListed.length > 0 && (
+                                                                     <div className="mt-2 border-t pt-1 border-dashed border-slate-200 dark:border-slate-700">
+                                                                         <p className="text-[10px] font-bold text-violet-500 uppercase tracking-widest mb-1">Treatments Done</p>
+                                                                         <div className="space-y-1">
+                                                                             {treatmentsDoneListed.map((t: any, i: number) => (
+                                                                                 <div key={i} className="flex justify-between items-center text-xs font-black">
+                                                                                     <span><span className="text-slate-400">Tooth {t.tooth || 'All'}:</span> {t.treatment}</span>
+                                                                                     <span className={`px-1.5 py-0.5 rounded text-[8px] uppercase tracking-wider ${t.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-500' : t.status === 'In Progress' ? 'bg-amber-500/10 text-amber-500' : 'bg-slate-100 dark:bg-white/5 text-slate-500'}`}>{t.status || 'Completed'}</span>
+                                                                                 </div>
+                                                                             ))}
+                                                                         </div>
+                                                                     </div>
+                                                                 )}
                                                             </>
                                                         );
                                                     })()}
@@ -1573,4 +1589,3 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
         </div>
     );
 }
-
