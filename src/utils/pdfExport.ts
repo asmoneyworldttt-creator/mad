@@ -690,15 +690,19 @@ export function downloadMedicalClearancePDF(data: MedicalClearanceData): void {
     doc.setFontSize(10);
     doc.text(`Fitness Status: `, 14, y);
     doc.setFont('helvetica', 'bold');
+    doc.setTextColor(220, 38, 38); // RED Color
     doc.text(data.fitnessStatus || 'Pending / Under Evaluation', 42, y);
+    doc.setTextColor(26, 37, 48); // Reset to Dark
     y += 8;
 
     doc.setFont('helvetica', 'bold');
     doc.text('Special Instructions / Recommendations:', 14, y);
     y += 6;
-    doc.setFont('helvetica', 'normal');
+    doc.setFont('helvetica', 'bold'); // Change to Bold!
+    doc.setTextColor(220, 38, 38); // RED Color
     const splitInstructions = doc.splitTextToSize(data.specialInstructions || '__________________________________________________________________________________________', 182);
     doc.text(splitInstructions, 14, y);
+    doc.setTextColor(26, 37, 48); // Reset back to default Dark for remaining footer elements layout!
     y += (splitInstructions.length * 5) + 15;
 
     // Signature placeholders
