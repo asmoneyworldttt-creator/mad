@@ -66,40 +66,72 @@ export function Header({ toggleMenu, userRole, setUserRole, setActiveTab, setGlo
         const query = e.target.value;
         setSearchQuery(query);
         if (query.length > 1) {
-            const { data } = await supabase
+            // Search Patients
+            const { data: pts } = await supabase
                 .from('patients')
                 .select('id, name, phone, gender, age')
                 .or(`name.ilike.%${query}%,id.ilike.%${query}%,phone.ilike.%${query}%`)
-                .limit(6);
-            setLiveResults(data || []);
+                .limit(4);
+                
+            // Search Staff
+            const { data: stf } = await supabase
+                .from('staff')
+                .select('id, staff_id, name, email, role')
+                .or(`name.ilike.%${query}%,staff_id.ilike.%${query}%,email.ilike.%${query}%`)
+                .limit(4);
+
+            const combined = [
+                ...(pts || []).map(p => ({ ...p, type: 'patient' })),
+                ...(stf || []).map(s => ({ ...s, type: 'staff', id: s.id }))
+            ];
+            setLiveResults(combined);
         } else {
             setLiveResults([]);
         }
     };
 
     const handleSelectPatient = async (p: any) => {
-        const { data } = await supabase.from('patients').select('*, patient_history(*)').eq('id', p.id).single();
-        setGlobalPatient(data);
-        setActiveTab('patient-overview');
-        showToast(`Loaded: ${p.name}`, 'success');
+        if (p.type === 'staff') {
+            setActiveTab('settings'); // Navigate to Settings/Team view
+            showToast(`Selected Staff: ${p.name}`, 'success');
+        } else {
+            const { data } = await supabase.from('patients').select('*, patient_history(*)').eq('id', p.id).single();
+            setGlobalPatient(data);
+            setActiveTab('patient-overview');
+            showToast(`Loaded: ${p.name}`, 'success');
+        }
         setSearchQuery('');
         setLiveResults([]);
     };
 
     const handleSearch = async (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' && searchQuery.trim()) {
-            const { data } = await supabase
+            const { data: pt } = await supabase
                 .from('patients')
                 .select('*, patient_history(*)')
                 .or(`name.ilike.%${searchQuery}%,id.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%`)
                 .limit(1);
 
-            if (data && data.length > 0) {
-                setGlobalPatient(data[0]);
+            if (pt && pt.length > 0) {
+                setGlobalPatient(pt[0]);
                 setActiveTab('patient-overview');
-                showToast(`Found: ${data[0].name}`, 'success');
+                showToast(`Found: ${pt[0].name}`, 'success');
+                setSearchQuery('');
+                setLiveResults([]);
+                return;
+            }
+
+            const { data: stf } = await supabase
+                .from('staff')
+                .select('*')
+                .or(`name.ilike.%${searchQuery}%,staff_id.ilike.%${searchQuery}%`)
+                .limit(1);
+
+            if (stf && stf.length > 0) {
+                setActiveTab('settings');
+                showToast(`Found Staff: ${stf[0].name}`, 'success');
             } else {
-                showToast('No patient found with that ID, Name or Phone', 'error');
+                showToast('No record found with that ID, Name or Phone', 'error');
             }
             setSearchQuery('');
             setLiveResults([]);
@@ -153,13 +185,18 @@ export function Header({ toggleMenu, userRole, setUserRole, setActiveTab, setGlo
                                         onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                                     >
                                         <div className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg transition-all"
-                                            style={{ background: 'var(--primary-soft)', color: 'var(--primary)' }}>
+                                            style={{ background: p.type === 'staff' ? 'rgba(139, 92, 246, 0.1)' : 'var(--primary-soft)', color: p.type === 'staff' ? '#8B5CF6' : 'var(--primary)' }}>
                                             {p.name.charAt(0)}
                                         </div>
                                         <div className="flex-1">
                                             <p className="font-bold text-sm" style={{ color: 'var(--text-main)' }}>{p.name}</p>
-                                            <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{p.id} • {p.phone}</p>
+                                            <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                                                {p.type === 'staff' ? `${p.staff_id || 'Staff'} • ${p.role}` : `${p.id} • ${p.phone}`}
+                                            </p>
                                         </div>
+                                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${p.type === 'staff' ? 'bg-purple-500/10 text-purple-500' : 'bg-primary/10 text-primary'}`}>
+                                            {p.type?.toUpperCase()}
+                                        </span>
                                     </div>
                                 ))}
                             </div>

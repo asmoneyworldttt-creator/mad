@@ -108,9 +108,11 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
         face_descriptor: null as any,
         assigned_location_id: '',
         assigned_location_type: 'default', // 'default', 'branch', 'custom'
-        custom_latitude: '',
-        custom_longitude: '',
-        custom_radius: 100
+        custom_latitude: '', custom_longitude: '', custom_radius: 100,
+        // Expanded Fields
+        whatsapp_number: '', gender: 'Male', dob: '', aadhar_pan: '', address: '',
+        bank_details: { acc_no: '', ifsc: '' },
+        role_details: { specialization: '', experience: '', shift: '', prev_exp: '', languages: '', computer_lit: '' }
     });
 
     const [clinicDetails, setClinicDetails] = useState({
@@ -241,7 +243,16 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
             custom_latitude: staffForm.assigned_location_type === 'custom' ? parseFloat(staffForm.custom_latitude) : null,
             custom_longitude: staffForm.assigned_location_type === 'custom' ? parseFloat(staffForm.custom_longitude) : null,
             custom_radius: staffForm.assigned_location_type === 'custom' ? staffForm.custom_radius : null,
-            assigned_location_type: staffForm.assigned_location_type
+            assigned_location_type: staffForm.assigned_location_type,
+            
+            // New Expanded Fields
+            whatsapp_number: staffForm.whatsapp_number,
+            gender: staffForm.gender,
+            dob: staffForm.dob || null,
+            aadhar_pan: staffForm.aadhar_pan,
+            address: staffForm.address,
+            bank_details: staffForm.bank_details,
+            role_details: staffForm.role_details
         };
 
         if (editingStaffId) {
@@ -298,7 +309,15 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
             assigned_location_type: staff.assigned_location_type || 'default',
             custom_latitude: staff.custom_latitude?.toString() || '',
             custom_longitude: staff.custom_longitude?.toString() || '',
-            custom_radius: staff.custom_radius || 100
+            custom_radius: staff.custom_radius || 100,
+
+            whatsapp_number: staff.whatsapp_number || '',
+            gender: staff.gender || 'Male',
+            dob: staff.dob || '',
+            aadhar_pan: staff.aadhar_pan || '',
+            address: staff.address || '',
+            bank_details: staff.bank_details || { acc_no: '', ifsc: '' },
+            role_details: staff.role_details || { specialization: '', experience: '', shift: '', prev_exp: '', languages: '', computer_lit: '' }
         });
         setEditingStaffId(staff.id);
         setView('onboard');
@@ -346,151 +365,234 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
-                        <div className="space-y-4">
-                            {/* Profile Photo Upload */}
-                            <div>
-                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 block">Profile Photo (for Face Recognition)</label>
-                                <div className="flex items-center gap-4 p-3 rounded-2xl border bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/10">
-                                    <div className={`w-14 h-14 rounded-xl border flex items-center justify-center overflow-hidden bg-white dark:bg-slate-800 shadow-inner ${faceDetectionStatus === 'success' ? 'border-emerald-500' : faceDetectionStatus === 'error' ? 'border-rose-500' : 'border-slate-200'}`}>
-                                        {staffForm.profile_photo_url ? (
-                                            <img src={staffForm.profile_photo_url} alt="Profile" className="w-full h-full object-cover" />
-                                        ) : (
-                                            <Users size={20} className="text-slate-400" />
-                                        )}
-                                    </div>
-                                    <div className="flex-1">
-                                        <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" id="photo-upload" />
-                                        <label htmlFor="photo-upload" className="inline-block px-3 py-1.5 border rounded-lg text-[10px] font-bold cursor-pointer bg-white hover:bg-slate-50 dark:bg-white/5 dark:hover:bg-white/10 transition-all shadow-sm">
-                                            Choose Image
-                                        </label>
-                                        {faceDetectionStatus !== 'idle' && (
-                                            <p className={`text-[8px] font-bold mt-1 ${faceDetectionStatus === 'success' ? 'text-emerald-500' : faceDetectionStatus === 'error' ? 'text-rose-500' : 'text-primary animate-pulse'}`}>
-                                                {faceDetectionMessage}
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-2 block">Full Name</label>
-                                <input
-                                    type="text"
-                                    value={staffForm.name}
-                                    onChange={e => setStaffForm({ ...staffForm, name: e.target.value })}
-                                    className={`w-full border rounded-xl px-4 py-3 text-xs font-bold outline-none transition-all focus:ring-2 ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white focus:border-primary/50 focus:ring-primary/10 shadow-inner' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-primary focus:ring-primary/10 shadow-inner'}`}
-                                    placeholder="Enter practitioner name"
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-2 block">Primary Email</label>
-                                    <input type="email" value={staffForm.email} onChange={e => setStaffForm({ ...staffForm, email: e.target.value })} className={`w-full border rounded-xl px-4 py-3 text-xs font-bold outline-none shadow-inner ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} />
-                                </div>
-                                <div>
-                                    <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-2 block">Mobile Contact</label>
-                                    <input type="text" value={staffForm.mobile} onChange={e => setStaffForm({ ...staffForm, mobile: e.target.value })} className={`w-full border rounded-xl px-4 py-3 text-xs font-bold outline-none shadow-inner ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-2 block">Designation</label>
-                                <CustomSelect 
-                                    value={staffForm.role} 
-                                    onChange={val => setStaffForm({ ...staffForm, role: val })}
-                                    options={[
-                                        'Associate Dentist',
-                                        'Specialist / Endodontist',
-                                        'Oral Surgeon',
-                                        'Orthodontist',
-                                        'Clinic Manager',
-                                        'Receptionist',
-                                        'Nursing Staff'
-                                    ]}
-                                />
-                            </div>
-
-                            {/* Work Location Assignment */}
-                            <div>
-                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-2 block">Working Location Assignment</label>
-                                <div className="space-y-2">
-                                    <div className="flex items-center gap-2">
-                                        <input 
-                                            type="radio" name="location_type" id="loc_default"
-                                            checked={staffForm.assigned_location_type === 'default'}
-                                            onChange={() => setStaffForm({...staffForm, assigned_location_type: 'default', assigned_location_id: ''})}
-                                        />
-                                        <label htmlFor="loc_default" className="text-[10px] font-bold text-slate-600 dark:text-slate-300">Use Saved Default Location</label>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <input 
-                                            type="radio" name="location_type" id="loc_branch"
-                                            checked={staffForm.assigned_location_type === 'branch'}
-                                            onChange={() => setStaffForm({...staffForm, assigned_location_type: 'branch'})}
-                                        />
-                                        <label htmlFor="loc_branch" className="text-[10px] font-bold text-slate-600 dark:text-slate-300">Assign Branch Node</label>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <input 
-                                            type="radio" name="location_type" id="loc_custom"
-                                            checked={staffForm.assigned_location_type === 'custom'}
-                                            onChange={() => setStaffForm({...staffForm, assigned_location_type: 'custom', assigned_location_id: ''})}
-                                        />
-                                        <label htmlFor="loc_custom" className="text-[10px] font-bold text-slate-600 dark:text-slate-300">Custom GPS Coordinates</label>
-                                    </div>
-                                </div>
-
-                                {staffForm.assigned_location_type === 'branch' && (
-                                    <div className="mt-2">
-                                        <CustomSelect 
-                                            value={staffForm.assigned_location_id}
-                                            onChange={val => setStaffForm({...staffForm, assigned_location_id: val})}
-                                            options={branches.map(b => ({ value: b.id.toString(), label: b.name }))}
-                                        />
-                                    </div>
-                                )}
-
-                                {staffForm.assigned_location_type === 'custom' && (
-                                    <div className="mt-2 space-y-2">
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <input type="text" placeholder="Lat" value={staffForm.custom_latitude} onChange={e => setStaffForm({...staffForm, custom_latitude: e.target.value})} className="border rounded-lg px-3 py-2 text-xs font-bold bg-slate-50 border-slate-200" />
-                                            <input type="text" placeholder="Lng" value={staffForm.custom_longitude} onChange={e => setStaffForm({...staffForm, custom_longitude: e.target.value})} className="border rounded-lg px-3 py-2 text-xs font-bold bg-slate-50 border-slate-200" />
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <input type="range" min={10} max={300} step={10} value={staffForm.custom_radius} onChange={e => setStaffForm({...staffForm, custom_radius: parseInt(e.target.value)})} className="flex-1 accent-primary" />
-                                            <span className="text-xs font-black text-primary">{staffForm.custom_radius}m</span>
+                                <div className="space-y-4">
+                                    <h5 className="text-[10px] font-bold text-primary uppercase tracking-wider border-b pb-1">Common Details</h5>
+                                    
+                                    {/* Profile Photo Upload */}
+                                    <div>
+                                        <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 block">Profile Photo (for Face Recognition)</label>
+                                        <div className="flex items-center gap-4 p-3 rounded-2xl border bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/10">
+                                            <div className={`w-14 h-14 rounded-xl border flex items-center justify-center overflow-hidden bg-white dark:bg-slate-800 shadow-inner ${faceDetectionStatus === 'success' ? 'border-emerald-500' : faceDetectionStatus === 'error' ? 'border-rose-500' : 'border-slate-200'}`}>
+                                                {staffForm.profile_photo_url ? (
+                                                    <img src={staffForm.profile_photo_url} alt="Profile" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <Users size={20} className="text-slate-400" />
+                                                )}
+                                            </div>
+                                            <div className="flex-1">
+                                                <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" id="photo-upload" />
+                                                <label htmlFor="photo-upload" className="inline-block px-3 py-1.5 border rounded-lg text-[10px] font-bold cursor-pointer bg-white hover:bg-slate-50 dark:bg-white/5 dark:hover:bg-white/10 transition-all shadow-sm">
+                                                    Choose Image
+                                                </label>
+                                                {faceDetectionStatus !== 'idle' && (
+                                                    <p className={`text-[8px] font-bold mt-1 ${faceDetectionStatus === 'success' ? 'text-emerald-500' : faceDetectionStatus === 'error' ? 'text-rose-500' : 'text-primary animate-pulse'}`}>
+                                                        {faceDetectionMessage}
+                                                    </p>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
-                                )}
-                            </div>
-                        </div>
 
-                        <div className="space-y-4">
-                            <div>
-                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-2 block">Security Clearance (RBAC)</label>
-                                <div className={`grid grid-cols-2 gap-2 p-4 rounded-2xl border shadow-inner ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-100'}`}>
-                                    {Object.entries(staffForm.permissions).map(([key, val]) => (
-                                        <button
-                                            key={key}
-                                            onClick={() => setStaffForm({ ...staffForm, permissions: { ...staffForm.permissions, [key]: !val } })}
-                                            className={`flex items-center justify-between p-2.5 rounded-lg border text-[8px] font-bold uppercase tracking-tight transition-all shadow-sm ${val ? 'bg-primary text-white border-primary shadow-primary/20' : 'bg-white/50 border-transparent text-slate-400'}`}
-                                        >
-                                            {key}
-                                            <div className={`w-1.5 h-1.5 rounded-full ${val ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'bg-slate-300'}`} />
-                                        </button>
-                                    ))}
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Full Name</label>
+                                            <input type="text" value={staffForm.name} onChange={e => setStaffForm({ ...staffForm, name: e.target.value })} className={`w-full border rounded-xl px-3 py-2 text-xs font-bold outline-none ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder="Enter legal name" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Gender</label>
+                                            <CustomSelect value={staffForm.gender} onChange={val => setStaffForm({ ...staffForm, gender: val })} options={['Male', 'Female', 'Other']} />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Date of Birth</label>
+                                            <input type="date" value={staffForm.dob} onChange={e => setStaffForm({ ...staffForm, dob: e.target.value })} className={`w-full border rounded-xl px-3 py-2 text-xs font-bold outline-none ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200'}`} />
+                                        </div>
+                                        <div>
+                                            <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Mobile Contact</label>
+                                            <input type="text" value={staffForm.mobile} onChange={e => setStaffForm({ ...staffForm, mobile: e.target.value })} className={`w-full border rounded-xl px-3 py-2 text-xs font-bold ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50'}`} />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">WhatsApp Number</label>
+                                            <input type="text" value={staffForm.whatsapp_number} onChange={e => setStaffForm({ ...staffForm, whatsapp_number: e.target.value })} className={`w-full border rounded-xl px-3 py-2 text-xs font-bold ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50'}`} />
+                                        </div>
+                                        <div>
+                                            <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Primary Email</label>
+                                            <input type="email" value={staffForm.email} onChange={e => setStaffForm({ ...staffForm, email: e.target.value })} className={`w-full border rounded-xl px-3 py-2 text-xs font-bold ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50'}`} />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Aadhar / PAN Number</label>
+                                            <input type="text" value={staffForm.aadhar_pan} onChange={e => setStaffForm({ ...staffForm, aadhar_pan: e.target.value })} className={`w-full border rounded-xl px-3 py-2 text-xs font-bold ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50'}`} />
+                                        </div>
+                                        <div>
+                                            <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Designation</label>
+                                            <CustomSelect value={staffForm.role} onChange={val => setStaffForm({ ...staffForm, role: val })} options={['Associate Dentist', 'Specialist / Endodontist', 'Oral Surgeon', 'Orthodontist', 'Clinic Manager', 'Receptionist', 'Nursing Staff']} />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Physical Address</label>
+                                        <textarea value={staffForm.address} onChange={e => setStaffForm({ ...staffForm, address: e.target.value })} className={`w-full border rounded-xl px-3 py-2 text-xs font-bold ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50'}`} rows={2} />
+                                    </div>
+
+                                    <h5 className="text-[10px] font-bold text-primary uppercase tracking-wider border-b pb-1 mt-6">Bank Account Details</h5>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Account Number</label>
+                                            <input type="text" value={staffForm.bank_details.acc_no} onChange={e => setStaffForm({ ...staffForm, bank_details: { ...staffForm.bank_details, acc_no: e.target.value } })} className={`w-full border rounded-xl px-3 py-2 text-xs font-bold ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50'}`} />
+                                        </div>
+                                        <div>
+                                            <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">IFSC Code</label>
+                                            <input type="text" value={staffForm.bank_details.ifsc} onChange={e => setStaffForm({ ...staffForm, bank_details: { ...staffForm.bank_details, ifsc: e.target.value } })} className={`w-full border rounded-xl px-3 py-2 text-xs font-bold ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50'}`} />
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-2 block">DCI License #</label>
-                                    <input type="text" value={staffForm.license_number} onChange={e => setStaffForm({ ...staffForm, license_number: e.target.value })} className={`w-full border rounded-xl px-4 py-3 text-xs font-bold outline-none shadow-inner ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} />
+
+                                <div className="space-y-4">
+                                    <h5 className="text-[10px] font-bold text-primary uppercase tracking-wider border-b pb-1">Role-Specific Requirements</h5>
+
+                                    {/* 1. Doctors / Specialists */}
+                                    {['Associate Dentist', 'Specialist / Endodontist', 'Oral Surgeon', 'Orthodontist'].includes(staffForm.role) && (
+                                        <div className="space-y-3 animate-slide-up">
+                                            <div>
+                                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">DCI License Number</label>
+                                                <input type="text" value={staffForm.license_number} onChange={e => setStaffForm({ ...staffForm, license_number: e.target.value })} className={`w-full border rounded-xl px-3 py-2 text-xs font-bold ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50'}`} />
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Qualification</label>
+                                                    <CustomSelect value={staffForm.qualifications} onChange={val => setStaffForm({ ...staffForm, qualifications: val })} options={['BDS', 'MDS', 'Other']} />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Specialization</label>
+                                                    <input type="text" value={staffForm.role_details.specialization} onChange={e => setStaffForm({ ...staffForm, role_details: { ...staffForm.role_details, specialization: e.target.value } })} className={`w-full border rounded-xl px-3 py-2 text-xs font-bold ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50'}`} placeholder="Orthodontics, Endodontics" />
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Experience (Years)</label>
+                                                    <input type="text" value={staffForm.role_details.experience} onChange={e => setStaffForm({ ...staffForm, role_details: { ...staffForm.role_details, experience: e.target.value } })} className={`w-full border rounded-xl px-3 py-2 text-xs font-bold ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50'}`} />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Shift Timings</label>
+                                                    <input type="text" value={staffForm.role_details.shift} onChange={e => setStaffForm({ ...staffForm, role_details: { ...staffForm.role_details, shift: e.target.value } })} className={`w-full border rounded-xl px-3 py-2 text-xs font-bold ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50'}`} placeholder="9 AM - 4 PM" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 2. Nursing Staff */}
+                                    {staffForm.role === 'Nursing Staff' && (
+                                        <div className="space-y-3 animate-slide-up">
+                                            <div>
+                                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Nursing License Number</label>
+                                                <input type="text" value={staffForm.license_number} onChange={e => setStaffForm({ ...staffForm, license_number: e.target.value })} className={`w-full border rounded-xl px-3 py-2 text-xs font-bold ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50'}`} />
+                                            </div>
+                                            <div>
+                                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Previous Clinic Experience</label>
+                                                <textarea value={staffForm.role_details.prev_exp} onChange={e => setStaffForm({ ...staffForm, role_details: { ...staffForm.role_details, prev_exp: e.target.value } })} className={`w-full border rounded-xl px-3 py-2 text-xs font-bold ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50'}`} rows={2} />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 3. Management staff */}
+                                    {['Clinic Manager', 'Receptionist'].includes(staffForm.role) && (
+                                        <div className="space-y-3 animate-slide-up">
+                                            <div>
+                                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Languages Known</label>
+                                                <input type="text" value={staffForm.role_details.languages} onChange={e => setStaffForm({ ...staffForm, role_details: { ...staffForm.role_details, languages: e.target.value } })} className={`w-full border rounded-xl px-3 py-2 text-xs font-bold ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50'}`} placeholder="English, Hindi, Tamil" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Computer Literacy / Software Knowledge</label>
+                                                <input type="text" value={staffForm.role_details.computer_lit} onChange={e => setStaffForm({ ...staffForm, role_details: { ...staffForm.role_details, computer_lit: e.target.value } })} className={`w-full border rounded-xl px-3 py-2 text-xs font-bold ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50'}`} placeholder="Excel, Word, EHR Systems" />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Work Location Assignment */}
+                                    <div className="pt-4 border-t border-slate-100 dark:border-white/5">
+                                        <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-2 block">Working Location Assignment (Attendance Geofencing)</label>
+                                        <div className="space-y-2">
+                                            <div className="flex items-center gap-2">
+                                                <input 
+                                                    type="radio" name="location_type" id="loc_default"
+                                                    checked={staffForm.assigned_location_type === 'default'}
+                                                    onChange={() => setStaffForm({...staffForm, assigned_location_type: 'default', assigned_location_id: ''})}
+                                                />
+                                                <label htmlFor="loc_default" className="text-[10px] font-bold text-slate-600 dark:text-slate-300">Use Saved Default Location</label>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <input 
+                                                    type="radio" name="location_type" id="loc_branch"
+                                                    checked={staffForm.assigned_location_type === 'branch'}
+                                                    onChange={() => setStaffForm({...staffForm, assigned_location_type: 'branch'})}
+                                                />
+                                                <label htmlFor="loc_branch" className="text-[10px] font-bold text-slate-600 dark:text-slate-300">Assign Branch Node</label>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <input 
+                                                    type="radio" name="location_type" id="loc_custom"
+                                                    checked={staffForm.assigned_location_type === 'custom'}
+                                                    onChange={() => setStaffForm({...staffForm, assigned_location_type: 'custom', assigned_location_id: ''})}
+                                                />
+                                                <label htmlFor="loc_custom" className="text-[10px] font-bold text-slate-600 dark:text-slate-300">Custom GPS Coordinates</label>
+                                            </div>
+                                        </div>
+
+                                        {staffForm.assigned_location_type === 'branch' && (
+                                            <div className="mt-2">
+                                                <CustomSelect 
+                                                    value={staffForm.assigned_location_id}
+                                                    onChange={val => setStaffForm({...staffForm, assigned_location_id: val})}
+                                                    options={branches.map(b => ({ value: b.id.toString(), label: b.name }))}
+                                                />
+                                            </div>
+                                        )}
+
+                                        {staffForm.assigned_location_type === 'custom' && (
+                                            <div className="mt-2 space-y-2">
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <input type="text" placeholder="Lat" value={staffForm.custom_latitude} onChange={e => setStaffForm({...staffForm, custom_latitude: e.target.value})} className={`border rounded-xl px-3 py-2 text-xs font-bold ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200'}`} />
+                                                    <input type="text" placeholder="Lng" value={staffForm.custom_longitude} onChange={e => setStaffForm({...staffForm, custom_longitude: e.target.value})} className={`border rounded-xl px-3 py-2 text-xs font-bold ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200'}`} />
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <input type="range" min={10} max={300} step={10} value={staffForm.custom_radius} onChange={e => setStaffForm({...staffForm, custom_radius: parseInt(e.target.value)})} className="flex-1 accent-primary" />
+                                                    <span className="text-xs font-black text-primary">{staffForm.custom_radius}m</span>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="grid grid-cols-1 gap-3 mt-6">
+                                        <div>
+                                            <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1 block">Access Password</label>
+                                            <input type="password" value={staffForm.password} onChange={e => setStaffForm({ ...staffForm, password: e.target.value })} className={`w-full border rounded-xl px-3 py-2 text-xs font-bold outline-none shadow-inner ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} placeholder="Set secure login password" />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-2 block">Security Clearance (RBAC)</label>
+                                        <div className={`grid grid-cols-2 gap-1.5 p-3 rounded-xl border shadow-inner ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-100'}`}>
+                                            {Object.entries(staffForm.permissions).filter(([k]) => ['dashboard', 'appointments', 'patients', 'quickbills', 'emr', 'earnings', 'accounts', 'inventory', 'reports'].includes(k)).map(([key, val]) => (
+                                                <button
+                                                    key={key}
+                                                    onClick={() => setStaffForm({ ...staffForm, permissions: { ...staffForm.permissions, [key]: !val } })}
+                                                    className={`flex items-center justify-between p-2 rounded-lg border text-[8px] font-bold uppercase tracking-tight transition-all shadow-sm ${val ? 'bg-primary text-white border-primary shadow-primary/20' : 'bg-white/50 border-transparent text-slate-400'}`}
+                                                >
+                                                    {key}
+                                                    <div className={`w-1.5 h-1.5 rounded-full ${val ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'bg-slate-300'}`} />
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-2 block">Access Password</label>
-                                    <input type="password" value={staffForm.password} onChange={e => setStaffForm({ ...staffForm, password: e.target.value })} className={`w-full border rounded-xl px-4 py-3 text-xs font-bold outline-none shadow-inner ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} placeholder="Set secure key" />
-                                </div>
-                            </div>
-                        </div>
                     </div>
 
                     <div className="flex gap-4 mt-16 justify-end relative z-10">
@@ -640,7 +742,7 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
                                     </h3>
                                     <p className="text-[9px] font-medium opacity-60" style={{ color: 'var(--text-muted)' }}>Manage clinician roles and access.</p>
                                 </div>
-                                <button onClick={() => { setEditingStaffId(null); setStaffForm({ name: '', role: 'Associate Dentist', email: '', mobile: '', qualifications: '', degree: '', grad_year: '', license_number: '', password: '', permissions: { dashboard: true, appointments: true, 'doctor-calendar': true, patients: true, quickbills: false, emr: true, gallery: false, labwork: false, prescriptions: true, 'treatment-plans': true, soap: false, vitals: true, 'risk-score': true, 'voice-charting': false, reminders: true, earnings: false, accounts: false, inventory: false, suppliers: false, reports: false, tasks: false, 'team-hub': false, installments: false, 'consent-forms': false, loyalty: true, sterilization: false, 'equipment-log': false, 'operatory-status': false, 'perio-charting': false, 'recall-engine': false, 'waitlist-engine': false, resources: false, teledentistry: false, kiosk: false, settings: false }, profile_photo_url: '', face_descriptor: null as any, assigned_location_id: '', assigned_location_type: 'default', custom_latitude: '', custom_longitude: '', custom_radius: 100 }); setView('onboard'); }} className="bg-primary hover:scale-105 active:scale-95 text-white text-[8px] font-bold uppercase tracking-wider px-4 py-2 rounded-xl shadow-lg shadow-primary/20 transition-all flex items-center gap-1.5">
+                                <button onClick={() => { setEditingStaffId(null); setStaffForm({ name: '', role: 'Associate Dentist', email: '', mobile: '', qualifications: '', degree: '', grad_year: '', license_number: '', password: '', permissions: { dashboard: true, appointments: true, 'doctor-calendar': true, patients: true, quickbills: false, emr: true, gallery: false, labwork: false, prescriptions: true, 'treatment-plans': true, soap: false, vitals: true, 'risk-score': true, 'voice-charting': false, reminders: true, earnings: false, accounts: false, inventory: false, suppliers: false, reports: false, tasks: false, 'team-hub': false, installments: false, 'consent-forms': false, loyalty: true, sterilization: false, 'equipment-log': false, 'operatory-status': false, 'perio-charting': false, 'recall-engine': false, 'waitlist-engine': false, resources: false, teledentistry: false, kiosk: false, settings: false }, profile_photo_url: '', face_descriptor: null as any, assigned_location_id: '', assigned_location_type: 'default', custom_latitude: '', custom_longitude: '', custom_radius: 100, whatsapp_number: '', gender: 'Male', dob: '', aadhar_pan: '', address: '', bank_details: { acc_no: '', ifsc: '' }, role_details: { specialization: '', experience: '', shift: '', prev_exp: '', languages: '', computer_lit: '' } }); setView('onboard'); }} className="bg-primary hover:scale-105 active:scale-95 text-white text-[8px] font-bold uppercase tracking-wider px-4 py-2 rounded-xl shadow-lg shadow-primary/20 transition-all flex items-center gap-1.5">
                                     <Plus size={14} /> New Clinician
                                 </button>
                             </div>

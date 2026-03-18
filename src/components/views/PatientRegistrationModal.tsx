@@ -155,7 +155,8 @@ export function PatientRegistrationModal({ isOpen, onClose, onSuccess, onNavigat
         }
 
         setIsSaving(true);
-        const id = `PT-${crypto.randomUUID().split('-')[0].toUpperCase()}`;
+        const { data: generatedId, error: rpcError } = await supabase.rpc('generate_patient_id');
+        const id = !rpcError && generatedId ? generatedId : `PAT-${Date.now().toString().slice(-4)}`;
         const age = calcAge(identity.dob);
 
         const { error } = await supabase.from('patients').insert({
