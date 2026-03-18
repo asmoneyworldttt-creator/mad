@@ -27,6 +27,7 @@ const ALL_QUICK_LINKS = [
     { id: 'team-hub', icon: UserCog, label: 'Attendance', roles: ['master', 'admin', 'staff'] },
     { id: 'installments', icon: CreditCard, label: 'Installments', roles: ['master', 'admin', 'staff'] },
     { id: 'consent-forms', icon: FileSignature, label: 'Consents', roles: ['master', 'admin', 'staff'] },
+    { id: 'medical-clearance', icon: FileText, label: 'Medical Clearance', roles: ['master', 'admin', 'staff'] },
     { id: 'loyalty', icon: Gift, label: 'Loyalty', roles: ['master', 'admin', 'staff', 'patient'] },
     { id: 'sterilization', icon: Thermometer, label: 'Sterility', roles: ['master', 'admin', 'staff'] },
     { id: 'equipment-log', icon: Wrench, label: 'Equipment', roles: ['master', 'admin', 'staff'] },
