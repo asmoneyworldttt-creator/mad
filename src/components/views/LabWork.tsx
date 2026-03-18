@@ -198,6 +198,7 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
 
         const orderDataToSave = {
             patient_id: selectedPatient?.id,
+            patient_name: selectedPatient?.name || formData.patientSearch,
             vendor_name: formData.vendor || 'Unknown Lab',
             order_status: formData.financial.status || 'Pending',
             order_date: formData.orderDate,
