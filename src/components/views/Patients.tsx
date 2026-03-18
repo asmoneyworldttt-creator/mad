@@ -29,7 +29,7 @@ const DEFAULT_TREATMENTS = [
     "Immediate implant placement", "Healing abutment placement", "Implant crown / bridge", 
     "Sinus lift", "Ridge augmentation", "Removable orthodontic appliance", 
     "Fixed orthodontic treatment (Braces)", "Clear aligners", "Retainers", 
-    "Space maintainer", "Stainless steel crown (Primary teeth)", "Habit breaking appliance"
+    "Space maintainer", "Stainless steel crown (Primary teeth)", "Habit breaking appliance", "Normal scaling", "Deep scaling"
 ];
 
 const PatientCard = memo(function PatientCard({ p, onClick, theme }: { p: any; onClick: () => void; theme?: string }) {

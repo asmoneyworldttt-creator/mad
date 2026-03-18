@@ -96,7 +96,25 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
         }));
     }, [patientHistory]);
 
-    const standardTreatments = ['Scaling & Polishing', 'Composite Restoration', 'Root Canal Treatment', 'Crown (PFM)', 'Crown (Zirconia)', 'Tooth Extraction', 'Implant Placement', 'Teeth Whitening', 'Denture (Full)', 'Denture (Partial)', 'Orthodontic Treatment', 'Sealants', 'Fluoride Application', 'Bone Grafting', 'Sinus Lift', 'Gum Treatment (Flap Surgery)', 'Night Guard', 'Bleaching Tray', 'Veneer', 'Bridge (PFM)'];
+    const standardTreatments = [
+        'Oral examination', 'Periodontal charting', 'Pulp vitality testing', 
+        'Intraoral periapical radiograph (IOPA)', 'Bitewing radiograph', 'Occlusal radiograph', 
+        'Orthopantomogram (OPG)', 'CBCT', 'Study models / intraoral scan', 
+        'Oral prophylaxis (Scaling & polishing)', 'Fluoride therapy', 'Pit & fissure sealants', 
+        'Desensitization therapy', 'Oral hygiene instruction', 'Composite restoration', 
+        'Glass ionomer restoration', 'Temporary restoration', 'Core build-up', 'Post & core', 
+        'Pulpotomy', 'Pulpectomy', 'RCT – Started (Access opening + BMP initiated)', 
+        'Same RCT – Dressing / Cleaning & shaping visit', 'RCT – Completed (Obturation done)', 
+        'Retreatment RCT', 'Apexification', 'Apicoectomy', 'Scaling & root planing', 
+        'Gingivectomy', 'Flap surgery', 'Crown lengthening', 'Bone graft / GTR', 
+        'Simple extraction', 'Surgical extraction', 'Impacted tooth removal', 'Frenectomy', 
+        'Biopsy', 'Alveoloplasty', 'Crown (PFM / Zirconia / E-max)', 'Fixed partial denture (Bridge)', 
+        'Removable partial denture', 'Complete denture', 'Veneers', 'Full mouth rehabilitation', 
+        'Implant placement', 'Immediate implant placement', 'Healing abutment placement', 
+        'Implant crown / bridge', 'Sinus lift', 'Ridge augmentation', 'Removable orthodontic appliance', 
+        'Fixed orthodontic treatment (Braces)', 'Clear aligners', 'Retainers', 'Space maintainer', 
+        'Stainless steel crown (Primary teeth)', 'Habit breaking appliance', 'Normal scaling', 'Deep scaling'
+    ];
     const standardLabs = ['Crown', 'Bridge', 'Precision Denture', 'Inlay', 'Onlay', 'Veneer', 'Post & Core', 'Denture', 'Bite Block', 'Special Tray', 'Bleaching Tray', 'Night Guard'];
 
     const treatmentCounts = useMemo(() => {
@@ -1446,10 +1464,10 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Advised Treatments</label>
                                     <div className="flex gap-2">
                                         <input type="text" placeholder="Tooth #" value={newAdvice.tooth} onChange={e => setNewAdvice({ ...newAdvice, tooth: e.target.value })} className="w-20 px-3 py-2 text-xs font-bold bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none" />
-                                        <input type="text" list="advised-treatments-list" placeholder="Advised Treatment, e.g., RCT" value={newAdvice.treatment} onChange={e => setNewAdvice({ ...newAdvice, treatment: e.target.value })} className="flex-1 px-3 py-2 text-xs font-bold bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none" />
-                                        <datalist id="advised-treatments-list">
-                                            {standardTreatments.map((t, i) => <option key={i} value={t} />)}
-                                        </datalist>
+                                        <select value={newAdvice.treatment} onChange={e => setNewAdvice({ ...newAdvice, treatment: e.target.value })} className="flex-1 px-3 py-2 text-xs font-bold bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none">
+                                            <option value="">Select Treatment...</option>
+                                            {standardTreatments.map((t, i) => <option key={i} value={t}>{t}</option>)}
+                                        </select>
                                         <button onClick={() => {
                                             if (newAdvice.tooth && newAdvice.treatment) {
                                                 setAdvisedTreatments([...advisedTreatments, newAdvice]);
@@ -1514,10 +1532,10 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Treatment Done</label>
                                     <div className="flex gap-2">
                                         <input type="text" placeholder="Tooth #" value={newTreatmentDone.tooth} onChange={e => setNewTreatmentDone({ ...newTreatmentDone, tooth: e.target.value })} className="w-20 px-3 py-2 text-xs font-bold bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none" />
-                                        <input type="text" list="done-treatments-list" placeholder="Treatment, e.g., Scaling" value={newTreatmentDone.treatment} onChange={e => setNewTreatmentDone({ ...newTreatmentDone, treatment: e.target.value })} className="flex-1 px-3 py-2 text-xs font-bold bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none" />
-                                        <datalist id="done-treatments-list">
-                                            {standardTreatments.map((t, i) => <option key={i} value={t} />)}
-                                        </datalist>
+                                        <select value={newTreatmentDone.treatment} onChange={e => setNewTreatmentDone({ ...newTreatmentDone, treatment: e.target.value })} className="flex-1 px-3 py-2 text-xs font-bold bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none">
+                                            <option value="">Select Treatment...</option>
+                                            {standardTreatments.map((t, i) => <option key={i} value={t}>{t}</option>)}
+                                        </select>
                                         <select value={newTreatmentDone.status} onChange={e => setNewTreatmentDone({ ...newTreatmentDone, status: e.target.value })} className="px-2 py-1 text-[10px] font-bold bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-lg outline-none">
                                             <option value="Completed">Completed</option><option value="Pending">Pending</option><option value="In Progress">In Progress</option>
                                         </select>
