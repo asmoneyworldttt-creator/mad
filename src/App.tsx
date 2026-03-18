@@ -33,12 +33,12 @@ const Tasks = lazy(() => import('./components/views/Tasks').then(m => ({ default
 const TeamHub = lazy(() => import('./components/views/TeamHub').then(m => ({ default: m.TeamHub })));
 const InstallmentPlans = lazy(() => import('./components/views/InstallmentPlans').then(m => ({ default: m.InstallmentPlans })));
 const ConsentForms = lazy(() => import('./components/views/ConsentForms').then(m => ({ default: m.ConsentForms })));
+const MedicalClearance = lazy(() => import('./components/views/MedicalClearance').then(m => ({ default: m.MedicalClearance })));
 const SterilizationTracker = lazy(() => import('./components/views/SterilizationTracker').then(m => ({ default: m.SterilizationTracker })));
 const KioskMode = lazy(() => import('./components/views/KioskMode').then(m => ({ default: m.KioskMode })));
 const ResourceCalendar = lazy(() => import('./components/views/ResourceCalendar').then(m => ({ default: m.ResourceCalendar })));
 const LoyaltyHub = lazy(() => import('./components/views/LoyaltyHub').then(m => ({ default: m.LoyaltyHub })));
 const TreatmentPlans = lazy(() => import('./components/views/TreatmentPlans').then(m => ({ default: m.TreatmentPlans })));
-const ReminderCenter = lazy(() => import('./components/views/ReminderCenter').then(m => ({ default: m.ReminderCenter })));
 const MasterPanel = lazy(() => import('./components/views/MasterPanel').then(m => ({ default: m.MasterPanel })));
 const AdminPanel = lazy(() => import('./components/views/AdminPanel').then(m => ({ default: m.AdminPanel })));
 const DoctorPanel = lazy(() => import('./components/views/DoctorPanel').then(m => ({ default: m.DoctorPanel })));
@@ -47,16 +47,10 @@ const DoctorCalendar = lazy(() => import('./components/views/DoctorCalendar').th
 const EquipmentLog = lazy(() => import('./components/views/EquipmentLog').then(m => ({ default: m.EquipmentLog })));
 const SupplierManagement = lazy(() => import('./components/views/SupplierManagement').then(m => ({ default: m.SupplierManagement })));
 const TeleDentistry = lazy(() => import('./components/views/TeleDentistry').then(m => ({ default: m.TeleDentistry })));
-const OperatoryStatus = lazy(() => import('./components/views/OperatoryStatus').then(m => ({ default: m.OperatoryStatus })));
 const PerioCharting = lazy(() => import('./components/views/PerioCharting').then(m => ({ default: m.PerioCharting })));
-const RecallEngine = lazy(() => import('./components/views/RecallEngine').then(m => ({ default: m.RecallEngine })));
-const WaitlistEngine = lazy(() => import('./components/views/WaitlistEngine').then(m => ({ default: m.WaitlistEngine })));
 const LockOutScreen = lazy(() => import('./components/views/LockOutScreen').then(m => ({ default: m.LockOutScreen })));
 const ClinicalNotes = lazy(() => import('./components/views/ClinicalNotes').then(m => ({ default: m.ClinicalNotes })));
 const VitalSignsPanel = lazy(() => import('./components/views/VitalSignsPanel').then(m => ({ default: m.VitalSignsPanel })));
-const DentalRiskScore = lazy(() => import('./components/views/DentalRiskScore').then(m => ({ default: m.DentalRiskScore })));
-const PhotoGallery = lazy(() => import('./components/views/PhotoGallery').then(m => ({ default: m.PhotoGallery })));
-const VoiceCharting = lazy(() => import('./components/views/VoiceCharting').then(m => ({ default: m.VoiceCharting })));
 
 type UserRole = 'master' | 'admin' | 'staff' | 'patient';
 
@@ -298,14 +292,11 @@ function App() {
       labwork: 'Lab Orders', earnings: 'Finance & Payroll', accounts: 'Accounts',
       inventory: 'Inventory', reports: 'Reports', settings: 'Settings',
       profile: 'My Profile', tasks: 'Tasks', 'team-hub': 'Staff Management',
-      installments: 'Installments', 'consent-forms': 'Consent Forms',
+      installments: 'Installments', 'consent-forms': 'Consent Forms', 'medical-clearance': 'Medical Clearance',
       sterilization: 'Sterilization', 'equipment-log': 'Equipment', kiosk: 'Kiosk Mode',
       loyalty: 'Loyalty Hub', resources: 'Resources', 'treatment-plans': 'Treatment Plans',
-      reminders: 'Reminders', teledentistry: 'TeleDentistry', 'operatory-status': 'Live Rooms',
-      'perio-charting': 'Perio Charting', 'recall-engine': 'Recall Engine',
-      'waitlist-engine': 'Waitlist', 'doctor-calendar': 'Doctor Schedule', suppliers: 'Suppliers',
-      'clinical-notes': 'SOAP Notes', 'vital-signs': 'Vital Signs', 'risk-score': 'Dental Risk Score',
-      'photo-gallery': 'Clinical Gallery', 'voice-charting': 'Voice Commands',
+      teledentistry: 'TeleDentistry', 'perio-charting': 'Perio Charting', 'doctor-calendar': 'Doctor Schedule', suppliers: 'Suppliers',
+      'clinical-notes': 'SOAP Notes', 'vital-signs': 'Vital Signs'
     };
     document.title = `Dentora — ${titles[activeTab] || 'Dental Management'}`;
   }, [activeTab]);
@@ -357,6 +348,8 @@ function App() {
         return <InstallmentPlans userRole={userRole} theme={theme} />;
       case 'consent-forms':
         return <ConsentForms userRole={userRole} theme={theme} />;
+      case 'medical-clearance':
+        return <MedicalClearance userRole={userRole} theme={theme} />;
       case 'sterilization':
         return <SterilizationTracker userRole={userRole} theme={theme} />;
       case 'equipment-log':
@@ -369,28 +362,14 @@ function App() {
         return <ResourceCalendar userRole={userRole} theme={theme} />;
       case 'treatment-plans':
         return <TreatmentPlans userRole={userRole} setActiveTab={setActiveTab} theme={theme} />;
-      case 'reminders':
-        return <ReminderCenter userRole={userRole} theme={theme} />;
       case 'teledentistry':
         return <TeleDentistry theme={theme} />;
-      case 'operatory-status':
-        return <OperatoryStatus theme={theme} />;
       case 'perio-charting':
         return <PerioCharting theme={theme} />;
-      case 'recall-engine':
-        return <RecallEngine setActiveTab={setActiveTab} theme={theme} />;
-      case 'waitlist-engine':
-        return <WaitlistEngine theme={theme} />;
       case 'soap':
         return <ClinicalNotes patientId={globalPatient?.id} theme={theme} />;
       case 'vitals':
         return <VitalSignsPanel patient={globalPatient} theme={theme} />;
-      case 'risk-score':
-        return <DentalRiskScore patient={globalPatient} toothChartData={globalPatient?.tooth_chart_data || {}} vitals={[]} theme={theme} />;
-      case 'gallery':
-        return <PhotoGallery patientId={globalPatient?.id} theme={theme} />;
-      case 'voice-charting':
-        return <div className="p-8 max-w-2xl mx-auto"><h2 className="text-xl font-bold mb-4">Voice Command Playground</h2><VoiceCharting onTranscript={(t) => console.log(t)} currentText="" theme={theme} /></div>;
       case 'notifications':
         return <NotificationModal isOpen={true} onClose={() => setActiveTab('dashboard')} theme={theme} />;
       case 'patient-registration':

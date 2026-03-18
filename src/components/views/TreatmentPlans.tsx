@@ -1,11 +1,12 @@
 
 import { useState, useEffect } from 'react';
-import { Plus, ChevronRight, CheckCircle2, Clock, Trash2, Save, ArrowLeft, Search, Calendar, Zap, BadgePercent } from 'lucide-react';
+import { Plus, ChevronRight, CheckCircle2, Clock, Trash2, Save, ArrowLeft, Search, Calendar, Zap, BadgePercent, Download, MessageSquareMore as MessageCircle } from 'lucide-react';
 import { supabase } from '../../supabase';
 import { useToast } from '../Toast';
 import { Modal } from '../Modal';
 import { CustomSelect } from '../ui/CustomControls';
 import { ToothChart } from '../ui/ToothChart';
+import { downloadTreatmentPlanPDF } from '../../utils/pdfExport';
 
 type UserRole = 'master' | 'admin' | 'staff' | 'patient';
 const formatINR = (v: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(v);
@@ -275,6 +276,29 @@ export function TreatmentPlans({ userRole, theme, setActiveTab }: { userRole: Us
                         options={['Draft', 'Active', 'Completed', 'Cancelled']}
                         className="w-40"
                     />
+                    <button onClick={() => downloadTreatmentPlanPDF({
+                        patientName: selectedPlan.patients?.name || 'Patient',
+                        patientPhone: selectedPlan.patients?.phone || '',
+                        planTitle: selectedPlan.title,
+                        date: selectedPlan.created_at || new Date().toISOString(),
+                        items: planItems.map(i => ({ treatment_name: i.treatment_name, tooth_reference: i.tooth_reference, cost: i.cost, status: i.status })),
+                        totalCost: selectedPlan.total_cost,
+                        discountAmount: selectedPlan.metadata?.discount_amount
+                    })} className={`p-3 rounded-2xl border transition-all ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`} aria-label="Download PDF"><Download size={18} /></button>
+
+                    <button onClick={() => {
+                        const message = `*Treatment Plan Summary*\n\n` +
+                            `Patient: ${selectedPlan.patients?.name || 'Valued Patient'}\n` +
+                            `Title: ${selectedPlan.title}\n` +
+                            `Total Estimated: ${formatINR(selectedPlan.total_cost)}\n\n` +
+                            `*Items:*\n` +
+                            planItems.map(i => `- ${i.treatment_name} (${i.tooth_reference || 'General'}): ${formatINR(i.cost)}`).join('\n') +
+                            `\n\n_Powered by Dentora_`;
+                        const phone = selectedPlan.patients?.phone?.replace(/\D/g, '');
+                        if (phone) window.open(`https://wa.me/91${phone}?text=${encodeURIComponent(message)}`, '_blank');
+                        else showToast('Patient has no valid phone number saved.', 'error');
+                    }} className="p-3 rounded-2xl border bg-emerald-500 text-white transition-all shadow-xl shadow-emerald-500/10 active:scale-95" aria-label="Share WhatsApp"><MessageCircle size={18} /></button>
+
                     <button onClick={() => { setPlanToDelete(selectedPlan.id); setShowDeleteModal(true); }} className="p-3 rounded-2xl border transition-all" style={{ background: 'var(--red-soft)', borderColor: 'var(--red-subtle)', color: 'var(--error)' }}><Trash2 size={18} /></button>
                 </div>
 

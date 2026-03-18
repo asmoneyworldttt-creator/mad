@@ -39,6 +39,7 @@ import {
     downloadTreatmentPlanPDF, 
     downloadLabOrderPDF,
     downloadPrescriptionPDF,
+    downloadMedicalClearancePDF,
     type TreatmentPlanData
 } from '../../utils/pdfExport';
 
@@ -59,16 +60,22 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
     const [patientNotes, setPatientNotes] = useState<any[]>([]);
     const [patientVitals, setPatientVitals] = useState<any[]>([]);
     const [patientConsents, setPatientConsents] = useState<any[]>([]);
+    const [patientMedicalClearances, setPatientMedicalClearances] = useState<any[]>([]);
     const [patientHistory, setPatientHistory] = useState<any[]>([]);
     const [isLoadingData, setIsLoadingData] = useState(false);
-    const [clinicalSubTab, setClinicalSubTab] = useState<'soap' | 'vitals' | 'consents'>('soap');
+    const [clinicalSubTab, setClinicalSubTab] = useState<'soap' | 'vitals' | 'consents' | 'medical_clearance'>('soap');
     
     // SOAP Note Modal State
     const [isSoapModalOpen, setIsSoapModalOpen] = useState(false);
     const [newNote, setNewNote] = useState({ subjective: '', objective: '', assessment: '', plan: '', doctor_name: 'Dr. Sarah Jenkins' });
     const [isSavingNote, setIsSavingNote] = useState(false);
     const [advisedTreatments, setAdvisedTreatments] = useState<{ tooth: string, treatment: string }[]>([]);
+    const [advisedLabOrders, setAdvisedLabOrders] = useState<{ tooth: string, item: string }[]>([]);
     const [newAdvice, setNewAdvice] = useState({ tooth: '', treatment: '' });
+    const [newLabAdvice, setNewLabAdvice] = useState({ tooth: '', item: '' });
+
+    const standardTreatments = ['Scaling & Polishing', 'Composite Restoration', 'Root Canal Treatment', 'Crown (PFM)', 'Crown (Zirconia)', 'Tooth Extraction', 'Implant Placement', 'Teeth Whitening', 'Denture (Full)', 'Denture (Partial)', 'Orthodontic Treatment', 'Sealants', 'Fluoride Application', 'Bone Grafting', 'Sinus Lift', 'Gum Treatment (Flap Surgery)', 'Night Guard', 'Bleaching Tray', 'Veneer', 'Bridge (PFM)'];
+    const standardLabs = ['Crown', 'Bridge', 'Precision Denture', 'Inlay', 'Onlay', 'Veneer', 'Post & Core', 'Denture', 'Bite Block', 'Special Tray', 'Bleaching Tray', 'Night Guard'];
 
     const treatmentCounts = useMemo(() => {
         if (!patientHistory) return {};
@@ -92,6 +99,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
             { data: notes },
             { data: vitals },
             { data: consents },
+            { data: medClearances },
             { data: history }
         ] = await Promise.all([
             supabase.from('bills').select('*').eq('patient_id', patient.id).order('date', { ascending: false }),
@@ -101,6 +109,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
             supabase.from('clinical_notes').select('*').eq('patient_id', patient.id).order('created_at', { ascending: false }),
             supabase.from('vital_signs').select('*').eq('patient_id', patient.id).order('recorded_at', { ascending: false }),
             supabase.from('consent_forms').select('*').eq('patient_id', patient.id).order('created_at', { ascending: false }),
+            supabase.from('medical_clearances').select('*').eq('patient_id', patient.id).order('created_at', { ascending: false }),
             supabase.from('patient_history').select('*').eq('patient_id', patient.id).order('date', { ascending: false })
         ]);
 
@@ -121,6 +130,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
         setPatientNotes(notes || []);
         setPatientVitals(vitals || []);
         setPatientConsents(consents || []);
+        setPatientMedicalClearances(medClearances || []);
         setPatientHistory(history || []);
         setIsLoadingData(false);
     };
@@ -151,6 +161,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
             .on('postgres_changes', { event: '*', schema: 'public', table: 'clinical_notes', filter: `patient_id=eq.${patient.id}` }, fetchData)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'vital_signs', filter: `patient_id=eq.${patient.id}` }, fetchData)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'consent_forms', filter: `patient_id=eq.${patient.id}` }, fetchData)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'medical_clearances', filter: `patient_id=eq.${patient.id}` }, fetchData)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'prescriptions', filter: `patient_id=eq.${patient.id}` }, fetchData)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'patient_history', filter: `patient_id=eq.${patient.id}` }, fetchData)
             .subscribe();
@@ -161,41 +172,68 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
     }, [patient.id]);
 
     const handleSaveNote = async () => {
-        if (!newNote.subjective && !newNote.objective && !newNote.assessment && !newNote.plan && advisedTreatments.length === 0) {
+        if (!newNote.subjective && !newNote.objective && !newNote.assessment && !newNote.plan && advisedTreatments.length === 0 && advisedLabOrders.length === 0) {
             return; // Needs content
         }
         setIsSavingNote(true);
         const planData = JSON.stringify({
             text: newNote.plan,
-            advised: advisedTreatments
+            advised: advisedTreatments,
+            advised_labs: advisedLabOrders
         });
 
-        const { error } = await supabase.from('clinical_notes').insert({
+        const { data: noteData, error: noteError } = await supabase.from('clinical_notes').insert({
             patient_id: patient.id,
             subjective: newNote.subjective,
             objective: newNote.objective,
             assessment: newNote.assessment,
             plan: planData,
             doctor_name: newNote.doctor_name
+        }).select('id').single();
+
+        if (noteError) {
+            showToast(noteError.message, 'error');
+            setIsSavingNote(false);
+            return;
+        }
+
+        // AUTO SYNC TO TREATMENT plan if treatments advised
+        if (advisedTreatments.length > 0) {
+            const { data: planData, error: planError } = await supabase.from('treatment_plans').insert({
+                patient_id: patient.id,
+                title: `Plan from Note - ${new Date().toLocaleDateString()}`,
+                status: 'Draft',
+                total_cost: 0,
+                paid_amount: 0
+            }).select('id').single();
+
+            if (!planError && planData) {
+                const items = advisedTreatments.map(a => ({
+                    plan_id: planData.id,
+                    treatment_name: a.treatment,
+                    tooth_reference: a.tooth,
+                    cost: 0,
+                    status: 'Pending'
+                }));
+                await supabase.from('treatment_plan_items').insert(items);
+            }
+        }
+
+        const adviceStr = advisedTreatments.map(a => `${a.tooth}: ${a.treatment}`).join(', ');
+        await supabase.from('patient_history').insert({
+            patient_id: patient.id,
+            date: new Date().toISOString().split('T')[0],
+            treatment: 'SOAP Note Recorded',
+            notes: `Subj: ${newNote.subjective.substring(0, 30)}... Advice: ${adviceStr.substring(0, 50)}`,
+            category: 'Clinical',
+            doctor_name: newNote.doctor_name
         });
 
-        if (!error) {
-            const adviceStr = advisedTreatments.map(a => `${a.tooth}: ${a.treatment}`).join(', ');
-            await supabase.from('patient_history').insert({
-                patient_id: patient.id,
-                date: new Date().toISOString().split('T')[0],
-                treatment: 'SOAP Note Recorded',
-                notes: `Subj: ${newNote.subjective.substring(0, 30)}... Advice: ${adviceStr.substring(0, 50)}`,
-                category: 'Clinical',
-                doctor_name: newNote.doctor_name
-            });
-            setIsSoapModalOpen(false);
-            setNewNote({ subjective: '', objective: '', assessment: '', plan: '', doctor_name: 'Dr. Sarah Jenkins' });
-            setAdvisedTreatments([]);
-            fetchData();
-        } else {
-            showToast(error.message, 'error');
-        }
+        setIsSoapModalOpen(false);
+        setNewNote({ subjective: '', objective: '', assessment: '', plan: '', doctor_name: 'Dr. Sarah Jenkins' });
+        setAdvisedTreatments([]);
+        setAdvisedLabOrders([]);
+        fetchData();
         setIsSavingNote(false);
     };
 
@@ -211,6 +249,23 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
         const totalPaid = Number(patient.total_spent) || 0; 
         return Math.max(0, totalBilled - totalPaid);
     }, [patientBills, patient.total_spent]);
+
+    const stats = useMemo(() => {
+        const completedPlans = patientPlans.flatMap(p => p.treatment_plan_items || []).filter(i => i.status === 'Completed').length;
+        const completedLabs = patientLabOrders.filter(l => l.order_status === 'Ready' || l.order_status === 'Delivered').length;
+        const paidBills = patientBills.filter(b => b.status === 'Paid').length;
+
+        const activePlans = patientPlans.filter(p => p.status === 'Active').length;
+        const pendingLabs = patientLabOrders.filter(l => l.order_status === 'Pending' || l.order_status === 'In-Transit').length;
+
+        const unpaidBills = patientBills.filter(b => b.status === 'Unpaid' || b.status === 'Partially Paid').length;
+        
+        return {
+            completed: completedPlans + completedLabs + paidBills,
+            inProgress: activePlans + pendingLabs,
+            pending: unpaidBills
+        };
+    }, [patientPlans, patientLabOrders, patientBills]);
 
     const patientLifecycle = useMemo(() => {
         if (!patient || !patient.last_visit) return { status: 'New', color: 'bg-primary/10 text-primary border-primary/20' };
@@ -407,8 +462,34 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
 
             <main className="space-y-10 pb-20">
                 {activeTab === 'home' && (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <div className="lg:col-span-2 space-y-6">
+                    <div className="space-y-6">
+                        {/* ── Treatment & Lab Status Matrix Category Row ── */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="p-6 rounded-[2rem] bg-emerald-500/10 border border-emerald-500/20 shadow-premium flex items-center justify-between">
+                                <div>
+                                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-600 mb-1">Completed Treatments / Bills</p>
+                                    <h5 className="text-3xl font-black text-emerald-600">{stats.completed} Items</h5>
+                                </div>
+                                <div className="p-4 bg-emerald-500 rounded-2xl text-white"><CheckCircle size={24} /></div>
+                            </div>
+                            <div className="p-6 rounded-[2rem] bg-indigo-500/10 border border-indigo-500/20 shadow-premium flex items-center justify-between">
+                                <div>
+                                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-indigo-600 mb-1">In-Progress Plans / Lab Orders</p>
+                                    <h5 className="text-3xl font-black text-indigo-600">{stats.inProgress} Items</h5>
+                                </div>
+                                <div className="p-4 bg-indigo-500 rounded-2xl text-white"><History size={24} /></div>
+                            </div>
+                            <div className="p-6 rounded-[2rem] bg-amber-500/10 border border-amber-500/20 shadow-premium flex items-center justify-between">
+                                <div>
+                                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-amber-600 mb-1">Pending Due Invoices</p>
+                                    <h5 className="text-3xl font-black text-amber-600">{stats.pending} Items</h5>
+                                </div>
+                                <div className="p-4 bg-amber-500 rounded-2xl text-white"><AlertTriangle size={24} /></div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div className="lg:col-span-2 space-y-6">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                 <div className="p-6 rounded-[2rem]" style={{ background: 'var(--card-bg-alt)', border: '1px solid var(--border-color)' }}>
                                     <h4 className="text-base font-bold mb-4" style={{ color: 'var(--text-muted)' }}>Contact Details</h4>
@@ -440,6 +521,35 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Latest Vital Signs Card */}
+                            {patientVitals.length > 0 && (
+                                <div className="p-6 rounded-[2rem]" style={{ background: 'var(--card-bg-alt)', border: '1px solid var(--border-color)' }}>
+                                    <h4 className="text-base font-bold mb-4 flex items-center gap-2" style={{ color: 'var(--text-muted)' }}><Heart size={18} className="text-red-500" /> Latest Vital Signs</h4>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        <div className="p-4 bg-slate-100 dark:bg-white/5 rounded-2xl text-center border dark:border-white/5">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Blood Pressure</p>
+                                            <p className="text-lg font-black text-primary">{patientVitals[0].systolic}/{patientVitals[0].diastolic}</p>
+                                            <p className="text-[8px] text-slate-400">mmHg</p>
+                                        </div>
+                                        <div className="p-4 bg-slate-100 dark:bg-white/5 rounded-2xl text-center border dark:border-white/5">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Heart Rate</p>
+                                            <p className="text-lg font-black text-red-500">{patientVitals[0].pulse}</p>
+                                            <p className="text-[8px] text-slate-400">bpm</p>
+                                        </div>
+                                        <div className="p-4 bg-slate-100 dark:bg-white/5 rounded-2xl text-center border dark:border-white/5">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Temperature</p>
+                                            <p className="text-lg font-black text-amber-500">{patientVitals[0].temperature}</p>
+                                            <p className="text-[8px] text-slate-400">°C</p>
+                                        </div>
+                                        <div className="p-4 bg-slate-100 dark:bg-white/5 rounded-2xl text-center border dark:border-white/5">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">SPO2 Status</p>
+                                            <p className="text-lg font-black text-emerald-500">{patientVitals[0].spo2}</p>
+                                            <p className="text-[8px] text-slate-400">% Saturation</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="space-y-6">
                                 <div className="flex items-center justify-between">
@@ -510,6 +620,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                 <Activity size={80} className="absolute -right-8 -bottom-8 opacity-[0.03] rotate-12 group-hover:scale-110 transition-transform duration-700" />
                             </div>
                         </div>
+                    </div>
                     </div>
                 )}
 
@@ -645,6 +756,32 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                         <div className="flex justify-between items-center">
                             <h4 className="text-2xl font-bold" style={{ color: 'var(--text-dark)' }}>Lab History & Orders</h4>
                         </div>
+
+                        {/* Recommended From Clinical Notes section */}
+                        {(() => {
+                            const recLabs: any[] = [];
+                            patientNotes.forEach(n => {
+                                try {
+                                    const parsed = JSON.parse(n.plan);
+                                    if (parsed?.advised_labs) recLabs.push(...parsed.advised_labs);
+                                } catch (e) { }
+                            });
+                            if (recLabs.length === 0) return null;
+
+                            return (
+                                <div className="p-6 rounded-[2rem] border bg-emerald-500/5 border-emerald-500/10 mb-6">
+                                    <h5 className="text-sm font-black text-emerald-600 uppercase tracking-widest mb-3 flex items-center gap-2"><FlaskConical size={16} /> Recommended / Advised from Clinical Notes</h5>
+                                    <div className="flex flex-wrap gap-2">
+                                        {recLabs.map((l, i) => (
+                                            <span key={i} className="px-3 py-1.5 bg-white dark:bg-slate-800 rounded-xl text-xs font-bold border border-emerald-500/20 shadow-sm flex items-center gap-1.5">
+                                                <span className="text-slate-400"># {l.tooth}:</span> {l.item}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            );
+                        })()}
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {patientLabOrders.map(order => {
                                 const meta = order.metadata || {};
@@ -805,6 +942,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                             <button onClick={() => setClinicalSubTab('soap')} className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${clinicalSubTab === 'soap' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-500 hover:text-primary'}`}>Clinical Notes</button>
                             <button onClick={() => setClinicalSubTab('vitals')} className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${clinicalSubTab === 'vitals' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-500 hover:text-primary'}`}>Vital Signs</button>
                             <button onClick={() => setClinicalSubTab('consents')} className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${clinicalSubTab === 'consents' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-500 hover:text-primary'}`}>Consent Forms</button>
+                            <button onClick={() => setClinicalSubTab('medical_clearance')} className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${clinicalSubTab === 'medical_clearance' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-500 hover:text-primary'}`}>Medical Clearance</button>
                         </div>
 
                         {clinicalSubTab === 'soap' && (
@@ -826,11 +964,11 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                             <div className="space-y-4">
                                                 <div>
-                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Subjective</p>
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Chief Complaint</p>
                                                     <p className="text-sm font-medium leading-relaxed" style={{ color: 'var(--text-muted)' }}>{note.subjective}</p>
                                                 </div>
                                                 <div>
-                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Objective</p>
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Intra Oral Examination (IOE)</p>
                                                     <p className="text-sm font-medium leading-relaxed" style={{ color: 'var(--text-muted)' }}>{note.objective}</p>
                                                 </div>
                                             </div>
@@ -844,11 +982,13 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                                     {(() => {
                                                         let description = note.plan;
                                                         let advised = note.advised_treatments || [];
+                                                        let advisedLabs = [];
                                                         try {
                                                             const parsed = JSON.parse(note.plan);
                                                             if (parsed && typeof parsed === 'object') {
                                                                 if (parsed.text !== undefined) description = parsed.text;
                                                                 if (parsed.advised) advised = parsed.advised;
+                                                                if (parsed.advised_labs) advisedLabs = parsed.advised_labs;
                                                             }
                                                         } catch (e) { /* Fallback to raw string */ }
 
@@ -861,6 +1001,16 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                                                         <div className="space-y-1">
                                                                             {advised.map((a: any, i: number) => (
                                                                                 <p key={i} className="text-xs font-black"><span className="text-slate-400">Tooth {a.tooth}:</span> {a.treatment}</p>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                                {advisedLabs && advisedLabs.length > 0 && (
+                                                                    <div className="mt-2 border-t pt-1 border-dashed border-slate-200 dark:border-slate-700">
+                                                                        <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-1">Advised Lab Orders</p>
+                                                                        <div className="space-y-1">
+                                                                            {advisedLabs.map((a: any, i: number) => (
+                                                                                <p key={i} className="text-xs font-black"><span className="text-slate-400">Tooth {a.tooth}:</span> {a.item}</p>
                                                                             ))}
                                                                         </div>
                                                                     </div>
@@ -980,6 +1130,64 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                     <div className="col-span-full py-20 text-center bg-slate-50/50 rounded-[3rem] border border-dashed border-slate-200">
                                         <FileSignature size={48} className="mx-auto mb-4 text-slate-300" />
                                         <p className="text-slate-500 font-bold">No digital consent forms signed yet.</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {clinicalSubTab === 'medical_clearance' && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {patientMedicalClearances.length > 0 ? patientMedicalClearances.map(form => (
+                                    <div key={form.id} className="p-8 rounded-[2.5rem] border shadow-sm group hover:scale-[1.02] transition-all" style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
+                                        <div className="flex justify-between items-start mb-6">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+                                                    <ClipboardCheck size={24} />
+                                                </div>
+                                                <div>
+                                                    <h5 className="font-bold text-lg">Clearance: To {form.physician_name}</h5>
+                                                    <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">{new Date(form.created_at).toLocaleDateString()} • {form.status}</p>
+                                                </div>
+                                            </div>
+                                            <button onClick={() => downloadMedicalClearancePDF({
+                                                formId: form.id,
+                                                date: form.signed_at || form.created_at,
+                                                patientName: patient.name,
+                                                patientAge: patient.age?.toString() || 'N/A',
+                                                doctorName: form.doctor_name,
+                                                physicianName: form.physician_name,
+                                                provisionalDiagnosis: form.provisional_diagnosis,
+                                                proposedTreatment: form.proposed_treatment,
+                                                medicalHistory: form.medical_history,
+                                                currentMedications: form.current_medications,
+                                                fitnessStatus: form.fitness_status,
+                                                specialInstructions: form.special_instructions,
+                                                signatureUrl: form.signature_url
+                                            })} className="p-3 rounded-xl bg-primary text-white shadow-lg shadow-primary/20 opacity-0 group-hover:opacity-100 transition-all active:scale-95">
+                                                <Printer size={18} />
+                                            </button>
+                                        </div>
+                                        <div className="space-y-2 mb-4">
+                                            <div className="p-3 bg-slate-50 dark:bg-white/5 rounded-xl">
+                                                <p className="text-[9px] font-black uppercase text-slate-400">Diagnosis/Treatment</p>
+                                                <p className="text-xs font-bold">{form.provisional_diagnosis || 'N/A'}</p>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <div className="flex-1 p-2 bg-slate-50 dark:bg-white/5 rounded-lg text-center">
+                                                    <p className="text-[8px] font-bold text-slate-400">FITNESS</p>
+                                                    <p className="text-[10px] font-black text-primary">{form.fitness_status || 'Pending'}</p>
+                                                </div>
+                                                <div className="flex-1 p-2 bg-slate-50 dark:bg-white/5 rounded-lg text-center">
+                                                    <p className="text-[8px] font-bold text-slate-400">STATUS</p>
+                                                    <p className="text-[10px] font-black text-amber-500">{form.status}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )) : (
+                                    <div className="col-span-full py-20 text-center bg-slate-50/50 rounded-[3rem] border border-dashed border-slate-200">
+                                        <ClipboardCheck size={48} className="mx-auto mb-4 text-slate-300" />
+                                        <p className="text-slate-500 font-bold">No medical clearances issued yet.</p>
                                     </div>
                                 )}
                             </div>
@@ -1124,13 +1332,13 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                 </div>
                                 
                                 <div>
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Subjective (Symptoms)</label>
-                                    <textarea value={newNote.subjective} onChange={e => setNewNote({ ...newNote, subjective: e.target.value })} className={`w-full h-16 rounded-2xl p-4 text-xs font-bold outline-none border transition-all ${theme === 'dark' ? 'bg-slate-800 border-white/10' : 'bg-slate-50 border-slate-200'}`} placeholder="Patient reports..." />
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Chief Complaint</label>
+                                    <textarea value={newNote.subjective} onChange={e => setNewNote({ ...newNote, subjective: e.target.value })} className="w-full h-16 rounded-2xl p-4 text-xs font-bold outline-none border transition-all" placeholder="Patient reports..." />
                                 </div>
                                 
                                 <div>
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Objective (Signs & Findings)</label>
-                                    <textarea value={newNote.objective} onChange={e => setNewNote({ ...newNote, objective: e.target.value })} className={`w-full h-16 rounded-2xl p-4 text-xs font-bold outline-none border transition-all ${theme === 'dark' ? 'bg-slate-800 border-white/10' : 'bg-slate-50 border-slate-200'}`} placeholder="I/O exam reveals..." />
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Intra Oral Examination (IOE)</label>
+                                    <textarea value={newNote.objective} onChange={e => setNewNote({ ...newNote, objective: e.target.value })} className="w-full h-16 rounded-2xl p-4 text-xs font-bold outline-none border transition-all" placeholder="I/O exam reveals..." />
                                 </div>
 
                                 <div>
@@ -1145,10 +1353,13 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
 
                                 {/* ── Advised Treatments Row ── */}
                                 <div className="border border-dashed border-slate-200 dark:border-slate-700 p-4 rounded-2xl">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Advised Treatments (Conversion to Plan)</label>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Advised Treatments</label>
                                     <div className="flex gap-2">
                                         <input type="text" placeholder="Tooth #" value={newAdvice.tooth} onChange={e => setNewAdvice({ ...newAdvice, tooth: e.target.value })} className="w-20 px-3 py-2 text-xs font-bold bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none" />
-                                        <input type="text" placeholder="Advised Treatment, e.g., RCT" value={newAdvice.treatment} onChange={e => setNewAdvice({ ...newAdvice, treatment: e.target.value })} className="flex-1 px-3 py-2 text-xs font-bold bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none" />
+                                        <input type="text" list="advised-treatments-list" placeholder="Advised Treatment, e.g., RCT" value={newAdvice.treatment} onChange={e => setNewAdvice({ ...newAdvice, treatment: e.target.value })} className="flex-1 px-3 py-2 text-xs font-bold bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none" />
+                                        <datalist id="advised-treatments-list">
+                                            {standardTreatments.map((t, i) => <option key={i} value={t} />)}
+                                        </datalist>
                                         <button onClick={() => {
                                             if (newAdvice.tooth && newAdvice.treatment) {
                                                 setAdvisedTreatments([...advisedTreatments, newAdvice]);
@@ -1158,11 +1369,40 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                     </div>
                                     
                                     {advisedTreatments.length > 0 && (
-                                        <div className="mt-3 space-y-1">
+                                        <div className="mt-2 space-y-1">
                                             {advisedTreatments.map((a, i) => (
                                                 <div key={i} className="flex justify-between items-center bg-slate-100 dark:bg-white/5 p-2 rounded-xl">
                                                     <span className="text-xs font-black"><span className="text-slate-400"># {a.tooth}:</span> {a.treatment}</span>
                                                     <button onClick={() => setAdvisedTreatments(advisedTreatments.filter((_, idx) => idx !== i))} className="text-rose-500 hover:text-rose-600"><Trash2 size={12} /></button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* ── Advised Lab Orders Row ── */}
+                                <div className="border border-dashed border-slate-200 dark:border-slate-700 p-4 rounded-2xl">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Advised Lab Orders</label>
+                                    <div className="flex gap-2">
+                                        <input type="text" placeholder="Tooth #" value={newLabAdvice.tooth} onChange={e => setNewLabAdvice({ ...newLabAdvice, tooth: e.target.value })} className="w-20 px-3 py-2 text-xs font-bold bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none" />
+                                        <input type="text" list="advised-labs-list" placeholder="Crown, Bridge, etc." value={newLabAdvice.item} onChange={e => setNewLabAdvice({ ...newLabAdvice, item: e.target.value })} className="flex-1 px-3 py-2 text-xs font-bold bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none" />
+                                        <datalist id="advised-labs-list">
+                                            {standardLabs.map((l, i) => <option key={i} value={l} />)}
+                                        </datalist>
+                                        <button onClick={() => {
+                                            if (newLabAdvice.tooth && newLabAdvice.item) {
+                                                setAdvisedLabOrders([...advisedLabOrders, newLabAdvice]);
+                                                setNewLabAdvice({ tooth: '', item: '' });
+                                            }
+                                        }} className="p-2.5 rounded-xl bg-blue-500 text-white flex items-center justify-center"><Plus size={16} /></button>
+                                    </div>
+                                    
+                                    {advisedLabOrders.length > 0 && (
+                                        <div className="mt-2 space-y-1">
+                                            {advisedLabOrders.map((a, i) => (
+                                                <div key={i} className="flex justify-between items-center bg-slate-100 dark:bg-white/5 p-2 rounded-xl">
+                                                    <span className="text-xs font-black"><span className="text-slate-400"># {a.tooth}:</span> {a.item}</span>
+                                                    <button onClick={() => setAdvisedLabOrders(advisedLabOrders.filter((_, idx) => idx !== i))} className="text-rose-500 hover:text-rose-600"><Trash2 size={12} /></button>
                                                 </div>
                                             ))}
                                         </div>

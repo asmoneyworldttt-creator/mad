@@ -293,11 +293,20 @@ export function Appointments({ userRole, theme, setActiveTab }: { userRole: User
                                 </div>
                             </div>
                         </div>
-                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded border uppercase shrink-0 ${
-                            apt.status === 'Confirmed' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                            apt.status === 'Completed' ? 'bg-primary/5 text-primary border-primary/10' :
-                            apt.status === 'Cancelled' ? 'bg-rose-50 text-rose-500 border-rose-100' : 'bg-slate-50 text-slate-400'
-                        }`}>{apt.status}</span>
+                        <select
+                            onClick={(e) => e.stopPropagation()}
+                            value={apt.status}
+                            onChange={(e) => handleUpdateStatus(apt.id, e.target.value)}
+                            className={`text-[8px] font-bold px-1 py-0.5 rounded border uppercase shrink-0 outline-none cursor-pointer transition-all ${
+                                apt.status === 'Confirmed' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                apt.status === 'Completed' ? 'bg-primary/5 text-primary border-primary/10' :
+                                apt.status === 'Cancelled' ? 'bg-rose-50 text-rose-500 border-rose-100' : 'bg-slate-50 text-slate-500'
+                            }`}
+                        >
+                            {['Confirmed', 'Completed', 'Cancelled', 'Missed'].map(s => (
+                                <option key={s} value={s} className="text-black bg-white">{s}</option>
+                            ))}
+                        </select>
                     </div>
                 </div>
             </div>
@@ -388,7 +397,17 @@ export function Appointments({ userRole, theme, setActiveTab }: { userRole: User
                         </div>
                         <div>
                             <h2 className="text-sm sm:text-base font-bold uppercase tracking-tight">Appointments</h2>
-                            <p className="text-[10px] font-medium text-slate-500">{new Date(selectedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} • {appointments.length} Total</p>
+                                <div className="relative">
+                                    <p className="text-[10px] font-medium text-slate-500 hover:text-primary cursor-pointer transition-all flex items-center gap-1">
+                                        {new Date(selectedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} • {appointments.length} Total
+                                    </p>
+                                    <input 
+                                        type="date" 
+                                        value={selectedDate} 
+                                        onChange={e => { setSelectedDate(e.target.value); setUseDateRange(false); }} 
+                                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" 
+                                    />
+                                </div>
                         </div>
                     </div>
                     <div className="flex items-center gap-2 w-full sm:w-auto">

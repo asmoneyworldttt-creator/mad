@@ -161,7 +161,7 @@ export function ClinicalNotes({ patientId: initialPatientId, theme }: ClinicalNo
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-1.5">
                                 <div className="flex items-center justify-between">
-                                    <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Subjective (S)</label>
+                                    <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Chief Complaint</label>
                                     <VoiceCharting onTranscript={(t) => setForm({ ...form, subjective: t })} currentText={form.subjective} theme={theme} />
                                 </div>
                                 <textarea
@@ -174,7 +174,7 @@ export function ClinicalNotes({ patientId: initialPatientId, theme }: ClinicalNo
 
                             <div className="space-y-1">
                                 <div className="flex items-center justify-between">
-                                    <label className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Objective (O)</label>
+                                    <label className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Intra Oral Examination (IOE)</label>
                                     <VoiceCharting onTranscript={(t) => setForm({ ...form, objective: t })} currentText={form.objective} theme={theme} />
                                 </div>
                                 <textarea

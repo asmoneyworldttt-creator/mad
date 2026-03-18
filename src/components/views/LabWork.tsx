@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Plus, Save, IndianRupee, ArrowLeft, FlaskConical, SearchX, Download } from 'lucide-react';
+import { Search, Plus, Save, IndianRupee, ArrowLeft, FlaskConical, SearchX, Download, Zap } from 'lucide-react';
 import { useToast } from '../../components/Toast';
 import { supabase } from '../../supabase';
 import { SkeletonList } from '../SkeletonLoader';
@@ -15,6 +15,7 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
 
     const [orders, setOrders] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
 
     useEffect(() => {
         fetchLabOrders();
@@ -93,10 +94,50 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
         }
     }, [formData.patientSearch]);
 
-    const handleSelectPatient = (p: any) => {
+    const loadRecommendedAdvice = async (pId: string) => {
+        const { data: notes } = await supabase
+            .from('clinical_notes')
+            .select('plan')
+            .eq('patient_id', pId)
+            .order('created_at', { ascending: false });
+
+        if (notes && notes.length > 0) {
+            try {
+                for (const note of notes) {
+                    const parsed = JSON.parse(note.plan);
+                    if (parsed?.advised_labs?.length > 0) {
+                        const teeth = parsed.advised_labs.map((a: any) => parseInt(a.tooth)).filter(Number.isInteger);
+                        const items = parsed.advised_labs.map((a: any) => a.item);
+                        
+                        setFormData(prev => {
+                            const newPreOp = [...prev.preOp];
+                            const newProsthesis = [...prev.prosthesis];
+                            items.forEach((i: string) => {
+                                if (['Bite Block', 'Special Tray', 'Bleaching Tray', 'Night Guard'].includes(i)) newPreOp.push(i);
+                                else newProsthesis.push(i);
+                            });
+                            
+                            return {
+                                ...prev,
+                                selectedTeeth: [...new Set([...prev.selectedTeeth, ...teeth])],
+                                preOp: [...new Set(newPreOp)],
+                                prosthesis: [...new Set(newProsthesis)]
+                            };
+                        });
+                        showToast('Advice synced from Clinical Notes', 'success');
+                        return true;
+                    }
+                }
+            } catch (e) {}
+        }
+        return false;
+    };
+
+    const handleSelectPatient = async (p: any) => {
         setSelectedPatient(p);
-        setFormData({ ...formData, patientSearch: p.name });
+        setFormData(prev => ({ ...prev, patientSearch: p.name }));
         setSearchResults([]);
+        await loadRecommendedAdvice(p.id);
     };
 
     const handleSaveOrder = async () => {
@@ -104,11 +145,13 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
         
         const totalAmount = (formData.financial.qty * formData.financial.rate) + formData.financial.tax - formData.financial.discount;
 
-        const { data: insertedData, error } = await supabase.from('lab_orders').insert({
+        const orderDataToSave = {
             patient_id: selectedPatient?.id,
-            vendor_name: formData.vendor || 'Unknown Lab',
-            order_status: formData.financial.status || 'Pending',
-            order_date: formData.orderDate,
+            lab_name: formData.vendor || 'Unknown Lab',
+            status: formData.financial.status || 'Pending',
+            date: formData.orderDate,
+            test_name: [...formData.prosthesis, ...formData.preOp].join(', ') || 'Custom Lab Order',
+            cost: totalAmount,
             metadata: {
                 time: formData.time,
                 doctor: formData.doctor,
@@ -123,7 +166,11 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                 totalAmount,
                 patient_name: selectedPatient?.name || formData.patientSearch
             }
-        }).select().single();
+        };
+
+        const { data: insertedData, error } = editingOrderId 
+            ? await supabase.from('lab_orders').update(orderDataToSave).eq('id', editingOrderId).select().single()
+            : await supabase.from('lab_orders').insert(orderDataToSave).select().single();
 
         if (error) {
             showToast('Error saving lab order: ' + error.message, 'error');
@@ -138,7 +185,7 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                 doctor_name: formData.doctor
             });
 
-            showToast('Lab Order created successfully!', 'success');
+            showToast(`Lab Order ${editingOrderId ? 'updated' : 'created'} successfully!`, 'success');
             
             // Auto-download PDF
             handleDownloadPDF({
@@ -147,6 +194,7 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
             });
 
             setView('list');
+            setEditingOrderId(null);
             setSelectedPatient(null);
             setFormData({
                 ...formData,
@@ -163,8 +211,8 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
     const handleDownloadPDF = (o: any) => {
         const meta = o.metadata || {};
         downloadLabOrderPDF({
-            orderId: o.id,
-            date: o.order_date,
+            orderId: o.id || '',
+            date: o.order_date || new Date().toISOString().split('T')[0],
             patientName: o.patients?.name || meta.patient_name || 'Patient',
             patientPhone: o.patients?.phone || '',
             doctorName: meta.doctor || 'Dr. Sarah Jenkins',
@@ -179,6 +227,37 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
             }
         });
         showToast('Lab Order PDF downloaded!', 'success');
+    };
+
+    const handleEditOrder = (o: any) => {
+        setEditingOrderId(o.id);
+        const meta = o.metadata || {};
+        setFormData({
+            orderDate: o.order_date,
+            time: meta.time || '',
+            doctor: meta.doctor || '',
+            vendor: o.vendor_name || '',
+            patientSearch: o.patients?.name || meta.patient_name || '',
+            selectedTeeth: meta.selectedTeeth || [],
+            preOp: meta.preOp || [],
+            prosthesis: meta.prosthesis || [],
+            surfaceCluster: meta.surfaceCluster || '',
+            ponticType: meta.ponticType || '',
+            shades: meta.shades || { incisal: '', middle: '', gingival: '' },
+            delivery: meta.delivery || { metal: '', bisque: '', final: '', notes: '' },
+            financial: meta.financial || { qty: 1, rate: 0, tax: 0, discount: 0, status: o.order_status, warranty: '' }
+        });
+        setSelectedPatient(o.patients || null);
+        setView('add');
+    };
+
+    const handleUpdateStatus = async (id: string, status: string) => {
+        const { error } = await supabase.from('lab_orders').update({ order_status: status }).eq('id', id);
+        if (error) showToast(error.message, 'error');
+        else {
+            showToast('Status updated', 'success');
+            fetchLabOrders();
+        }
     };
 
 
@@ -196,16 +275,16 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                     <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none transition-transform hover:rotate-12 duration-700"><FlaskConical size={120} /></div>
                     <div className="flex flex-col md:flex-row justify-between items-center gap-8 relative z-10">
                         <div className="flex items-center gap-6">
-                            <button onClick={() => setView('list')} className="w-14 h-14 rounded-2xl border flex items-center justify-center transition-all bg-white/5 hover:scale-110 active:scale-95 shadow-xl shadow-primary/10" style={{ borderColor: 'var(--border-color)', color: 'var(--text-main)' }}>
+                            <button onClick={() => { setView('list'); setEditingOrderId(null); }} className="w-14 h-14 rounded-2xl border flex items-center justify-center transition-all bg-white/5 hover:scale-110 active:scale-95 shadow-xl shadow-primary/10" style={{ borderColor: 'var(--border-color)', color: 'var(--text-main)' }}>
                                 <ArrowLeft size={24} />
                             </button>
                             <div>
-                                <h2 className="text-3xl font-bold tracking-tight" style={{ color: 'var(--text-dark)' }}>New Lab Order</h2>
-                                <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Create order for dental work and prosthetics</p>
+                                <h2 className="text-3xl font-bold tracking-tight" style={{ color: 'var(--text-dark)' }}>{editingOrderId ? 'Edit Lab Order' : 'New Lab Order'}</h2>
+                                <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>{editingOrderId ? 'Update existing details' : 'Create order for dental work'}</p>
                             </div>
                         </div>
                         <button onClick={handleSaveOrder} className="bg-primary hover:scale-105 active:scale-95 text-white px-10 py-4 rounded-xl text-sm font-bold flex items-center gap-3 shadow-xl shadow-primary/30 transition-all">
-                            <Save size={20} /> Save Lab Order
+                            <Save size={20} /> {editingOrderId ? 'Update Order' : 'Save Lab Order'}
                         </button>
                     </div>
                 </div>
@@ -215,7 +294,17 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                     <div className="xl:col-span-2 space-y-6">
                         {/* Header & Patient */}
                         <div className="rounded-2xl p-6 shadow-sm" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
-                            <h3 className="font-sans font-bold text-lg mb-4 border-b pb-2 flex items-center gap-2" style={{ color: 'var(--text-dark)', borderColor: 'var(--border-color)' }}><FlaskConical size={20} className="text-primary" /> Order Details</h3>
+                            <div className="flex justify-between items-center mb-4 border-b pb-2" style={{ borderColor: 'var(--border-color)' }}>
+                                <h3 className="font-sans font-bold text-lg flex items-center gap-2" style={{ color: 'var(--text-dark)' }}><FlaskConical size={20} className="text-primary" /> Order Details</h3>
+                                {selectedPatient && (
+                                    <button onClick={async () => {
+                                        const found = await loadRecommendedAdvice(selectedPatient.id);
+                                        if (!found) showToast('No advised lab items found for this patient.', 'info');
+                                    }} className="px-4 py-1.5 border border-primary/30 rounded-xl text-xs font-black uppercase tracking-widest text-primary hover:bg-primary/5 transition-all flex items-center gap-1.5">
+                                        <Zap size={14} /> Pull Recommended
+                                    </button>
+                                )}
+                            </div>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                                 <div>
                                     <label className="text-sm font-bold mb-1.5 block" style={{ color: 'var(--text-muted)' }}>Order Date</label>
@@ -304,6 +393,12 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                                     </label>
                                 ))}
                             </div>
+                            
+                            {/* Notes/Custom Remarks Box under Tooth Selection */}
+                            <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--border-color)' }}>
+                                <label className="text-xs font-bold mb-1 block" style={{ color: 'var(--text-muted)' }}>Notes / Custom Remarks</label>
+                                <textarea rows={2} value={formData.delivery.notes} onChange={e => setFormData({ ...formData, delivery: { ...formData.delivery, notes: e.target.value } })} className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: 'var(--bg-page)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }} placeholder="Notes on selections or specific remarks..."></textarea>
+                            </div>
                         </div>
 
                         {/* Prosthesis Details */}
@@ -312,7 +407,7 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
 
                             <h4 className="text-xs font-bold mb-2 mt-4" style={{ color: 'var(--text-muted)' }}>Type of Restorative Work</h4>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                {['Crown', 'Bridge', 'Inlay', 'Onlay', 'Veneer', 'Post & Core', 'Denture'].map(item => (
+                                {['Crown', 'Bridge', 'Precision Denture', 'Inlay', 'Onlay', 'Veneer', 'Post & Core', 'Denture'].map(item => (
                                     <label key={item} className="flex items-center gap-2 text-sm font-bold cursor-pointer py-2 px-3 rounded-lg border transition-colors" style={{ color: 'var(--text-main)', background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)' }}>
                                         <input type="checkbox" checked={formData.prosthesis.includes(item)} onChange={() => handleCheckboxChange('prosthesis', item)} className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary" />
                                         {item}
@@ -398,10 +493,6 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                                 <div className="col-span-2">
                                     <label className="text-xs font-bold mb-1 block" style={{ color: 'var(--text-muted)' }}>Final Delivery</label>
                                     <input type="date" value={formData.delivery.final} onChange={e => setFormData({ ...formData, delivery: { ...formData.delivery, final: e.target.value } })} className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: 'var(--bg-page)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }} />
-                                </div>
-                                <div className="col-span-2">
-                                    <label className="text-xs font-bold mb-1 block" style={{ color: 'var(--text-muted)' }}>Lab Instructions</label>
-                                    <textarea rows={2} value={formData.delivery.notes} onChange={e => setFormData({ ...formData, delivery: { ...formData.delivery, notes: e.target.value } })} className="w-full rounded-lg px-3 py-2 text-sm" style={{ background: 'var(--bg-page)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }} placeholder="Specific requests..."></textarea>
                                 </div>
                             </div>
                         </div>
@@ -505,24 +596,32 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                                     <td className="p-4">
                                         <p className="font-bold text-sm" style={{ color: 'var(--text-main)' }}>{o.id?.slice(0, 8)}...</p>
-                                        <p className="text-xs font-medium text-slate-500">{o.order_date}</p>
+                                        <p className="text-xs font-medium text-slate-500">{o.date}</p>
                                     </td>
-                                    <td className="p-4 font-bold text-sm" style={{ color: 'var(--text-muted)' }}>{o.patients?.name || o.patient_name || 'Manual Entry'}</td>
-                                    <td className="p-4 text-sm font-medium text-slate-600" style={{ color: 'var(--text-muted)' }}>{o.vendor_name}</td>
+                                    <td className="p-4 font-bold text-sm" style={{ color: 'var(--text-muted)' }}>{o.patients?.name || o.metadata?.patient_name || 'Manual Entry'}</td>
+                                    <td className="p-4 text-sm font-medium text-slate-600" style={{ color: 'var(--text-muted)' }}>{o.lab_name || 'Generic Lab'}</td>
                                     <td className="p-4 text-center">
-                                        <div className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold`} style={{ 
-                                            background: o.order_status === 'Delivered to Patient' ? 'rgba(16,185,129,0.1)' : 
-                                                        o.order_status === 'Handover to Lab' ? 'rgba(245,158,11,0.1)' : 
-                                                        'rgba(19,91,236,0.1)',
-                                            color: o.order_status === 'Delivered to Patient' ? '#10b981' : 
-                                                   o.order_status === 'Handover to Lab' ? '#f59e0b' : 
-                                                   '#135bec',
-                                            border: `1px solid ${o.order_status === 'Delivered to Patient' ? 'rgba(16,185,129,0.2)' : 
-                                                                o.order_status === 'Handover to Lab' ? 'rgba(245,158,11,0.2)' : 
-                                                                'rgba(19,91,236,0.2)'}`
-                                        }}>
-                                            {o.order_status}
-                                        </div>
+                                        <select 
+                                            value={o.status} 
+                                            onChange={e => { e.stopPropagation(); handleUpdateStatus(o.id, e.target.value); }}
+                                            onClick={e => e.stopPropagation()}
+                                            className="text-[10px] font-bold rounded-full px-2 py-1 outline-none border cursor-pointer"
+                                            style={{ 
+                                                background: o.status === 'Delivered to Patient' ? 'rgba(16,185,129,0.1)' : 
+                                                            o.status === 'Handover to Lab' ? 'rgba(245,158,11,0.1)' : 
+                                                            'rgba(19,91,236,0.1)',
+                                                color: o.status === 'Delivered to Patient' ? '#10b981' : 
+                                                       o.status === 'Handover to Lab' ? '#f59e0b' : 
+                                                       '#135bec',
+                                                borderColor: o.status === 'Delivered to Patient' ? 'rgba(16,185,129,0.2)' : 
+                                                             o.status === 'Handover to Lab' ? 'rgba(245,158,11,0.2)' : 
+                                                             'rgba(19,91,236,0.2)'
+                                            }}
+                                        >
+                                            {['Handover to Lab', 'In-Lab Production', 'Received for Trial', 'Delivered to Patient'].map(s => (
+                                                <option key={s} value={s}>{s}</option>
+                                            ))}
+                                        </select>
                                     </td>
                                     <td className="p-4 text-right">
                                         <p className="text-sm font-bold text-primary">—</p>
@@ -531,7 +630,7 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                                         <button onClick={() => handleDownloadPDF(o)} className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 transition-all text-slate-600">
                                             <Download size={16} />
                                         </button>
-                                        <button className="text-xs font-bold text-primary hover:text-primary-hover px-3 py-1.5 rounded bg-primary/5 hover:bg-primary/10 transition-colors">
+                                        <button onClick={() => handleEditOrder(o)} className="text-xs font-bold text-primary hover:text-primary-hover px-3 py-1.5 rounded bg-primary/5 hover:bg-primary/10 transition-colors">
                                             View/Edit
                                         </button>
                                     </td>

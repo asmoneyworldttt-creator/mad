@@ -124,8 +124,8 @@ export function DoctorCalendar({ theme, setActiveTab }: { theme?: 'light' | 'dar
         setDate(d.toISOString().split('T')[0]);
     };
 
-    const getApptAt = (doctorId: string, doctorName: string, time: string) => {
-        return appointments.find(a =>
+    const getApptsAt = (doctorId: string, doctorName: string, time: string) => {
+        return appointments.filter(a =>
             a.time?.startsWith(time) &&
             (a.doctor_id === doctorId || a.doctor_name === doctorName)
         );
@@ -157,9 +157,6 @@ export function DoctorCalendar({ theme, setActiveTab }: { theme?: 'light' | 'dar
                         <button onClick={nextDay} className="p-2 rounded-lg hover:bg-primary/10 hover:text-primary transition-all text-slate-400"><ChevronRight size={18} /></button>
                     </div>
                     <button onClick={fetchInitialData} className={`p-3 rounded-xl border ${isDark ? 'bg-white/5 border-white/10 text-slate-400 hover:text-white' : 'bg-white border-slate-200 text-slate-500'}`}><RefreshCw size={18} /></button>
-                    <button className="bg-primary text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all text-xs flex items-center gap-2">
-                        <Plus size={16} /> New Session
-                    </button>
                 </div>
             </div>
 
@@ -199,47 +196,45 @@ export function DoctorCalendar({ theme, setActiveTab }: { theme?: 'light' | 'dar
                                         <span className="text-xs font-bold text-slate-400">{time}</span>
                                     </td>
                                     {doctors.map((doc, colIdx) => {
-                                        const appt = getApptAt(doc.id, doc.name, time);
+                                        const appts = getApptsAt(doc.id, doc.name, time);
                                         return (
-                                            <td key={`${doc.id}-${time}`} className={`p-3 relative border-r last:border-r-0 ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
-                                                {appt ? (
-                                                    <motion.div
-                                                        initial={{ opacity: 0, scale: 0.95 }}
-                                                        animate={{ opacity: 1, scale: 1 }}
-                                                        className={`p-3 rounded-xl border shadow-sm transition-all hover:scale-[1.02] cursor-pointer group/card ${appt.status === 'Confirmed' ? (isDark ? 'bg-primary/10 border-primary/30' : 'bg-primary/5 border-primary/20') :
-                                                                appt.status === 'Visited' ? (isDark ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-emerald-500/5 border-emerald-500/20') :
-                                                                    (isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200')
-                                                            }`}
-                                                    >
-                                                        <div className="flex justify-between items-start mb-1.5">
-                                                            <span className={`text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md ${appt.status === 'Confirmed' ? 'text-primary bg-primary/10' :
-                                                                    appt.status === 'Visited' ? 'text-emerald-500 bg-emerald-500/10' :
-                                                                        'text-slate-400 bg-white/10'
-                                                                }`}>
-                                                                {appt.type}
-                                                            </span>
-                                                            <button className="opacity-0 group-hover/card:opacity-100 transition-opacity p-1 text-slate-400 hover:text-white">
-                                                                <MoreHorizontal size={14} />
-                                                            </button>
-                                                        </div>
-                                                        <p className="font-bold text-sm leading-tight mb-1">{appt.name || appt.patient_name}</p>
-                                                        <div className="flex items-center gap-1.5 opacity-60">
-                                                            <User size={10} className="text-primary" />
-                                                            <p className="text-[9px] font-medium truncate">{appt.notes || 'No notes'}</p>
-                                                        </div>
-                                                    </motion.div>
-                                                ) : (
+                                            <td key={`${doc.id}-${time}`} className={`p-2 relative border-r last:border-r-0 ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
+                                                <div className="space-y-1.5">
+                                                    {appts.map(appt => (
+                                                        <motion.div
+                                                            key={appt.id}
+                                                            initial={{ opacity: 0, scale: 0.95 }}
+                                                            animate={{ opacity: 1, scale: 1 }}
+                                                            className={`p-2.5 rounded-xl border shadow-sm transition-all hover:scale-[1.02] cursor-pointer group/card ${appt.status === 'Confirmed' ? (isDark ? 'bg-primary/10 border-primary/30' : 'bg-primary/5 border-primary/20') :
+                                                                    appt.status === 'Visited' ? (isDark ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-emerald-500/5 border-emerald-500/20') :
+                                                                        (isDark ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200')
+                                                                }`}
+                                                        >
+                                                            <div className="flex justify-between items-start mb-1">
+                                                                <span className={`text-[7px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md ${appt.status === 'Confirmed' ? 'text-primary bg-primary/10' :
+                                                                        appt.status === 'Visited' ? 'text-emerald-500 bg-emerald-500/10' :
+                                                                            'text-slate-400 bg-white/10'
+                                                                    }`}>
+                                                                    {appt.type}
+                                                                </span>
+                                                            </div>
+                                                            <p className="font-bold text-xs leading-tight mb-0.5">{appt.name || appt.patient_name}</p>
+                                                            <div className="flex items-center gap-1 opacity-60">
+                                                                <User size={8} className="text-primary" />
+                                                                <p className="text-[8px] font-medium truncate">{appt.notes || 'No notes'}</p>
+                                                            </div>
+                                                        </motion.div>
+                                                    ))}
                                                     <button 
                                                         onClick={() => handleAddSession(doc, time)}
-                                                        className={`w-full h-10 rounded-xl flex items-center justify-center border border-dashed transition-all active:scale-95 text-slate-400 opacity-60 hover:opacity-100 hover:border-primary hover:text-primary hover:bg-primary/5 ${isDark ? 'border-white/20' : 'border-slate-300'}`}
+                                                        className={`w-full h-8 rounded-lg flex items-center justify-center border border-dashed transition-all active:scale-95 text-slate-400 opacity-60 hover:opacity-100 hover:border-primary hover:text-primary hover:bg-primary/5 ${isDark ? 'border-white/20' : 'border-slate-300'}`}
                                                     >
                                                         <div className="flex items-center gap-1">
-                                                            <Plus size={14} />
-                                                            <span className="text-[10px] font-bold">Add</span>
+                                                            <Plus size={12} />
+                                                            <span className="text-[9px] font-bold">Add</span>
                                                         </div>
                                                     </button>
-
-                                                )}
+                                                </div>
                                             </td>
                                         );
                                     })}

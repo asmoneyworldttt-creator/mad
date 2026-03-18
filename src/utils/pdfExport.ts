@@ -99,7 +99,6 @@ export function downloadPrescriptionPDF(data: PrescriptionData): void {
         doc.text(`Allergies: ${data.patientAllergies}`, 100, 43);
         doc.setTextColor(...DARK_COLOR);
     }
-
     // Drug table
     autoTable(doc, {
         startY: 58,
@@ -262,7 +261,7 @@ export function downloadLabOrderPDF(data: LabOrderData): void {
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.text(`Order ID: #${data.orderId.slice(0, 8)}`, 14, 38);
+    doc.text(`Order ID: #${(data.orderId || '').slice(0, 8)}`, 14, 38);
 
     // Info Grid
     const info = [
@@ -539,6 +538,148 @@ export function downloadConsentPDF(data: ConsentData): void {
 
     addFooter(doc);
     const filename = `Consent_${data.title.replace(/\s+/g, '_')}_${data.patientName.replace(/\s+/g, '_')}.pdf`;
+    doc.save(filename);
+}
+
+export interface MedicalClearanceData {
+    formId: string;
+    date: string;
+    patientName: string;
+    patientAge: string;
+    doctorName: string;
+    physicianName: string;
+    provisionalDiagnosis: string;
+    proposedTreatment: string;
+    medicalHistory: string;
+    currentMedications: string;
+    fitnessStatus: string;
+    specialInstructions: string;
+    clinicName?: string;
+    signatureUrl?: string;
+}
+
+export function downloadMedicalClearancePDF(data: MedicalClearanceData): void {
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+
+    addClinicHeader(
+        doc,
+        data.clinicName || 'DentiSphere Clinic',
+        'Request for Medical Opinion / Clearance',
+        'Medical Evaluation',
+        new Date(data.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+    );
+
+    let y = 38;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Ref ID: #${data.formId.slice(0, 8).toUpperCase()}`, 14, y);
+    y += 10;
+
+    doc.setFont('helvetica', 'normal');
+    doc.text('To,', 14, y); y += 5;
+    doc.setFont('helvetica', 'bold');
+    doc.text(`The Physician / Specialist`, 14, y); y += 5;
+    doc.text(data.physicianName || 'Attending Physician', 14, y); y += 8;
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Subject: Request for medical evaluation and clearance', 14, y); y += 10;
+
+    doc.setFont('helvetica', 'normal');
+    doc.text('Dear Doctor,', 14, y); y += 8;
+
+    const patientNameAge = `${data.patientName}, aged ${data.patientAge || '____'}`;
+    const introText = `I would like to refer my patient ${patientNameAge}, who reported to our clinic with a dental complaint.`;
+    const splitIntro = doc.splitTextToSize(introText, 182);
+    doc.text(splitIntro, 14, y);
+    y += (splitIntro.length * 5) + 6;
+
+    const examText = `On clinical examination, the patient has been diagnosed with ${data.provisionalDiagnosis || '________'}, for which ${data.proposedTreatment || '________'} is planned.`;
+    const splitExam = doc.splitTextToSize(examText, 182);
+    doc.text(splitExam, 14, y);
+    y += (splitExam.length * 5) + 6;
+
+    const medicalText = `The patient is a known case of ${data.medicalHistory || 'N/A'} and is currently under treatment with ${data.currentMedications || 'N/A'}.`;
+    const splitMedical = doc.splitTextToSize(medicalText, 182);
+    doc.text(splitMedical, 14, y);
+    y += (splitMedical.length * 5) + 8;
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('In view of the patient’s medical status, I kindly request your expert opinion regarding:', 14, y);
+    y += 6;
+    doc.setFont('helvetica', 'normal');
+    const points = [
+        '- Fitness of the patient to undergo the planned dental procedure under local anesthesia',
+        '- Any modifications required in ongoing medications',
+        '- Need for antibiotic prophylaxis, if indicated',
+        '- Any specific precautions or contraindications to be considered prior to treatment'
+    ];
+    points.forEach(point => {
+        doc.text(point, 18, y);
+        y += 5;
+    });
+    y += 5;
+
+    doc.text('Kindly provide your valuable opinion and clearance to proceed with the planned dental management.', 14, y);
+    y += 10;
+
+    doc.text('Thank you for your cooperation.', 14, y);
+    y += 15;
+
+    // Doctor Signature line
+    doc.setFont('helvetica', 'bold');
+    doc.text('Yours sincerely,', 14, y); y += 5;
+    doc.text(`Dr. ${data.doctorName}`, 14, y); y += 4;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.text('BDS / MDS', 14, y); y += 4;
+    doc.text(data.clinicName || 'Clinic Manager', 14, y);
+    y += 15;
+
+    // ── PHYSICIAN FEEDBACK SECTION ──
+    doc.setDrawColor(200, 200, 200);
+    doc.line(14, y, 196, y);
+    y += 10;
+
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 123, 255);
+    doc.text('PHYSICIAN EVALUATION & CLEARANCE', 14, y);
+    doc.setTextColor(26, 37, 48); // Reset
+    y += 8;
+
+    doc.setFontSize(10);
+    doc.text(`Fitness Status: `, 14, y);
+    doc.setFont('helvetica', 'bold');
+    doc.text(data.fitnessStatus || 'Pending / Under Evaluation', 42, y);
+    y += 8;
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Special Instructions / Recommendations:', 14, y);
+    y += 6;
+    doc.setFont('helvetica', 'normal');
+    const splitInstructions = doc.splitTextToSize(data.specialInstructions || '__________________________________________________________________________________________', 182);
+    doc.text(splitInstructions, 14, y);
+    y += (splitInstructions.length * 5) + 15;
+
+    // Signature placeholders
+    y = Math.max(y, 230);
+    doc.setDrawColor(0, 0, 0);
+    doc.line(14, y, 80, y);
+    doc.line(130, y, 196, y);
+    y += 5;
+    doc.setFontSize(8);
+    doc.text('Physician Signature & Stamp', 47, y, { align: 'center' });
+    doc.text('Date', 163, y, { align: 'center' });
+
+    if (data.signatureUrl) {
+        try {
+            // Physician might fill/sign it physically, but if uploaded later we support it
+            doc.addImage(data.signatureUrl, 'PNG', 20, y - 25, 40, 20);
+        } catch (e) { }
+    }
+
+    addFooter(doc);
+    const filename = `MedicalClearance_${data.patientName.replace(/\s+/g, '_')}.pdf`;
     doc.save(filename);
 }
 
