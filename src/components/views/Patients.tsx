@@ -146,35 +146,54 @@ export function Patients({ userRole, setActiveTab, theme }: { userRole: UserRole
             }
         }
 
-        // Treatment Filter (using patient_history)
-        if (treatmentFilter !== 'All') {
+        // Combined Treatment & Status Filter
+        if (treatmentFilter !== 'All' || statusFilter !== 'All') {
+            const matchTreatment = (itemStr: string) => {
+                if (!itemStr) return false;
+                const item = itemStr.toLowerCase().replace(/[^\w\s]/g, ''); // Strip punctuation
+                const filter = treatmentFilter.toLowerCase().replace(/[^\w\s]/g, '');
+                return item.includes(filter) || filter.includes(item) || filter.split(' ').some(w => w.length > 2 && item.includes(w));
+            };
+
             const history = p.patient_history || [];
-            const hasTreatment = history.some((h: any) => h.treatment?.toLowerCase().includes(treatmentFilter.toLowerCase()));
-            if (!hasTreatment) return false;
-        }
-
-        if (statusFilter !== 'All') {
             const notes = p.clinical_notes || [];
-            let matchStatus = false;
-            for (const note of notes) {
-                try {
-                    const parsed = JSON.parse(note.plan);
-                    const advised = parsed.advised || [];
-                    const advised_labs = parsed.advised_labs || [];
-                    
-                    const hasStatusTre = advised.some((a: any) => 
-                        (treatmentFilter === 'All' || a.treatment?.toLowerCase().includes(treatmentFilter.toLowerCase())) &&
-                        ((a.status || 'Pending') === statusFilter)
-                    );
-                    const hasStatusLab = advised_labs.some((a: any) => 
-                        (treatmentFilter === 'All' || a.item?.toLowerCase().includes(treatmentFilter.toLowerCase())) &&
-                        ((a.status || 'Pending') === statusFilter)
-                    );
+            let hasMatch = false;
 
-                    if (hasStatusTre || hasStatusLab) { matchStatus = true; break; }
-                } catch (e) { }
+            // 1. Check patient history (matches only if status filter is All)
+            const hasInHistory = history.some((h: any) => h.treatment && matchTreatment(h.treatment));
+            if (hasInHistory && statusFilter === 'All') {
+                hasMatch = true;
             }
-            if (!matchStatus) return false;
+
+            // 2. Check clinical notes
+            if (!hasMatch) {
+                for (const note of notes) {
+                    try {
+                        const parsed = JSON.parse(note.plan);
+                        const advised = parsed.advised || [];
+                        const advised_labs = parsed.advised_labs || [];
+
+                        const matchAdvised = advised.some((a: any) => {
+                            const treMatch = treatmentFilter === 'All' || matchTreatment(a.treatment || '');
+                            const statusMatch = statusFilter === 'All' || (a.status || 'Pending') === statusFilter;
+                            return treMatch && statusMatch;
+                        });
+
+                        const matchLabs = advised_labs.some((a: any) => {
+                            const labMatch = treatmentFilter === 'All' || matchTreatment(a.item || '');
+                            const statusMatch = statusFilter === 'All' || (a.status || 'Pending') === statusFilter;
+                            return labMatch && statusMatch;
+                        });
+
+                        if (matchAdvised || matchLabs) {
+                            hasMatch = true;
+                            break;
+                        }
+                    } catch (e) { }
+                }
+            }
+
+            if (!hasMatch) return false;
         }
 
         return true;
