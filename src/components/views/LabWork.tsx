@@ -697,7 +697,6 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                                     </div>
                                 );
                             })}
-                        </div>
                     {orders.length === 0 && !isLoading && (
                         <EmptyState
                             icon={FlaskConical}
