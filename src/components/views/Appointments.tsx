@@ -55,6 +55,7 @@ export function Appointments({ userRole, theme, setActiveTab }: { userRole: User
     const [useDateRange, setUseDateRange] = useState(false);
     const { showToast } = useToast();
     const dateStripRef = useRef<HTMLDivElement>(null);
+    const datePickerRef = useRef<HTMLInputElement>(null);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -398,14 +399,15 @@ export function Appointments({ userRole, theme, setActiveTab }: { userRole: User
                         <div>
                             <h2 className="text-sm sm:text-base font-bold uppercase tracking-tight">Appointments</h2>
                                 <div className="relative">
-                                    <p className="text-[10px] font-medium text-slate-500 hover:text-primary cursor-pointer transition-all flex items-center gap-1">
+                                    <p onClick={() => datePickerRef.current?.showPicker()} className="text-[10px] font-medium text-slate-500 hover:text-primary cursor-pointer transition-all flex items-center gap-1">
                                         {new Date(selectedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} • {appointments.length} Total
                                     </p>
                                     <input 
+                                        ref={datePickerRef}
                                         type="date" 
                                         value={selectedDate} 
                                         onChange={e => { setSelectedDate(e.target.value); setUseDateRange(false); }} 
-                                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" 
+                                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full pointer-events-none" 
                                     />
                                 </div>
                         </div>
