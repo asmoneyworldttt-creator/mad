@@ -880,8 +880,13 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                                 patientPhone: patient.phone || '',
                                                 doctorName: meta.doctor || 'Dr. Sarah Jenkins',
                                                 vendorName: order.vendor_name,
-                                                teeth: meta.selectedTeeth?.join(', ') || 'N/A',
-                                                details: `Prosthesis: ${meta.prosthesis?.join(', ') || 'N/A'}\nSurface: ${meta.surfaceCluster || 'N/A'}\nPontic: ${meta.ponticType || 'N/A'}\nNotes: ${meta.delivery?.notes || 'N/A'}`,
+                                                teeth: meta.selectedTeeth || [],
+                                                prosthesis: meta.prosthesis || [],
+                                                preOp: meta.preOp || [],
+                                                surfaceCluster: meta.surfaceCluster || '',
+                                                ponticType: meta.ponticType || '',
+                                                shades: meta.shades || {},
+                                                deliveryNotes: meta.delivery?.notes || '',
                                                 status: order.order_status,
                                                 deliveryDates: {
                                                     trial: meta.delivery?.trial,
@@ -1470,10 +1475,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                     <textarea value={newNote.assessment} onChange={e => setNewNote({ ...newNote, assessment: e.target.value })} className={`w-full h-16 rounded-2xl p-4 text-xs font-bold outline-none border transition-all ${theme === 'dark' ? 'bg-slate-800 border-white/10' : 'bg-slate-50 border-slate-200'}`} placeholder="Diagnosis details..." />
                                 </div>
 
-                                <div>
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Plan (Proposed Treatment)</label>
-                                    <textarea value={newNote.plan} onChange={e => setNewNote({ ...newNote, plan: e.target.value })} className={`w-full h-16 rounded-2xl p-4 text-xs font-bold outline-none border transition-all ${theme === 'dark' ? 'bg-slate-800 border-white/10' : 'bg-slate-50 border-slate-200'}`} placeholder="Proposed setup..." />
-                                </div>
+
 
                                 {/* ── Advised Treatments Row ── */}
                                 <div className="border border-dashed border-slate-200 dark:border-slate-700 p-4 rounded-2xl">

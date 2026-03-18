@@ -202,7 +202,7 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
             status: formData.financial.status || 'Pending',
             date: formData.orderDate,
             test_name: [...formData.prosthesis, ...formData.preOp].join(', ') || 'Custom Lab Order',
-            cost: totalAmount,
+
             metadata: {
                 time: formData.time,
                 doctor: formData.doctor,
@@ -259,25 +259,31 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
         }
     };
 
-    const handleDownloadPDF = (o: any) => {
+    const handleDownloadPDF = (o: any, mode: 'download' | 'share' = 'download') => {
         const meta = o.metadata || {};
+        const clientName = o.patients?.name || meta.patient_name || 'Patient';
         downloadLabOrderPDF({
             orderId: o.id || '',
-            date: o.order_date || new Date().toISOString().split('T')[0],
-            patientName: o.patients?.name || meta.patient_name || 'Patient',
+            date: o.order_date || o.date || new Date().toISOString().split('T')[0],
+            patientName: clientName,
             patientPhone: o.patients?.phone || '',
             doctorName: meta.doctor || 'Dr. Sarah Jenkins',
-            vendorName: o.vendor_name,
-            teeth: meta.selectedTeeth?.join(', ') || 'N/A',
-            details: `Prosthesis: ${meta.prosthesis?.join(', ') || 'N/A'}\nSurface: ${meta.surfaceCluster || 'N/A'}\nPontic: ${meta.ponticType || 'N/A'}\nNotes: ${meta.delivery?.notes || 'N/A'}`,
-            status: o.order_status,
+            vendorName: o.vendor_name || o.lab_name || 'Generic Lab',
+            teeth: meta.selectedTeeth || [],
+            prosthesis: meta.prosthesis || [],
+            preOp: meta.preOp || [],
+            surfaceCluster: meta.surfaceCluster || '',
+            ponticType: meta.ponticType || '',
+            shades: meta.shades || {},
+            deliveryNotes: meta.delivery?.notes || '',
+            status: o.order_status || o.status || 'Pending',
             deliveryDates: {
                 trial: meta.delivery?.trial || meta.delivery?.metal,
                 bisque: meta.delivery?.bisque,
                 final: meta.delivery?.final
             }
-        });
-        showToast('Lab Order PDF downloaded!', 'success');
+        }, mode);
+        if (mode === 'download') showToast('Lab Order PDF downloaded!', 'success');
     };
 
     const handleEditOrder = (o: any) => {

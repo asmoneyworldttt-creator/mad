@@ -11,20 +11,24 @@ const MUTED_COLOR: [number, number, number] = [100, 116, 139];  // slate-500
 function addClinicHeader(doc: jsPDF, clinicName: string, subtitle: string, docName: string, date: string) {
     // Blue accent bar
     doc.setFillColor(...BRAND_COLOR);
-    doc.rect(0, 0, 210, 28, 'F');
+    doc.rect(0, 0, 210, 32, 'F');
 
     // Clinic name
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(20);
+    doc.setFontSize(22);
     doc.setFont('helvetica', 'bold');
-    doc.text(clinicName, 14, 14);
+    doc.text(clinicName || 'DentiSphere Premium Clinic', 14, 15);
 
-    // Subtitle
+    // Subtitle / Address / Contact header elements
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.text(subtitle, 14, 22);
+    doc.text(subtitle || 'Multi-Speciality Dental & Aesthetic Center', 14, 21);
+    doc.text('123 Health Street, Clinic District, TN 627003', 14, 25);
+    doc.text('Ph: +91 91234 56789 | support@dentora.com', 14, 29);
 
     // Doctor + Date right-aligned
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
     doc.text(`${docName}  |  ${date}`, 196, 14, { align: 'right' });
 
     // Reset text color
@@ -242,13 +246,18 @@ export interface LabOrderData {
     patientPhone?: string;
     doctorName: string;
     vendorName: string;
-    teeth: string;
-    details: string;
+    teeth?: string[];
+    prosthesis?: string[];
+    preOp?: string[];
+    surfaceCluster?: string;
+    ponticType?: string;
+    shades?: { upper?: string; lower?: string; gingival?: string };
+    deliveryNotes?: string;
     status: string;
     deliveryDates: { trial?: string; bisque?: string; final?: string };
 }
 
-export function downloadLabOrderPDF(data: LabOrderData): void {
+export function downloadLabOrderPDF(data: LabOrderData, mode: 'download' | 'share' = 'download'): void {
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
 
     addClinicHeader(
@@ -261,17 +270,17 @@ export function downloadLabOrderPDF(data: LabOrderData): void {
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.text(`Order ID: #${(data.orderId || '').slice(0, 8)}`, 14, 38);
+    doc.text(`Order ID: #${(data.orderId || '').slice(0, 8)}`, 14, 40);
 
     // Info Grid
     const info = [
         ['Patient Name', data.patientName, 'Lab / Vendor', data.vendorName],
         ['Contact', data.patientPhone || 'N/A', 'Status', data.status],
-        ['Teeth Reference', data.teeth || 'N/A', '', '']
+        ['Teeth Selection', data.teeth?.join(', ') || 'N/A', '', '']
     ];
 
     autoTable(doc, {
-        startY: 42,
+        startY: 44,
         body: info,
         theme: 'plain',
         bodyStyles: { fontSize: 9, textColor: DARK_COLOR, cellPadding: 2 },
@@ -281,32 +290,63 @@ export function downloadLabOrderPDF(data: LabOrderData): void {
     let y = (doc as any).lastAutoTable.finalY + 10;
 
     doc.setFont('helvetica', 'bold');
-    doc.text('Order Details / Instructions:', 14, y);
+    doc.text('Order Details & Instructions:', 14, y);
     y += 6;
-    doc.setFont('helvetica', 'normal');
-    const splitDetails = doc.splitTextToSize(data.details || 'No additional instructions provided.', 182);
-    doc.text(splitDetails, 14, y);
-    y += (splitDetails.length * 5) + 10;
 
-    doc.setFont('helvetica', 'bold');
-    doc.text('Delivery Schedule:', 14, y);
-    y += 6;
-    const delivery = [
-        ['Trial Fitment', data.deliveryDates.trial || 'TBD'],
-        ['Bisque/Second Trial', data.deliveryDates.bisque || 'TBD'],
-        ['Final Delivery', data.deliveryDates.final || 'TBD']
-    ];
+    // Build Specifications detail list
+    const specFields = [];
+    if (data.shades?.upper) specFields.push(`Upper Shade: ${data.shades.upper}`);
+    if (data.shades?.lower) specFields.push(`Lower Shade: ${data.shades.lower}`);
+    if (data.shades?.gingival) specFields.push(`Gingival Shade: ${data.shades.gingival}`);
+    if (data.surfaceCluster) specFields.push(`Surface: ${data.surfaceCluster}`);
+    if (data.ponticType) specFields.push(`Pontic: ${data.ponticType}`);
+    if (data.deliveryNotes) specFields.push(`Notes: ${data.deliveryNotes}`);
+    const specsText = specFields.join('\n') || '—';
+
+    // Build Schedule List
+    const scheduleFields = [];
+    if (data.deliveryDates.trial) scheduleFields.push(`Trial Fit: ${data.deliveryDates.trial}`);
+    if (data.deliveryDates.bisque) scheduleFields.push(`Bisque Trial: ${data.deliveryDates.bisque}`);
+    if (data.deliveryDates.final) scheduleFields.push(`Final Delivery: ${data.deliveryDates.final}`);
+    const scheduleText = scheduleFields.join('\n') || 'TBD';
+
+    const itemsList = [...(data.preOp || []), ...(data.prosthesis || [])];
+    const tableBody = itemsList.map(item => [
+        item,
+        specsText,
+        scheduleText
+    ]);
+    if (tableBody.length === 0) {
+         tableBody.push(['General Lab Work', specsText, scheduleText]);
+    }
+
     autoTable(doc, {
         startY: y,
-        body: delivery,
+        head: [['Item / Task', 'Specifications (Shade, Surface, Pontic)', 'Schedule']],
+        body: tableBody,
         theme: 'grid',
-        bodyStyles: { fontSize: 9 },
-        columnStyles: { 0: { fontStyle: 'bold', cellWidth: 40 } }
+        bodyStyles: { fontSize: 8, textColor: DARK_COLOR },
+        headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontStyle: 'bold' },
+        columnStyles: { 0: { fontStyle: 'bold', cellWidth: 40 }, 1: { cellWidth: 80 } }
     });
 
     addFooter(doc);
     const filename = `LabOrder_${data.patientName.replace(/\s+/g, '_')}_${new Date(data.date).toISOString().split('T')[0]}.pdf`;
-    doc.save(filename);
+    
+    if (mode === 'share') {
+        const blob = doc.output('blob');
+        const file = new File([blob], filename, { type: 'application/pdf' });
+        
+        const msg = `Hello,\n\nPlease find the Lab Order details for patient ${data.patientName} (Order ID: #${data.orderId.slice(0, 8)}).\n\nBest regards,\n${data.doctorName}`;
+        
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            navigator.share({ files: [file], title: 'Lab Order', text: `Lab Order for ${data.patientName}` }).catch(() => {});
+        } else {
+            window.open(`mailto:?subject=${encodeURIComponent('Lab Order - ' + data.patientName)}&body=${encodeURIComponent(msg)}`);
+        }
+    } else {
+        doc.save(filename);
+    }
 }
 
 export interface InvoiceData {
