@@ -198,8 +198,8 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
 
         const orderDataToSave = {
             patient_id: selectedPatient?.id,
-            lab_name: formData.vendor || 'Unknown Lab',
-            status: formData.financial.status || 'Pending',
+            vendor_name: formData.vendor || 'Unknown Lab',
+            order_status: formData.financial.status || 'Pending',
             order_date: formData.orderDate,
             test_name: [...formData.prosthesis, ...formData.preOp].join(', ') || 'Custom Lab Order',
 
