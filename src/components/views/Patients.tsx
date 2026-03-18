@@ -172,12 +172,24 @@ export function Patients({ userRole, setActiveTab, theme }: { userRole: UserRole
                         const parsed = JSON.parse(note.plan);
                         const advised = parsed.advised || [];
                         const advised_labs = parsed.advised_labs || [];
+                        const treatments_done = parsed.treatments_done || [];
 
                         const matchAdvised = advised.some((a: any) => {
                             const treMatch = treatmentFilter === 'All' || matchTreatment(a.treatment || '');
                             const statusMatch = statusFilter === 'All' || (a.status || 'Pending') === statusFilter;
                             return treMatch && statusMatch;
                         });
+
+                        const matchDone = treatments_done.some((t: any) => {
+                            const treMatch = treatmentFilter === 'All' || matchTreatment(t.treatment || '');
+                            const statusMatch = statusFilter === 'All' || (t.status || 'Completed') === statusFilter;
+                            return treMatch && statusMatch;
+                        });
+
+                        if (matchAdvised || matchDone) {
+                            hasMatch = true;
+                            break;
+                        }
 
                         const matchLabs = advised_labs.some((a: any) => {
                             const labMatch = treatmentFilter === 'All' || matchTreatment(a.item || '');

@@ -75,6 +75,10 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
     const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
     const [newAdvice, setNewAdvice] = useState({ tooth: '', treatment: '' });
     const [newLabAdvice, setNewLabAdvice] = useState({ tooth: '', item: '' });
+    
+    // New Treatment Done states
+    const [treatmentsDone, setTreatmentsDone] = useState<{ tooth: string, treatment: string, status: string }[]>([]);
+    const [newTreatmentDone, setNewTreatmentDone] = useState({ tooth: '', treatment: '', status: 'Completed' });
     const [expandedHistory, setExpandedHistory] = useState<string[]>([]);
 
     const groupedHistory = useMemo(() => {
@@ -190,14 +194,15 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
     }, [patient.id]);
 
     const handleSaveNote = async () => {
-        if (!newNote.subjective && !newNote.objective && !newNote.assessment && !newNote.plan && advisedTreatments.length === 0 && advisedLabOrders.length === 0) {
+        if (!newNote.subjective && !newNote.objective && !newNote.assessment && !newNote.plan && advisedTreatments.length === 0 && advisedLabOrders.length === 0 && treatmentsDone.length === 0) {
             return; // Needs content
         }
         setIsSavingNote(true);
         const planData = JSON.stringify({
             text: newNote.plan,
             advised: advisedTreatments,
-            advised_labs: advisedLabOrders
+            advised_labs: advisedLabOrders,
+            treatments_done: treatmentsDone // Save this new field!
         });
 
         const noteObj = {
@@ -241,6 +246,18 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
             }
         }
 
+        if (treatmentsDone.length > 0) {
+            const historyItems = treatmentsDone.map(t => ({
+                patient_id: patient.id,
+                date: new Date().toISOString().split('T')[0],
+                treatment: t.treatment,
+                notes: `Tooth: ${t.tooth}. Status: ${t.status || 'Completed'}`,
+                category: 'Clinical',
+                metadata: { from_clinical_note: true, status: t.status }
+            }));
+            await supabase.from('patient_history').insert(historyItems);
+        }
+
         const adviceStr = advisedTreatments.map(a => `${a.tooth}: ${a.treatment}`).join(', ');
         await supabase.from('patient_history').insert({
             patient_id: patient.id,
@@ -257,6 +274,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
         setNewNote({ subjective: '', objective: '', assessment: '', plan: '', doctor_name: 'Dr. Sarah Jenkins' });
         setAdvisedTreatments([]);
         setAdvisedLabOrders([]);
+        setTreatmentsDone([]); // Clear new field!
         fetchData();
         setIsSavingNote(false);
     };
@@ -1484,6 +1502,41 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                                             <option value="Pending">Pending</option><option value="In Progress">In Progress</option><option value="Completed">Completed</option>
                                                         </select>
                                                         <button onClick={() => setAdvisedLabOrders(advisedLabOrders.filter((_, idx) => idx !== i))} className="text-rose-500 hover:text-rose-600"><Trash2 size={12} /></button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* ── Treatment Done Row ── */}
+                                <div className="border border-dashed border-slate-200 dark:border-slate-700 p-4 rounded-2xl">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Treatment Done</label>
+                                    <div className="flex gap-2">
+                                        <input type="text" placeholder="Tooth #" value={newTreatmentDone.tooth} onChange={e => setNewTreatmentDone({ ...newTreatmentDone, tooth: e.target.value })} className="w-20 px-3 py-2 text-xs font-bold bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none" />
+                                        <input type="text" list="done-treatments-list" placeholder="Treatment, e.g., Scaling" value={newTreatmentDone.treatment} onChange={e => setNewTreatmentDone({ ...newTreatmentDone, treatment: e.target.value })} className="flex-1 px-3 py-2 text-xs font-bold bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none" />
+                                        <datalist id="done-treatments-list">
+                                            {standardTreatments.map((t, i) => <option key={i} value={t} />)}
+                                        </datalist>
+                                        <select value={newTreatmentDone.status} onChange={e => setNewTreatmentDone({ ...newTreatmentDone, status: e.target.value })} className="px-2 py-1 text-[10px] font-bold bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-lg outline-none">
+                                            <option value="Completed">Completed</option><option value="Pending">Pending</option><option value="In Progress">In Progress</option>
+                                        </select>
+                                        <button onClick={() => {
+                                            if (newTreatmentDone.treatment) {
+                                                setTreatmentsDone([...treatmentsDone, newTreatmentDone]);
+                                                setNewTreatmentDone({ tooth: '', treatment: '', status: 'Completed' });
+                                            }
+                                        }} className="p-2.5 rounded-xl bg-violet-500 text-white flex items-center justify-center"><Plus size={16} /></button>
+                                    </div>
+                                    
+                                    {treatmentsDone.length > 0 && (
+                                        <div className="mt-2 space-y-1">
+                                            {treatmentsDone.map((t: any, i) => (
+                                                <div key={i} className="flex justify-between items-center bg-slate-100 dark:bg-white/5 p-2 rounded-xl">
+                                                    <span className="text-xs font-black"><span className="text-slate-400"># {t.tooth || 'All'}:</span> {t.treatment}</span>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className={`px-2 py-0.5 rounded-lg text-[8px] font-extrabold border uppercase ${t.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : t.status === 'In Progress' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' : 'bg-amber-500/10 text-amber-500 border-amber-500/20'}`}>{t.status}</span>
+                                                        <button onClick={() => setTreatmentsDone(treatmentsDone.filter((_, idx) => idx !== i))} className="text-rose-500 hover:text-rose-600"><Trash2 size={12} /></button>
                                                     </div>
                                                 </div>
                                             ))}
