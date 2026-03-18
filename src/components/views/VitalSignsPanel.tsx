@@ -57,16 +57,23 @@ export function VitalSignsPanel({ patient: initialPatient, theme }: VitalSignsPa
         if (!form.bp_systolic && !form.pulse) return showToast('Please enter at least BP or Pulse', 'error');
         
         setSaving(true);
-        const { error } = await supabase.from('vital_signs').insert({
+        const payload: any = {
             patient_id: selectedPatient.id,
-            doctor_id: selectedDoctor.id,
             doctor_name: selectedDoctor.name,
             bp_systolic: form.bp_systolic ? parseInt(form.bp_systolic) : null,
             bp_diastolic: form.bp_diastolic ? parseInt(form.bp_diastolic) : null,
             pulse: form.pulse ? parseInt(form.pulse) : null,
             spo2: form.spo2 ? parseInt(form.spo2) : null,
             notes: form.notes,
-        });
+        };
+        
+        // Add doctor_id only if it is a valid UUID
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(selectedDoctor.id || '');
+        if (isUUID) {
+            payload.doctor_id = selectedDoctor.id;
+        }
+
+        const { error } = await supabase.from('vital_signs').insert(payload);
         setSaving(false);
         if (error) showToast('Failed to save vitals: ' + error.message, 'error');
         else {
