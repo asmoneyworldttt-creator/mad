@@ -627,26 +627,60 @@ export function downloadMedicalClearancePDF(data: MedicalClearanceData): void {
     doc.setFont('helvetica', 'normal');
     doc.text('Dear Doctor,', 14, y); y += 8;
 
-    const patientNameAge = `${data.patientName}, aged ${data.patientAge || '____'}`;
-    const introText = `I would like to refer my patient ${patientNameAge}, who reported to our clinic with a dental complaint.`;
-    const splitIntro = doc.splitTextToSize(introText, 182);
-    doc.text(splitIntro, 14, y);
-    y += (splitIntro.length * 5) + 6;
-
+    doc.setFont('helvetica', 'normal');
+    doc.text('I would like to refer my patient ', 14, y);
+    const w1 = doc.getTextWidth('I would like to refer my patient ');
+    
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(220, 38, 38); // Red Color
+    doc.setTextColor(220, 38, 38); // RED Color
+    const pText = `${data.patientName}, aged ${data.patientAge || '____'}`;
+    doc.text(pText, 14 + w1, y);
+    const w2 = doc.getTextWidth(pText);
     
-    const examText = `On clinical examination, the patient has been diagnosed with ${data.provisionalDiagnosis || '________'}, for which ${data.proposedTreatment || '________'} is planned.`;
-    const splitExam = doc.splitTextToSize(examText, 182);
-    doc.text(splitExam, 14, y);
-    y += (splitExam.length * 5) + 6;
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(26, 37, 48); // Reset to Dark Black
+    doc.text(', who reported to our clinic with a dental complaint.', 14 + w1 + w2, y);
+    y += 10;
 
-    const medicalText = `The patient is a known case of ${data.medicalHistory || 'N/A'} and is currently under treatment with ${data.currentMedications || 'N/A'}.`;
-    const splitMedical = doc.splitTextToSize(medicalText, 182);
-    doc.text(splitMedical, 14, y);
-    y += (splitMedical.length * 5) + 8;
-    
-    doc.setTextColor(26, 37, 48); // Reset dark color for points list header!
+    // Section 1: Diagnosis
+    doc.setFont('helvetica', 'bold');
+    doc.text('Provisional Diagnosis:', 14, y); y += 6;
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(220, 38, 38); // RED Color for user type-in
+    const splitDiag = doc.splitTextToSize(data.provisionalDiagnosis || 'N/A', 182);
+    doc.text(splitDiag, 14, y);
+    y += (splitDiag.length * 5) + 6;
+    doc.setTextColor(26, 37, 48); // Reset
+
+    // Section 2: Proposed Treatment
+    doc.setFont('helvetica', 'bold');
+    doc.text('Proposed Dental Treatment:', 14, y); y += 6;
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(220, 38, 38); // RED Color for user type-in
+    const splitTreat = doc.splitTextToSize(data.proposedTreatment || 'N/A', 182);
+    doc.text(splitTreat, 14, y);
+    y += (splitTreat.length * 5) + 6;
+    doc.setTextColor(26, 37, 48); // Reset
+
+    // Section 3: Medical History
+    doc.setFont('helvetica', 'bold');
+    doc.text('Medical History:', 14, y); y += 6;
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(220, 38, 38); // RED Color for user type-in
+    const splitMed = doc.splitTextToSize(data.medicalHistory || 'N/A', 182);
+    doc.text(splitMed, 14, y);
+    y += (splitMed.length * 5) + 6;
+    doc.setTextColor(26, 37, 48); // Reset
+
+    // Section 4: Current Medications
+    doc.setFont('helvetica', 'bold');
+    doc.text('Current Medications:', 14, y); y += 6;
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(220, 38, 38); // RED Color for user type-in
+    const splitMedication = doc.splitTextToSize(data.currentMedications || 'N/A', 182);
+    doc.text(splitMedication, 14, y);
+    y += (splitMedication.length * 5) + 8;
+    doc.setTextColor(26, 37, 48); // Reset to Dark for list headers
 
     doc.setFont('helvetica', 'bold');
     doc.text('In view of the patient’s medical status, I kindly request your expert opinion regarding:', 14, y);

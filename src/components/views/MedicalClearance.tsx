@@ -64,7 +64,6 @@ export function MedicalClearance({ userRole, theme }: { userRole: string; theme?
     const saveForm = async () => {
         if (!selectedPatient) return showToast('Please select a patient', 'error');
         if (!selectedDoctor) return showToast('Please select a referring doctor', 'error');
-        if (!physicianName) return showToast('Physician/Specialist name is required', 'error');
 
         setIsSaving(true);
         const { error } = await supabase.from('medical_clearances').insert({
