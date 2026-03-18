@@ -105,9 +105,11 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
             try {
                 for (const note of notes) {
                     const parsed = JSON.parse(note.plan);
-                    if (parsed?.advised_labs?.length > 0) {
-                        const teeth = parsed.advised_labs.map((a: any) => parseInt(a.tooth)).filter(Number.isInteger);
-                        const items = parsed.advised_labs.map((a: any) => a.item);
+                    const pendingLabs = (parsed?.advised_labs || []).filter((a: any) => !a.status || a.status === 'Pending');
+                    
+                    if (pendingLabs.length > 0) {
+                        const teeth = pendingLabs.map((a: any) => parseInt(a.tooth)).filter(Number.isInteger);
+                        const items = pendingLabs.map((a: any) => a.item);
                         
                         setFormData(prev => {
                             const newPreOp = [...prev.preOp];

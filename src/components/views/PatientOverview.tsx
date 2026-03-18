@@ -69,8 +69,10 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
     const [isSoapModalOpen, setIsSoapModalOpen] = useState(false);
     const [newNote, setNewNote] = useState({ subjective: '', objective: '', assessment: '', plan: '', doctor_name: 'Dr. Sarah Jenkins' });
     const [isSavingNote, setIsSavingNote] = useState(false);
-    const [advisedTreatments, setAdvisedTreatments] = useState<{ tooth: string, treatment: string }[]>([]);
-    const [advisedLabOrders, setAdvisedLabOrders] = useState<{ tooth: string, item: string }[]>([]);
+    const [advisedTreatments, setAdvisedTreatments] = useState<{ tooth: string, treatment: string, status?: string }[]>([]);
+    const [advisedLabOrders, setAdvisedLabOrders] = useState<{ tooth: string, item: string, status?: string }[]>([]);
+    const [isEditingNote, setIsEditingNote] = useState(false);
+    const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
     const [newAdvice, setNewAdvice] = useState({ tooth: '', treatment: '' });
     const [newLabAdvice, setNewLabAdvice] = useState({ tooth: '', item: '' });
 
@@ -182,14 +184,18 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
             advised_labs: advisedLabOrders
         });
 
-        const { data: noteData, error: noteError } = await supabase.from('clinical_notes').insert({
+        const noteObj = {
             patient_id: patient.id,
             subjective: newNote.subjective,
             objective: newNote.objective,
             assessment: newNote.assessment,
             plan: planData,
             doctor_name: newNote.doctor_name
-        }).select('id').single();
+        };
+
+        const { data: noteData, error: noteError } = isEditingNote && editingNoteId
+            ? await supabase.from('clinical_notes').update(noteObj).eq('id', editingNoteId).select('id').single()
+            : await supabase.from('clinical_notes').insert(noteObj).select('id').single();
 
         if (noteError) {
             showToast(noteError.message, 'error');
@@ -197,8 +203,8 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
             return;
         }
 
-        // AUTO SYNC TO TREATMENT plan if treatments advised
-        if (advisedTreatments.length > 0) {
+        // AUTO SYNC TO TREATMENT plan if treatments advised (Only new inserts, skip on edits for duplicate prevention if desired, or let build logic)
+        if (!isEditingNote && advisedTreatments.length > 0) {
             const { data: planData, error: planError } = await supabase.from('treatment_plans').insert({
                 patient_id: patient.id,
                 title: `Plan from Note - ${new Date().toLocaleDateString()}`,
@@ -230,6 +236,8 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
         });
 
         setIsSoapModalOpen(false);
+        setIsEditingNote(false);
+        setEditingNoteId(null);
         setNewNote({ subjective: '', objective: '', assessment: '', plan: '', doctor_name: 'Dr. Sarah Jenkins' });
         setAdvisedTreatments([]);
         setAdvisedLabOrders([]);
@@ -959,7 +967,31 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                                 <h5 className="text-xl font-bold mb-1">Clinical Record: {new Date(note.created_at).toLocaleDateString()}</h5>
                                                 <p className="text-xs font-bold text-primary flex items-center gap-2 uppercase tracking-widest"><ClipboardCheck size={12} /> Dr. {note.doctor_name}</p>
                                             </div>
-                                            <span className="px-4 py-1.5 bg-primary/10 text-primary rounded-full text-[10px] font-black uppercase tracking-widest">Permanent Record</span>
+                                            <div className="flex items-center gap-2">
+                                                <button onClick={() => {
+                                                    setIsEditingNote(true);
+                                                    setEditingNoteId(note.id);
+                                                    setNewNote({
+                                                        subjective: note.subjective || '',
+                                                        objective: note.objective || '',
+                                                        assessment: note.assessment || '',
+                                                        plan: '',
+                                                        doctor_name: note.doctor_name || 'Dr. Sarah Jenkins'
+                                                    });
+                                                    try {
+                                                        const parsed = JSON.parse(note.plan);
+                                                        setNewNote(prev => ({ ...prev, plan: parsed.text || '' }));
+                                                        setAdvisedTreatments(parsed.advised || []);
+                                                        setAdvisedLabOrders(parsed.advised_labs || []);
+                                                    } catch (e) {
+                                                        setNewNote(prev => ({ ...prev, plan: note.plan || '' }));
+                                                    }
+                                                    setIsSoapModalOpen(true);
+                                                }} className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1 transition-all border dark:border-white/5 shadow-sm">
+                                                    Update
+                                                </button>
+                                                <span className="px-4 py-1.5 bg-primary/10 text-primary rounded-full text-[10px] font-black uppercase tracking-widest">Permanent Record</span>
+                                            </div>
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                             <div className="space-y-4">
@@ -1000,7 +1032,10 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                                                         <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-1">Advised / Recommended Treatments</p>
                                                                         <div className="space-y-1">
                                                                             {advised.map((a: any, i: number) => (
-                                                                                <p key={i} className="text-xs font-black"><span className="text-slate-400">Tooth {a.tooth}:</span> {a.treatment}</p>
+                                                                                <div key={i} className="flex justify-between items-center text-xs font-black">
+                                                                                    <span><span className="text-slate-400">Tooth {a.tooth}:</span> {a.treatment}</span>
+                                                                                    <span className={`px-1.5 py-0.5 rounded text-[8px] uppercase tracking-wider ${a.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-500' : a.status === 'In Progress' ? 'bg-amber-500/10 text-amber-500' : 'bg-slate-100 dark:bg-white/5 text-slate-500'}`}>{a.status || 'Pending'}</span>
+                                                                                </div>
                                                                             ))}
                                                                         </div>
                                                                     </div>
@@ -1010,7 +1045,10 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                                                         <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-1">Advised Lab Orders</p>
                                                                         <div className="space-y-1">
                                                                             {advisedLabs.map((a: any, i: number) => (
-                                                                                <p key={i} className="text-xs font-black"><span className="text-slate-400">Tooth {a.tooth}:</span> {a.item}</p>
+                                                                                <div key={i} className="flex justify-between items-center text-xs font-black">
+                                                                                    <span><span className="text-slate-400">Tooth {a.tooth}:</span> {a.item}</span>
+                                                                                    <span className={`px-1.5 py-0.5 rounded text-[8px] uppercase tracking-wider ${a.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-500' : a.status === 'In Progress' ? 'bg-amber-500/10 text-amber-500' : 'bg-slate-100 dark:bg-white/5 text-slate-500'}`}>{a.status || 'Pending'}</span>
+                                                                                </div>
                                                                             ))}
                                                                         </div>
                                                                     </div>
@@ -1370,10 +1408,15 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                     
                                     {advisedTreatments.length > 0 && (
                                         <div className="mt-2 space-y-1">
-                                            {advisedTreatments.map((a, i) => (
+                                            {advisedTreatments.map((a: any, i) => (
                                                 <div key={i} className="flex justify-between items-center bg-slate-100 dark:bg-white/5 p-2 rounded-xl">
                                                     <span className="text-xs font-black"><span className="text-slate-400"># {a.tooth}:</span> {a.treatment}</span>
-                                                    <button onClick={() => setAdvisedTreatments(advisedTreatments.filter((_, idx) => idx !== i))} className="text-rose-500 hover:text-rose-600"><Trash2 size={12} /></button>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <select value={a.status || 'Pending'} onChange={(e) => { const updated = [...advisedTreatments]; updated[i].status = e.target.value; setAdvisedTreatments(updated); }} className="px-2 py-1 bg-slate-200 dark:bg-slate-700/50 rounded-lg text-[9px] font-bold outline-none border border-slate-300 dark:border-white/10">
+                                                            <option value="Pending">Pending</option><option value="In Progress">In Progress</option><option value="Completed">Completed</option>
+                                                        </select>
+                                                        <button onClick={() => setAdvisedTreatments(advisedTreatments.filter((_, idx) => idx !== i))} className="text-rose-500 hover:text-rose-600"><Trash2 size={12} /></button>
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
@@ -1391,7 +1434,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                         </datalist>
                                         <button onClick={() => {
                                             if (newLabAdvice.tooth && newLabAdvice.item) {
-                                                setAdvisedLabOrders([...advisedLabOrders, newLabAdvice]);
+                                                setAdvisedLabOrders([...advisedLabOrders, { ...newLabAdvice, status: 'Pending' }]);
                                                 setNewLabAdvice({ tooth: '', item: '' });
                                             }
                                         }} className="p-2.5 rounded-xl bg-blue-500 text-white flex items-center justify-center"><Plus size={16} /></button>
@@ -1399,10 +1442,15 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                     
                                     {advisedLabOrders.length > 0 && (
                                         <div className="mt-2 space-y-1">
-                                            {advisedLabOrders.map((a, i) => (
+                                            {advisedLabOrders.map((a: any, i) => (
                                                 <div key={i} className="flex justify-between items-center bg-slate-100 dark:bg-white/5 p-2 rounded-xl">
                                                     <span className="text-xs font-black"><span className="text-slate-400"># {a.tooth}:</span> {a.item}</span>
-                                                    <button onClick={() => setAdvisedLabOrders(advisedLabOrders.filter((_, idx) => idx !== i))} className="text-rose-500 hover:text-rose-600"><Trash2 size={12} /></button>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <select value={a.status || 'Pending'} onChange={(e) => { const updated = [...advisedLabOrders]; updated[i].status = e.target.value; setAdvisedLabOrders(updated); }} className="px-2 py-1 bg-slate-200 dark:bg-slate-700/50 rounded-lg text-[9px] font-bold outline-none border border-slate-300 dark:border-white/10">
+                                                            <option value="Pending">Pending</option><option value="In Progress">In Progress</option><option value="Completed">Completed</option>
+                                                        </select>
+                                                        <button onClick={() => setAdvisedLabOrders(advisedLabOrders.filter((_, idx) => idx !== i))} className="text-rose-500 hover:text-rose-600"><Trash2 size={12} /></button>
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>

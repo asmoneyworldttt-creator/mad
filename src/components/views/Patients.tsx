@@ -83,6 +83,7 @@ export function Patients({ userRole, setActiveTab, theme }: { userRole: UserRole
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');
     const [treatmentFilter, setTreatmentFilter] = useState('All');
+    const [statusFilter, setStatusFilter] = useState('All');
     const [treatments, setTreatments] = useState<string[]>(DEFAULT_TREATMENTS);
 
     useEffect(() => {
@@ -99,7 +100,7 @@ export function Patients({ userRole, setActiveTab, theme }: { userRole: UserRole
 
     const fetchPatients = useCallback(async () => {
         setIsLoading(true);
-        const { data } = await supabase.from('patients').select('*, patient_history(*)').order('created_at', { ascending: false });
+        const { data } = await supabase.from('patients').select('*, patient_history(*), clinical_notes(*)').order('created_at', { ascending: false });
         if (data) setPatientsData(data);
         setIsLoading(false);
     }, []);
@@ -150,6 +151,30 @@ export function Patients({ userRole, setActiveTab, theme }: { userRole: UserRole
             const history = p.patient_history || [];
             const hasTreatment = history.some((h: any) => h.treatment?.toLowerCase().includes(treatmentFilter.toLowerCase()));
             if (!hasTreatment) return false;
+        }
+
+        if (statusFilter !== 'All') {
+            const notes = p.clinical_notes || [];
+            let matchStatus = false;
+            for (const note of notes) {
+                try {
+                    const parsed = JSON.parse(note.plan);
+                    const advised = parsed.advised || [];
+                    const advised_labs = parsed.advised_labs || [];
+                    
+                    const hasStatusTre = advised.some((a: any) => 
+                        (treatmentFilter === 'All' || a.treatment?.toLowerCase().includes(treatmentFilter.toLowerCase())) &&
+                        ((a.status || 'Pending') === statusFilter)
+                    );
+                    const hasStatusLab = advised_labs.some((a: any) => 
+                        (treatmentFilter === 'All' || a.item?.toLowerCase().includes(treatmentFilter.toLowerCase())) &&
+                        ((a.status || 'Pending') === statusFilter)
+                    );
+
+                    if (hasStatusTre || hasStatusLab) { matchStatus = true; break; }
+                } catch (e) { }
+            }
+            if (!matchStatus) return false;
         }
 
         return true;
@@ -211,7 +236,12 @@ export function Patients({ userRole, setActiveTab, theme }: { userRole: UserRole
                          </div>
                     )}
 
-                    <div className="ms-auto w-full sm:w-auto mt-2 sm:mt-0 flex gap-2">
+                    <div className="ms-auto w-full sm:w-auto mt-2 sm:mt-0 flex items-center gap-2">
+                        <div className="flex items-center gap-1 bg-slate-50/50 dark:bg-white/5 p-1 rounded-xl border dark:border-white/10">
+                            {['Pending', 'In Progress', 'Completed'].map(status => (
+                                <button key={status} onClick={() => setStatusFilter(statusFilter === status ? 'All' : status)} className={`px-2.5 py-1.5 rounded-lg text-[9px] font-bold transition-all whitespace-nowrap ${statusFilter === status ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10'}`}>{status}</button>
+                            ))}
+                        </div>
                         <select 
                             value={treatmentFilter} 
                             onChange={(e) => {

@@ -215,14 +215,15 @@ export function TreatmentPlans({ userRole, theme, setActiveTab }: { userRole: Us
             } catch (e) { }
         }
 
-        if (advised && advised.length > 0) {
-            const loadedItems = advised.map((a: any) => ({
+        const pendingItems = advised.filter((a: any) => !a.status || a.status === 'Pending');
+        if (pendingItems.length > 0) {
+            const loadedItems = pendingItems.map((a: any) => ({
                 treatment_name: a.treatment,
                 selected_teeth: [a.tooth],
                 unit_cost: 0, estimated_sessions: 1, cost: 0, status: 'Pending', scheduled_date: '', notes: ''
             }));
             setNewItems(loadedItems);
-            showToast('Pulled recommended plan items from clinical notes!', 'success');
+            showToast('Pulled recommended items from clinical notes!', 'success');
         } else {
             showToast('No advised treatments found in recent clinical notes.', 'info');
         }
