@@ -200,7 +200,7 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
             patient_id: selectedPatient?.id,
             lab_name: formData.vendor || 'Unknown Lab',
             status: formData.financial.status || 'Pending',
-            date: formData.orderDate,
+            order_date: formData.orderDate,
             test_name: [...formData.prosthesis, ...formData.preOp].join(', ') || 'Custom Lab Order',
 
             metadata: {
