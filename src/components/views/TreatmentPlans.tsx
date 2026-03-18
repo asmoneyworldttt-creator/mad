@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Plus, ChevronRight, CheckCircle2, Clock, Trash2, Save, ArrowLeft, Search, Calendar, Zap, BadgePercent, Download, MessageSquareMore as MessageCircle } from 'lucide-react';
 import { supabase } from '../../supabase';
 import { useToast } from '../Toast';
@@ -44,6 +44,22 @@ export function TreatmentPlans({ userRole, theme, setActiveTab }: { userRole: Us
     const [itemDateFilter, setItemDateFilter] = useState<'All' | 'Today' | 'This Month'>('All');
 
     // New plan form
+    const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
+
+    const groupedPlans = useMemo(() => {
+        const groups: Record<string, any[]> = {};
+        plans.forEach(p => {
+            const pid = p.patient_id || 'unknown';
+            if (!groups[pid]) groups[pid] = [];
+            groups[pid].push(p);
+        });
+        return Object.entries(groups).map(([pId, list]) => ({
+            patientId: pId,
+            patientName: list[0].patients?.name || 'Manual Listing',
+            plans: list
+        }));
+    }, [plans]);
+
     const [newPlan, setNewPlan] = useState({ 
         patientSearch: '', 
         patientId: '', 
@@ -668,41 +684,63 @@ export function TreatmentPlans({ userRole, theme, setActiveTab }: { userRole: Us
                 </div>
             ) : filtered.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                    {filtered.map(plan => {
-                        const statusCfg = STATUS_CONFIG[plan.status] || STATUS_CONFIG.Draft;
-                        const paidPct = plan.total_cost > 0 ? Math.round((plan.paid_amount / plan.total_cost) * 100) : 0;
-                        return (
-                            <div key={plan.id} onClick={() => handleOpenPlan(plan)}
-                                className={`p-6 rounded-[2rem] border cursor-pointer transition-all hover:-translate-y-1 group ${isDark ? 'bg-slate-900 border-slate-800 hover:border-primary/50' : 'bg-white border-slate-100 shadow-sm hover:shadow-xl'}`}>
-                                <div className="flex justify-between items-start mb-4">
-                                    <div>
-                                        <p className="font-bold text-sm line-clamp-1">{plan.title}</p>
-                                        <p className="text-[11px] text-slate-500 font-medium mt-0.5">{plan.patients?.name}</p>
-                                    </div>
-                                    <span className={`px-2.5 py-1 rounded-xl text-[9px] font-extrabold border uppercase ${statusCfg.color}`}>{plan.status}</span>
-                                </div>
-                                <div className="space-y-3">
-                                    <div className="flex justify-between">
-                                        <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Total Cost</span>
-                                        <span className="text-sm font-black text-primary">{formatINR(plan.total_cost)}</span>
-                                    </div>
-                                    <div>
-                                        <div className="flex justify-between mb-1">
-                                            <span className="text-[9px] text-slate-500 font-black uppercase tracking-widest">Payment</span>
-                                            <span className="text-[10px] font-extrabold text-emerald-500">{paidPct}%</span>
-                                        </div>
-                                        <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
-                                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${paidPct}%` }} />
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="mt-4 flex items-center justify-between">
-                                    <span className="text-[10px] text-slate-500">{new Date(plan.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                                    <span className="text-xs font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">Open <ChevronRight size={14} /></span>
-                                </div>
-                            </div>
+                    {(() => {
+                        const filteredGrouped = groupedPlans.filter(group => 
+                            group.patientName.toLowerCase().includes(search.toLowerCase()) ||
+                            group.plans.some((p: any) => p.title.toLowerCase().includes(search.toLowerCase()))
                         );
-                    })}
+
+                        return filteredGrouped.map((group) => {
+                            const isExpanded = expandedGroups.includes(group.patientId);
+                            const hasMultiple = group.plans.length > 1;
+
+                            return (
+                                <div key={group.patientId} className={`p-6 rounded-[2.5rem] border transition-all ${isDark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100 shadow-sm'} space-y-4`}>
+                                    <div onClick={() => setExpandedGroups(prev => prev.includes(group.patientId) ? prev.filter(k => k !== group.patientId) : [...prev, group.patientId])} className={`flex justify-between items-center cursor-pointer p-4 rounded-xl ${isExpanded ? 'bg-slate-50 dark:bg-white/5' : ''}`}>
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-bold text-lg">
+                                                {group.patientName.charAt(0).toUpperCase()}
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-base" style={{ color: 'var(--text-dark)' }}>{group.patientName}</p>
+                                                <p className="text-[11px] font-black text-primary uppercase tracking-widest">{group.plans.length} Treatment Plans</p>
+                                            </div>
+                                        </div>
+                                        <span className={`px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest ${isExpanded ? 'bg-amber-500/10 text-amber-500' : 'bg-blue-500/10 text-blue-500'}`}>{isExpanded ? 'Collapse' : 'Expand'}</span>
+                                    </div>
+
+                                    {isExpanded && (
+                                        <div className="grid grid-cols-1 gap-3 mt-2">
+                                            {group.plans.map((plan: any) => {
+                                                const statusCfg = STATUS_CONFIG[plan.status] || STATUS_CONFIG.Draft;
+                                                const paidPct = plan.total_cost > 0 ? Math.round((plan.paid_amount / plan.total_cost) * 100) : 0;
+
+                                                return (
+                                                    <div key={plan.id} onClick={(e) => { e.stopPropagation(); handleOpenPlan(plan); }} className={`p-5 rounded-2xl border cursor-pointer transition-all hover:scale-[1.02] bg-slate-50/50 dark:bg-white/3 border-slate-100 dark:border-white/5 space-y-3`}>
+                                                        <div className="flex justify-between items-start">
+                                                            <div>
+                                                                <p className="font-bold text-xs">{plan.title}</p>
+                                                                <p className="text-[10px] text-slate-400 mt-0.5">{new Date(plan.created_at).toLocaleDateString()}</p>
+                                                            </div>
+                                                            <span className={`px-2 py-0.5 rounded-lg text-[8px] font-extrabold border uppercase ${statusCfg.color}`}>{plan.status}</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-center text-xs">
+                                                            <span className="font-bold text-slate-500">Cost:</span>
+                                                            <span className="font-extrabold text-primary">{formatINR(plan.total_cost)}</span>
+                                                        </div>
+                                                        <div>
+                                                            <div className="flex justify-between mb-1"><span className="text-[9px] text-slate-500 font-bold">Paid</span><span className="text-[9px] font-bold text-emerald-500">{paidPct}%</span></div>
+                                                            <div className={`h-1 rounded-full overflow-hidden ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}><div className="h-full bg-emerald-500 rounded-full" style={{ width: `${paidPct}%` }} /></div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        });
+                    })()}
                 </div>
             ) : (
                 <div className={`py-20 text-center rounded-[2rem] border-2 border-dashed ${isDark ? 'border-slate-800 text-slate-500' : 'border-slate-200 text-slate-400'}`}>

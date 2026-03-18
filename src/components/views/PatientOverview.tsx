@@ -75,6 +75,22 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
     const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
     const [newAdvice, setNewAdvice] = useState({ tooth: '', treatment: '' });
     const [newLabAdvice, setNewLabAdvice] = useState({ tooth: '', item: '' });
+    const [expandedHistory, setExpandedHistory] = useState<string[]>([]);
+
+    const groupedHistory = useMemo(() => {
+        if (!patientHistory) return [];
+        const groups: Record<string, any[]> = {};
+        patientHistory.forEach(visit => {
+            const key = `${visit.date}_${visit.treatment}`;
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(visit);
+        });
+        return Object.entries(groups).map(([key, items]) => ({
+            key,
+            ...items[0],
+            items
+        }));
+    }, [patientHistory]);
 
     const standardTreatments = ['Scaling & Polishing', 'Composite Restoration', 'Root Canal Treatment', 'Crown (PFM)', 'Crown (Zirconia)', 'Tooth Extraction', 'Implant Placement', 'Teeth Whitening', 'Denture (Full)', 'Denture (Partial)', 'Orthodontic Treatment', 'Sealants', 'Fluoride Application', 'Bone Grafting', 'Sinus Lift', 'Gum Treatment (Flap Surgery)', 'Night Guard', 'Bleaching Tray', 'Veneer', 'Bridge (PFM)'];
     const standardLabs = ['Crown', 'Bridge', 'Precision Denture', 'Inlay', 'Onlay', 'Veneer', 'Post & Core', 'Denture', 'Bite Block', 'Special Tray', 'Bleaching Tray', 'Night Guard'];
@@ -567,28 +583,46 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                     <button className="text-[11px] font-black text-primary uppercase tracking-widest hover:underline">View All Records</button>
                                 </div>
                                 <div className="space-y-4">
-                                    {patientHistory.map((visit: any, i: number) => (
-                                        <div key={i} className="p-7 rounded-[2.5rem] transition-all hover:scale-[1.01] overflow-hidden relative group shadow-sm" style={{ background: 'var(--card-bg-alt)', border: '1.5px solid var(--border-color)' }}>
-                                            <div className="flex justify-between items-center mb-6">
-                                                <div className="flex items-center gap-5">
-                                                    <div className="w-16 h-16 rounded-[1.5rem] bg-primary/10 text-primary flex items-center justify-center font-bold text-2xl group-hover:bg-primary group-hover:text-white transition-all shadow-inner">
-                                                        {visit.treatment.charAt(0)}
+                                    {groupedHistory.map((visit: any, i: number) => {
+                                        const isExpanded = expandedHistory.includes(visit.key);
+                                        const hasMultiple = visit.items.length > 1;
+
+                                        return (
+                                            <div key={i} onClick={() => { if (hasMultiple) setExpandedHistory(prev => prev.includes(visit.key) ? prev.filter(k => k !== visit.key) : [...prev, visit.key]); }} className={`p-7 rounded-[2.5rem] transition-all hover:scale-[1.01] overflow-hidden relative group shadow-sm ${hasMultiple ? 'cursor-pointer' : ''}`} style={{ background: 'var(--card-bg-alt)', border: '1.5px solid var(--border-color)' }}>
+                                                <div className="flex justify-between items-center mb-6">
+                                                    <div className="flex items-center gap-5">
+                                                        <div className="w-16 h-16 rounded-[1.5rem] bg-primary/10 text-primary flex items-center justify-center font-bold text-2xl group-hover:bg-primary group-hover:text-white transition-all shadow-inner">
+                                                            {visit.treatment.charAt(0)}
+                                                        </div>
+                                                        <div>
+                                                            <h5 className="font-bold text-xl mb-1 flex items-center gap-1.5">
+                                                                {visit.treatment}
+                                                                {hasMultiple && <span className="text-[10px] font-black bg-blue-500/10 text-blue-500 px-2 py-1 rounded-lg">x {visit.items.length}</span>}
+                                                            </h5>
+                                                            <p className="text-sm font-bold text-slate-500 flex items-center gap-1.5"><Calendar size={14} /> {visit.date}</p>
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <h5 className="font-bold text-xl mb-1">{visit.treatment}</h5>
-                                                        <p className="text-sm font-bold text-slate-500 flex items-center gap-1.5"><Calendar size={14} /> {visit.date}</p>
+                                                    <div className="text-right">
+                                                        <p className="text-3xl font-sans font-bold text-primary mb-1">₹{(visit.items.reduce((acc: number, item: any) => acc + (Number(item.cost) || 0), 0)).toLocaleString()}</p>
+                                                        <span className={`text-[10px] font-black uppercase tracking-widest ${hasMultiple ? (isExpanded ? 'bg-amber-500/10 text-amber-500' : 'bg-blue-500/10 text-blue-500') : 'text-emerald-500 bg-emerald-500/10'} px-3 py-1 rounded-full`}>
+                                                            {hasMultiple ? (isExpanded ? 'Collapse' : 'Expand') : 'Recorded'}
+                                                        </span>
                                                     </div>
                                                 </div>
-                                                <div className="text-right">
-                                                    <p className="text-3xl font-sans font-bold text-primary mb-1">₹{visit.cost}</p>
-                                                    <span className="text-xs font-black uppercase tracking-widest text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-full">Recorded</span>
-                                                </div>
+
+                                                {(!hasMultiple || isExpanded) && (
+                                                    <div className="space-y-2 mt-2">
+                                                        {visit.items.map((it: any, idx: number) => (
+                                                            <div key={idx} className="p-5 rounded-2xl text-base font-medium italic leading-relaxed border" style={{ background: 'var(--bg-page)', color: 'var(--text-muted)', border: '1px solid var(--border-color)' }}>
+                                                                {hasMultiple && <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 flex justify-between"><span>Record #{idx+1}</span> <span>₹{it.cost || 0}</span></div>}
+                                                                "{it.notes}"
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
-                                            <div className="p-6 rounded-2xl text-base font-medium italic leading-relaxed" style={{ background: 'var(--bg-page)', color: 'var(--text-muted)', border: '1px solid var(--border-color)' }}>
-                                                "{visit.notes}"
-                                            </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </div>
                         </div>
