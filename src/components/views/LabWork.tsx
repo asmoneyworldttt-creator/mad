@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Search, Plus, Save, IndianRupee, ArrowLeft, FlaskConical, SearchX, Download, Zap } from 'lucide-react';
+import { Search, Plus, Save, IndianRupee, ArrowLeft, FlaskConical, SearchX, Download, Zap, Share2 } from 'lucide-react';
 import { useToast } from '../../components/Toast';
 import { supabase } from '../../supabase';
 import { SkeletonList } from '../SkeletonLoader';
@@ -629,30 +629,15 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                     </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="text-[10px] font-black uppercase tracking-[0.15em]" style={{ background: 'var(--card-bg-alt)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
-                                <th className="px-8 py-5">Node Identity</th>
-                                <th className="px-8 py-5">Patient Link</th>
-                                <th className="px-8 py-5">Tech Center</th>
-                                <th className="px-8 py-5 text-center">Protocol Status</th>
-                                <th className="px-8 py-5 text-right">Resource Cost</th>
-                                <th className="px-8 py-5"></th>
-                            </tr>
-                        </thead>
-                        <tbody style={{ borderColor: 'var(--border-color)' }}>
-                            {isLoading ? (
-                                <tr>
-                                    <td colSpan={6} className="p-12 text-center">
-                                        <SkeletonList rows={5} />
-                                    </td>
-                                </tr>                             ) : groupedOrders.map((group, idx) => {
+                <div className="p-6 space-y-4">
+                    {isLoading ? (
+                        <SkeletonList rows={5} />
+                    ) : groupedOrders.map((group, idx) => {
                                 const isExpanded = expandedGroups.includes(group.patientId);
                                 const hasMultiple = group.orders.length > 1;
 
                                 return (
-                                    <div key={group.patientId} className="border-b" style={{ borderColor: 'var(--border-color)' }}>
+                                    <div key={group.patientId} className="border rounded-2xl p-2 mb-4 shadow-sm" style={{ borderColor: 'var(--border-color)', background: 'var(--card-bg-alt)' }}>
                                         <div onClick={() => setExpandedGroups(prev => prev.includes(group.patientId) ? prev.filter(k => k !== group.patientId) : [...prev, group.patientId])} className={`p-4 flex justify-between items-center transition-all hover:bg-slate-50 dark:hover:bg-white/5 cursor-pointer ${isExpanded ? 'bg-slate-100/50 dark:bg-white/5' : ''}`}>
                                             <div className="flex items-center gap-3">
                                                 <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
@@ -699,6 +684,7 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                                                                 <td className="p-3 text-right">
                                                                     <div className="flex justify-end gap-1 px-4">
                                                                         <button onClick={() => handleDownloadPDF(o)} className="p-1.5 rounded-lg border border-slate-200 dark:border-white/10 hover:bg-white dark:hover:bg-slate-700 text-slate-500 hover:text-primary transition-all"><Download size={14} /></button>
+                                                                         <button onClick={() => handleDownloadPDF(o, 'share')} className="p-1.5 rounded-lg border border-violet-200 dark:border-violet-500/10 hover:bg-violet-50 dark:hover:bg-violet-900/10 text-violet-500 hover:text-violet-600 transition-all"><Share2 size={14} /></button>
                                                                         <button onClick={() => handleEditOrder(o)} className="p-1.5 text-xs font-black text-primary hover:underline">Edit</button>
                                                                     </div>
                                                                 </td>
@@ -711,8 +697,7 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                                     </div>
                                 );
                             })}
-                        </tbody>
-                    </table>
+                        </div>
                     {orders.length === 0 && !isLoading && (
                         <EmptyState
                             icon={FlaskConical}
