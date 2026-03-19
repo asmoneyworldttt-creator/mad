@@ -22,6 +22,18 @@ export function Reports({ userRole, theme, setActiveTab }: { userRole: UserRole;
     // Form inputs
     const [fromDate, setFromDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]);
     const [toDate, setToDate] = useState(new Date().toISOString().split('T')[0]);
+    const [doctorFilter, setDoctorFilter] = useState<string>('All Doctors');
+    const [doctorsList, setDoctorsList] = useState<string[]>([]);
+
+    useEffect(() => {
+        const fetchFilters = async () => {
+            const { data: bills } = await supabase.from('bills').select('doctor_name');
+            const { data: appts } = await supabase.from('appointments').select('doctor');
+            const docs = [...new Set([...(bills?.map(b => b.doctor_name) || []), ...(appts?.map(a => a.doctor) || [])])].filter(Boolean);
+            setDoctorsList(docs);
+        };
+        fetchFilters();
+    }, []);
 
     const handleGenerate = async (title: string) => {
         setReportTitle(title);
@@ -59,8 +71,13 @@ export function Reports({ userRole, theme, setActiveTab }: { userRole: UserRole;
         }
 
         setIsLoading(true);
-        const { data, error } = await query;
+        let { data, error } = await query;
         setIsLoading(false);
+
+        // ── Apply Doctor Filter ──
+        if (data && doctorFilter !== 'All Doctors') {
+            data = data.filter((r: any) => (r.doctor_name || r.doctor || r.advisor) === doctorFilter);
+        }
         if (error) {
             showToast('Error fetching report data', 'error');
             console.error(error);
@@ -210,27 +227,8 @@ export function Reports({ userRole, theme, setActiveTab }: { userRole: UserRole;
 
                 {isExpanded && (
                     <div className="p-6 border-t animate-slide-up" style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)' }}>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
-                            <div>
-                                <label className="text-xs font-bold text-slate-500 mb-2 block">Reporting Start Date</label>
-                                <input
-                                    type="date"
-                                    value={fromDate}
-                                    onChange={(e) => setFromDate(e.target.value)}
-                                    className="w-full rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-primary transition-all shadow-sm border"
-                                    style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }}
-                                />
-                            </div>
-                            <div>
-                                <label className="text-xs font-bold text-slate-500 mb-2 block">Reporting End Date</label>
-                                <input
-                                    type="date"
-                                    value={toDate}
-                                    onChange={(e) => setToDate(e.target.value)}
-                                    className="w-full rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-primary transition-all shadow-sm border"
-                                    style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }}
-                                />
-                            </div>
+                        <div className="flex justify-between items-center">
+                            <p className="text-xs text-slate-500">Filters applied from global bar containing ({fromDate} to {toDate} | {doctorFilter})</p>
                             <button
                                 onClick={() => handleGenerate(title)}
                                 className="px-8 py-3.5 bg-primary hover:bg-primary-hover text-white font-bold rounded-xl text-sm shadow-premium shadow-primary/20 transition-all active:scale-95 whitespace-nowrap"
@@ -296,17 +294,30 @@ export function Reports({ userRole, theme, setActiveTab }: { userRole: UserRole;
                                 <div className="p-6 rounded-3xl border" style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)' }}>
                                     <p className="text-[10px] font-extrabold text-slate-400 mb-2">Record Count</p>
                                     <h4 className="text-3xl font-sans font-bold" style={{ color: 'var(--text-main)' }}>{reportData.length} entries</h4>
+                                    
+                                    {reportType === 'financial' && reportData.length > 0 && (
+                                        <div className="mt-2 text-[10px] text-slate-500 font-bold flex gap-2">
+                                            <span>Cash: {reportData.filter(r => r.payment_method?.toLowerCase() === 'cash').length}</span>
+                                            <span>UPI: {reportData.filter(r => r.payment_method?.toLowerCase() === 'upi').length}</span>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="p-6 rounded-3xl border" style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)' }}>
-                                    <p className="text-[10px] font-extrabold text-slate-400 mb-2">Total Financials</p>
+                                    <p className="text-[10px] font-extrabold text-slate-400 mb-2">Total Value</p>
                                     <h4 className="text-3xl font-sans font-bold text-primary">₹{reportData.reduce((acc, curr) => acc + (Number(curr.amount || curr.cost || 0)), 0).toLocaleString('en-IN')}</h4>
+                                    
+                                    {reportType === 'financial' && reportData.length > 0 && (
+                                        <div className="mt-2 text-[10px] text-primary font-bold">
+                                            Avg Transaction: ₹{Math.round(reportData.reduce((acc, curr) => acc + (Number(curr.amount || curr.cost || 0)), 0) / reportData.length).toLocaleString('en-IN')}
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="p-6 rounded-3xl border flex items-center justify-center border-primary/10" style={{ background: 'var(--primary-glow)' }}>
                                     <div className="text-center">
-                                        <p className="text-[10px] font-extrabold text-primary mb-1">Status</p>
+                                        <p className="text-[10px] font-extrabold text-primary mb-1">Clinic Scope</p>
                                         <p className="font-bold text-primary flex items-center gap-2">
                                             <span className="w-2 h-2 bg-primary rounded-full animate-ping" />
-                                            Authenticated Sync
+                                            {reportType.toUpperCase()} SUITE
                                         </p>
                                     </div>
                                 </div>
@@ -356,8 +367,27 @@ export function Reports({ userRole, theme, setActiveTab }: { userRole: UserRole;
         <div className="animate-slide-up space-y-10 max-w-6xl mx-auto py-4">
             <div className="text-center space-y-3">
                 <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary/10 rounded-full border border-primary/20 text-xs font-bold text-primary">Clinic Reports</div>
-                <h2 className="text-5xl font-sans font-bold text-text-dark tracking-tight">Analytical Reports</h2>
+                <h2 className="text-5xl font-sans font-bold tracking-tight" style={{ color: 'var(--text-main)' }}>Analytical Reports</h2>
                 <p className="text-slate-500 font-medium text-lg max-w-2xl mx-auto">Generate and export detailed clinical and financial reports for your clinic.</p>
+            </div>
+
+            {/* Global Tool Bar Filter Range */}
+            <div className="max-w-4xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-4 border rounded-[1.5rem] p-4 shadow-xl" style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
+                <div>
+                    <label className="text-[10px] font-bold text-slate-400 mb-1 block">From Date</label>
+                    <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="w-full rounded-xl px-4 py-2 text-xs font-bold border outline-none" style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }} />
+                </div>
+                <div>
+                    <label className="text-[10px] font-bold text-slate-400 mb-1 block">To Date</label>
+                    <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="w-full rounded-xl px-4 py-2 text-xs font-bold border outline-none" style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }} />
+                </div>
+                <div>
+                    <label className="text-[10px] font-bold text-slate-400 mb-1 block">Doctor</label>
+                    <select value={doctorFilter} onChange={e => setDoctorFilter(e.target.value)} className="w-full rounded-xl px-4 py-2 text-xs font-bold border outline-none" style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }}>
+                        <option>All Doctors</option>
+                        {doctorsList.map(d => <option key={d}>{d}</option>)}
+                    </select>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">

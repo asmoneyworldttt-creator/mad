@@ -43,13 +43,24 @@ export function PhotoGallery({ patientId, theme }: PhotoGalleryProps) {
     };
 
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
+        let file = e.target.files?.[0];
         if (!file || !patientId) return;
 
         setIsUploading(true);
-        const fileName = `${patientId}/${Date.now()}-${file.name}`;
-
+        
         try {
+            // ── [NEW] Compression inside handler ──
+            try {
+                const { default: imageCompression } = await import('browser-image-compression');
+                const options = { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true };
+                const compressedFile = await imageCompression(file, options);
+                file = new File([compressedFile], file.name, { type: file.type });
+            } catch (compErr) {
+                console.error("Compression failed, using original:", compErr);
+            }
+
+            const fileName = `${patientId}/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+
             // 1. Upload to storage
             const { data: storageData, error: storageError } = await supabase.storage
                 .from('clinical-assets')

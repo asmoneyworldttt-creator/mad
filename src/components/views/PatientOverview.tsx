@@ -43,8 +43,34 @@ import {
     downloadLabOrderPDF,
     downloadPrescriptionPDF,
     downloadMedicalClearancePDF,
+    downloadClinicalNotesPDF,
     type TreatmentPlanData
 } from '../../utils/pdfExport';
+
+const ToothSelector = ({ selected, onSelect }: { selected: string, onSelect: (tooth: string) => void }) => {
+    const row1 = ['18', '17', '16', '15', '14', '13', '12', '11', '21', '22', '23', '24', '25', '26', '27', '28'];
+    const row2 = ['48', '47', '46', '45', '44', '43', '42', '41', '31', '32', '33', '34', '35', '36', '37', '38'];
+
+    return (
+        <div className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-white/10 mt-2">
+            <p className="text-[9px] font-black text-slate-400 uppercase mb-2 text-center">Select Tooth Number</p>
+            <div className="flex justify-center gap-1 mb-1 overflow-x-auto py-1">
+                {row1.map(t => (
+                    <button type="button" key={t} onClick={() => onSelect(t)} className={`w-7 h-9 text-[10px] font-bold rounded-lg border flex items-center justify-center transition-all ${selected === t ? 'bg-primary text-white border-primary shadow-md scale-105' : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:border-primary/40'}`}>
+                        {t}
+                    </button>
+                ))}
+            </div>
+            <div className="flex justify-center gap-1 overflow-x-auto py-1">
+                {row2.map(t => (
+                    <button type="button" key={t} onClick={() => onSelect(t)} className={`w-7 h-9 text-[10px] font-bold rounded-lg border flex items-center justify-center transition-all ${selected === t ? 'bg-primary text-white border-primary shadow-md scale-105' : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:border-primary/40'}`}>
+                        {t}
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+};
 
 type PatientView = 'overview' | 'treatment_plan' | 'bill_detail';
 
@@ -116,6 +142,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
     const [treatmentsDone, setTreatmentsDone] = useState<{ tooth: string, treatment: string, status: string }[]>([]);
     const [newTreatmentDone, setNewTreatmentDone] = useState({ tooth: '', treatment: '', status: 'Completed' });
     const [expandedHistory, setExpandedHistory] = useState<string[]>([]);
+    const [doctorsList, setDoctorsList] = useState<string[]>([]);
 
     const groupedHistory = useMemo(() => {
         if (!patientHistory) return [];
@@ -149,7 +176,8 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
         'Implant placement', 'Immediate implant placement', 'Healing abutment placement', 
         'Implant crown / bridge', 'Sinus lift', 'Ridge augmentation', 'Removable orthodontic appliance', 
         'Fixed orthodontic treatment (Braces)', 'Clear aligners', 'Retainers', 'Space maintainer', 
-        'Stainless steel crown (Primary teeth)', 'Habit breaking appliance', 'Normal scaling', 'Deep scaling'
+        'Stainless steel crown (Primary teeth)', 'Habit breaking appliance', 'Normal scaling', 'Deep scaling',
+        'Deep filling', 'RVG'
     ];
     const standardLabs = ['Crown', 'Bridge', 'Precision Denture', 'Inlay', 'Onlay', 'Veneer', 'Post & Core', 'Denture', 'Bite Block', 'Special Tray', 'Bleaching Tray', 'Night Guard'];
 
@@ -208,6 +236,13 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
         setPatientConsents(consents || []);
         setPatientMedicalClearances(medClearances || []);
         setPatientHistory(history || []);
+        if (Array.isArray(arguments[0]) && arguments[0].length > 9) {
+             const doctors = arguments[0][9]?.data;
+             if (doctors) setDoctorsList(doctors.map((d: any) => d.name));
+        } else {
+             const { data: doctors } = await supabase.from('staff').select('name').or('role.eq.Doctor,role.eq.Associate Dentist');
+             if (doctors) setDoctorsList(doctors.map(d => d.name));
+        }
         setIsLoadingData(false);
     };
 
@@ -1129,6 +1164,40 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                                 }} className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1 transition-all border dark:border-white/5 shadow-sm">
                                                     Update
                                                 </button>
+                                                <button onClick={() => {
+                                                    let advised = [];
+                                                    let advisedLabs = [];
+                                                    let treatmentsDoneListed = [];
+                                                    let description = note.plan;
+                                                    try {
+                                                         const parsed = JSON.parse(note.plan);
+                                                         if (parsed && typeof parsed === 'object') {
+                                                             if (parsed.text !== undefined) description = parsed.text;
+                                                             advised = parsed.advised || [];
+                                                             advisedLabs = parsed.advised_labs || [];
+                                                             treatmentsDoneListed = parsed.treatments_done || [];
+                                                         }
+                                                    } catch (e) {}
+                                                    downloadClinicalNotesPDF({
+                                                        patientName: patient.name,
+                                                        patientAge: patient.age?.toString(),
+                                                        patientGender: patient.gender,
+                                                        patientId: patient.id,
+                                                        date: note.created_at,
+                                                        clinicName: 'DentiSphere Clinic',
+                                                        clinicLocation: 'Main Center',
+                                                        doctorName: note.doctor_name,
+                                                        subjective: note.subjective,
+                                                        objective: note.objective,
+                                                        assessment: note.assessment,
+                                                        plan: description,
+                                                        advisedTreatments: advised,
+                                                        advisedLabs: advisedLabs,
+                                                        treatmentsDone: treatmentsDoneListed
+                                                    });
+                                                }} className="px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1 transition-all border border-primary/20 shadow-sm">
+                                                     <Download size={12} /> PDF
+                                                </button>
                                                 <span className="px-4 py-1.5 bg-primary/10 text-primary rounded-full text-[10px] font-black uppercase tracking-widest">Permanent Record</span>
                                             </div>
                                         </div>
@@ -1557,9 +1626,15 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Practitioner</label>
                                     <div className="relative">
                                         <select value={newNote.doctor_name} onChange={e => setNewNote({ ...newNote, doctor_name: e.target.value })} className={`w-full px-5 py-3 rounded-2xl border font-bold text-sm outline-none ${theme === 'dark' ? 'bg-slate-800 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
-                                            <option value="Dr. Sarah Jenkins">Dr. Sarah Jenkins</option>
-                                            <option value="Dr. Michael Chen">Dr. Michael Chen</option>
-                                            <option value="Dr. Mark Sloan">Dr. Mark Sloan</option>
+                                            {doctorsList.length > 0 ? doctorsList.map((d, i) => (
+                                                <option key={i} value={`Dr. ${d}`}>{`Dr. ${d}`}</option>
+                                            )) : (
+                                                <>
+                                                    <option value="Dr. Sarah Jenkins">Dr. Sarah Jenkins</option>
+                                                    <option value="Dr. Michael Chen">Dr. Michael Chen</option>
+                                                    <option value="Dr. Mark Sloan">Dr. Mark Sloan</option>
+                                                </>
+                                            )}
                                         </select>
                                     </div>
                                 </div>
@@ -1584,25 +1659,27 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                 {/* ── Advised Treatments Row ── */}
                                 <div className="border border-dashed border-slate-200 dark:border-slate-700 p-4 rounded-2xl">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Advised Treatments</label>
-                                    <div className="flex gap-2">
-                                        <input type="text" placeholder="Tooth #" value={newAdvice.tooth} onChange={e => setNewAdvice({ ...newAdvice, tooth: e.target.value })} className="w-20 px-3 py-2 text-xs font-bold bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none" />
-                                        <select value={newAdvice.treatment} onChange={e => setNewAdvice({ ...newAdvice, treatment: e.target.value })} className="flex-1 px-3 py-2 text-xs font-bold bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none">
+                                    <div className="flex gap-2 mb-2">
+                                        <select value={newAdvice.treatment} onChange={e => setNewAdvice({ ...newAdvice, treatment: e.target.value, tooth: '' })} className="flex-1 px-3 py-2 text-xs font-bold bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none">
                                             <option value="">Select Treatment...</option>
                                             {standardTreatments.map((t, i) => <option key={i} value={t}>{t}</option>)}
                                         </select>
                                         <button onClick={() => {
-                                            if (newAdvice.tooth && newAdvice.treatment) {
+                                            if (newAdvice.treatment) {
                                                 setAdvisedTreatments([...advisedTreatments, newAdvice]);
                                                 setNewAdvice({ tooth: '', treatment: '' });
                                             }
                                         }} className="p-2.5 rounded-xl bg-emerald-500 text-white flex items-center justify-center"><Plus size={16} /></button>
                                     </div>
+                                    {newAdvice.treatment && (
+                                        <ToothSelector selected={newAdvice.tooth} onSelect={t => setNewAdvice({ ...newAdvice, tooth: t })} />
+                                    )}
                                     
                                     {advisedTreatments.length > 0 && (
                                         <div className="mt-2 space-y-1">
                                             {advisedTreatments.map((a: any, i) => (
                                                 <div key={i} className="flex justify-between items-center bg-slate-100 dark:bg-white/5 p-2 rounded-xl">
-                                                    <span className="text-xs font-black"><span className="text-slate-400"># {a.tooth}:</span> {a.treatment}</span>
+                                                    <span className="text-xs font-black"><span className="text-slate-400"># {a.tooth || 'All'}:</span> {a.treatment}</span>
                                                     <div className="flex items-center gap-1.5">
                                                         <select value={a.status || 'Pending'} onChange={(e) => { const updated = [...advisedTreatments]; updated[i].status = e.target.value; setAdvisedTreatments(updated); }} className="px-2 py-1 bg-slate-200 dark:bg-slate-700/50 rounded-lg text-[9px] font-bold outline-none border border-slate-300 dark:border-white/10">
                                                             <option value="Pending">Pending</option><option value="In Progress">In Progress</option><option value="Completed">Completed</option>
@@ -1618,25 +1695,27 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                 {/* ── Advised Lab Orders Row ── */}
                                 <div className="border border-dashed border-slate-200 dark:border-slate-700 p-4 rounded-2xl">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Advised Lab Orders</label>
-                                    <div className="flex gap-2">
-                                        <input type="text" placeholder="Tooth #" value={newLabAdvice.tooth} onChange={e => setNewLabAdvice({ ...newLabAdvice, tooth: e.target.value })} className="w-20 px-3 py-2 text-xs font-bold bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none" />
-                                        <input type="text" list="advised-labs-list" placeholder="Crown, Bridge, etc." value={newLabAdvice.item} onChange={e => setNewLabAdvice({ ...newLabAdvice, item: e.target.value })} className="flex-1 px-3 py-2 text-xs font-bold bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none" />
-                                        <datalist id="advised-labs-list">
-                                            {standardLabs.map((l, i) => <option key={i} value={l} />)}
-                                        </datalist>
+                                    <div className="flex gap-2 mb-2">
+                                        <select value={newLabAdvice.item} onChange={e => setNewLabAdvice({ ...newLabAdvice, item: e.target.value, tooth: '' })} className="flex-1 px-3 py-2 text-xs font-bold bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none">
+                                            <option value="">Select Lab Item...</option>
+                                            {standardLabs.map((l, i) => <option key={i} value={l}>{l}</option>)}
+                                        </select>
                                         <button onClick={() => {
-                                            if (newLabAdvice.tooth && newLabAdvice.item) {
+                                            if (newLabAdvice.item) {
                                                 setAdvisedLabOrders([...advisedLabOrders, { ...newLabAdvice, status: 'Pending' }]);
                                                 setNewLabAdvice({ tooth: '', item: '' });
                                             }
                                         }} className="p-2.5 rounded-xl bg-blue-500 text-white flex items-center justify-center"><Plus size={16} /></button>
                                     </div>
+                                    {newLabAdvice.item && (
+                                        <ToothSelector selected={newLabAdvice.tooth} onSelect={t => setNewLabAdvice({ ...newLabAdvice, tooth: t })} />
+                                    )}
                                     
                                     {advisedLabOrders.length > 0 && (
                                         <div className="mt-2 space-y-1">
                                             {advisedLabOrders.map((a: any, i) => (
                                                 <div key={i} className="flex justify-between items-center bg-slate-100 dark:bg-white/5 p-2 rounded-xl">
-                                                    <span className="text-xs font-black"><span className="text-slate-400"># {a.tooth}:</span> {a.item}</span>
+                                                    <span className="text-xs font-black"><span className="text-slate-400"># {a.tooth || 'All'}:</span> {a.item}</span>
                                                     <div className="flex items-center gap-1.5">
                                                         <select value={a.status || 'Pending'} onChange={(e) => { const updated = [...advisedLabOrders]; updated[i].status = e.target.value; setAdvisedLabOrders(updated); }} className="px-2 py-1 bg-slate-200 dark:bg-slate-700/50 rounded-lg text-[9px] font-bold outline-none border border-slate-300 dark:border-white/10">
                                                             <option value="Pending">Pending</option><option value="In Progress">In Progress</option><option value="Completed">Completed</option>
@@ -1652,9 +1731,8 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                 {/* ── Treatment Done Row ── */}
                                 <div className="border border-dashed border-slate-200 dark:border-slate-700 p-4 rounded-2xl">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Treatment Done</label>
-                                    <div className="flex gap-2">
-                                        <input type="text" placeholder="Tooth #" value={newTreatmentDone.tooth} onChange={e => setNewTreatmentDone({ ...newTreatmentDone, tooth: e.target.value })} className="w-20 px-3 py-2 text-xs font-bold bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none" />
-                                        <select value={newTreatmentDone.treatment} onChange={e => setNewTreatmentDone({ ...newTreatmentDone, treatment: e.target.value })} className="flex-1 px-3 py-2 text-xs font-bold bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none">
+                                    <div className="flex gap-2 mb-2">
+                                        <select value={newTreatmentDone.treatment} onChange={e => setNewTreatmentDone({ ...newTreatmentDone, treatment: e.target.value, tooth: '' })} className="flex-1 px-3 py-2 text-xs font-bold bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none">
                                             <option value="">Select Treatment...</option>
                                             {standardTreatments.map((t, i) => <option key={i} value={t}>{t}</option>)}
                                         </select>
@@ -1668,6 +1746,9 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                             }
                                         }} className="p-2.5 rounded-xl bg-violet-500 text-white flex items-center justify-center"><Plus size={16} /></button>
                                     </div>
+                                    {newTreatmentDone.treatment && (
+                                        <ToothSelector selected={newTreatmentDone.tooth} onSelect={t => setNewTreatmentDone({ ...newTreatmentDone, tooth: t })} />
+                                    )}
                                     
                                     {treatmentsDone.length > 0 && (
                                         <div className="mt-2 space-y-1">

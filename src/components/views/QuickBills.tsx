@@ -11,6 +11,31 @@ type UserRole = 'master' | 'admin' | 'staff' | 'patient';
 const INR = (v: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(v);
 const PAYMENT_METHODS = ['Cash', 'Card', 'UPI', 'Bank Transfer', 'Insurance', 'Cheque'];
 
+const ToothSelector = ({ selected, onSelect }: { selected: string, onSelect: (tooth: string) => void }) => {
+    const row1 = ['18', '17', '16', '15', '14', '13', '12', '11', '21', '22', '23', '24', '25', '26', '27', '28'];
+    const row2 = ['48', '47', '46', '45', '44', '43', '42', '41', '31', '32', '33', '34', '35', '36', '37', '38'];
+
+    return (
+        <div className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-white/10 mt-2">
+            <p className="text-[9px] font-black text-slate-400 uppercase mb-2 text-center">Select Tooth Number</p>
+            <div className="flex justify-center gap-1 mb-1 overflow-x-auto py-1">
+                {row1.map(t => (
+                    <button type="button" key={t} onClick={() => onSelect(t)} className={`w-7 h-9 text-[10px] font-bold rounded-lg border flex items-center justify-center transition-all ${selected === t || selected?.split(',').includes(t) ? 'bg-primary text-white border-primary shadow-md scale-105' : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:border-primary/40'}`}>
+                        {t}
+                    </button>
+                ))}
+            </div>
+            <div className="flex justify-center gap-1 overflow-x-auto py-1">
+                {row2.map(t => (
+                    <button type="button" key={t} onClick={() => onSelect(t)} className={`w-7 h-9 text-[10px] font-bold rounded-lg border flex items-center justify-center transition-all ${selected === t || selected?.split(',').includes(t) ? 'bg-primary text-white border-primary shadow-md scale-105' : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:border-primary/40'}`}>
+                        {t}
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRole; theme?: 'light' | 'dark'; setActiveTab?: (tab: string) => void }) {
     const { showToast } = useToast();
     const isDark = theme === 'dark';
@@ -38,6 +63,8 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
     const invoiceRef = useRef<any>(null);
 
     const [fetchedTreatments, setFetchedTreatments] = useState<string[]>([]); // To provide dropdown standard treatments
+    const [doctors, setDoctors] = useState<string[]>([]);
+    const [activeToothIndex, setActiveToothIndex] = useState<number | null>(null);
 
     // ── Computed totals ──
     const subtotal = selectedTreatments.reduce((acc, t) => acc + (Number(t.cost) || 0), 0) + billingInfo.fees;
@@ -45,10 +72,32 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
     const totalPayable = subtotal - billingInfo.discount + gstAmount;
 
     useEffect(() => {
-        // Load standard treatments from somewhere or make a local array
         setFetchedTreatments([
-            'Oral examination', 'Scaling & polishing', 'Composite restoration', 'Glass ionomer restoration', 'Root Canal Treatment', 'Simple extraction', 'Surgical extraction', 'Crown (PFM)', 'Crown (Zirconia)', 'Bridges', 'Denture', 'Veneers', 'Implant placement'
+            'Oral examination', 'Periodontal charting', 'Pulp vitality testing', 
+            'Intraoral periapical radiograph (IOPA)', 'Bitewing radiograph', 'Occlusal radiograph', 
+            'Orthopantomogram (OPG)', 'CBCT', 'Study models / intraoral scan', 
+            'Oral prophylaxis (Scaling & polishing)', 'Fluoride therapy', 'Pit & fissure sealants', 
+            'Desensitization therapy', 'Oral hygiene instruction', 'Composite restoration', 
+            'Glass ionomer restoration', 'Temporary restoration', 'Core build-up', 'Post & core', 
+            'Pulpotomy', 'Pulpectomy', 'RCT – Started (Access opening + BMP initiated)', 
+            'Same RCT – Dressing / Cleaning & shaping visit', 'RCT – Completed (Obturation done)', 
+            'Retreatment RCT', 'Apexification', 'Apicoectomy', 'Scaling & root planing', 
+            'Gingivectomy', 'Flap surgery', 'Crown lengthening', 'Bone graft / GTR', 
+            'Simple extraction', 'Surgical extraction', 'Impacted tooth removal', 'Frenectomy', 
+            'Biopsy', 'Alveoloplasty', 'Crown (PFM / Zirconia / E-max)', 'Fixed partial denture (Bridge)', 
+            'Removable partial denture', 'Complete denture', 'Veneers', 'Full mouth rehabilitation', 
+            'Implant placement', 'Immediate implant placement', 'Healing abutment placement', 
+            'Implant crown / bridge', 'Sinus lift', 'Ridge augmentation', 'Removable orthodontic appliance', 
+            'Fixed orthodontic treatment (Braces)', 'Clear aligners', 'Retainers', 'Space maintainer', 
+            'Stainless steel crown (Primary teeth)', 'Habit breaking appliance', 'Normal scaling', 'Deep scaling',
+            'Deep filling', 'RVG'
         ]);
+        
+        // Load doctors
+        supabase.from('staff').select('name').or('role.eq.Doctor,role.eq.Associate Dentist')
+            .then(({ data }) => {
+                if (data) setDoctors(data.map(d => d.name));
+            });
     }, []);
 
     useEffect(() => {
@@ -87,6 +136,26 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
         setPatientInfo({ id: p.id, name: p.name, phone: p.phone || '', address: p.address || '' });
         setSearchQuery('');
         setSearchResults([]);
+
+        // Auto-populate treatments from recent note
+        supabase.from('clinical_notes').select('plan').eq('patient_id', p.id).order('created_at', { ascending: false }).limit(1)
+            .then(({ data }) => {
+                if (data && data.length > 0) {
+                    try {
+                        const parsed = JSON.parse(data[0].plan);
+                        if (parsed && parsed.treatments_done) {
+                            const mapped = parsed.treatments_done.map((t: any) => ({
+                                treatment: t.treatment,
+                                tooth: t.tooth || '',
+                                cost: 0, // Fallback cost, practitioners will enter
+                                status: t.status || 'Completed'
+                            }));
+                            setSelectedTreatments(mapped);
+                            showToast('Auto-populated treatments from recent note', 'info');
+                        }
+                    } catch (e) {}
+                }
+            });
     };
 
     const getInvoiceNumber = () => `INV-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
@@ -356,7 +425,7 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
                                 <CustomSelect
                                     value={clinicInfo.doctor}
                                     onChange={val => setClinicInfo({ ...clinicInfo, doctor: val })}
-                                    options={[
+                                    options={doctors.length > 0 ? doctors.map(d => `Dr. ${d}`) : [
                                         'Dr. S. Jenkins',
                                         'Dr. Michael Chen',
                                         'Dr. Mark Sloan'
@@ -468,11 +537,9 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
                                                     <div className="flex gap-4 mt-1">
                                                         <div className="flex items-center gap-1">
                                                             <span className="text-[10px] text-slate-400">Tooth:</span>
-                                                            <input type="text" value={t.tooth} onChange={e => {
-                                                                const list = [...selectedTreatments];
-                                                                list[i].tooth = e.target.value;
-                                                                setSelectedTreatments(list);
-                                                            }} className="w-16 bg-transparent border-b border-black/10 px-1 outline-none font-bold text-center text-xs" />
+                                                            <button type="button" onClick={() => setActiveToothIndex(activeToothIndex === i ? null : i)} className="px-2 py-1 bg-white dark:bg-white/10 border rounded-lg text-xs font-bold shadow-sm flex items-center gap-1">
+                                                                {t.tooth || 'Select'}
+                                                            </button>
                                                         </div>
                                                         <div className="flex items-center gap-1">
                                                             <span className="text-[10px] text-slate-400">Cost (₹):</span>
@@ -483,6 +550,22 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
                                                             }} className="w-20 bg-transparent border-b border-black/10 px-1 outline-none font-bold text-center text-xs text-primary" />
                                                         </div>
                                                     </div>
+                                                    {activeToothIndex === i && (
+                                                        <ToothSelector 
+                                                            selected={t.tooth} 
+                                                            onSelect={tooth => {
+                                                                const list = [...selectedTreatments];
+                                                                const existing = list[i].tooth && list[i].tooth !== '—' ? list[i].tooth.split(',').filter(Boolean) : [];
+                                                                if (existing.includes(tooth)) {
+                                                                    list[i].tooth = existing.filter(x => x !== tooth).join(',');
+                                                                } else {
+                                                                    list[i].tooth = [...existing, tooth].join(',');
+                                                                }
+                                                                if (!list[i].tooth) list[i].tooth = '—';
+                                                                setSelectedTreatments(list);
+                                                            }} 
+                                                        />
+                                                    )}
                                                 </div>
                                                 <button onClick={() => setSelectedTreatments(selectedTreatments.filter((_, idx) => idx !== i))} className="text-rose-500 hover:scale-110"><X size={16} /></button>
                                             </div>

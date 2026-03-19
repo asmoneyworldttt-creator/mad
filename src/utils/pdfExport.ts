@@ -953,4 +953,140 @@ export function downloadDentalCertificatePDF(data: DentalCertificateData, mode: 
     }
 }
 
+export interface ClinicalNoteData {
+    patientName: string;
+    patientAge?: string;
+    patientGender?: string;
+    patientId?: string;
+    date: string;
+    clinicName: string;
+    clinicLocation: string;
+    doctorName: string;
+    subjective: string;
+    objective: string;
+    assessment: string;
+    plan: string;
+    advisedTreatments?: { tooth: string; treatment: string; status?: string }[];
+    advisedLabs?: { tooth: string; item: string; status?: string }[];
+    treatmentsDone?: { tooth: string; treatment: string; status: string }[];
+}
+
+export function downloadClinicalNotesPDF(data: ClinicalNoteData, mode: 'download' | 'blob' = 'download'): void | Blob {
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+
+    addClinicHeader(
+        doc,
+        data.clinicName || 'DentiSphere Clinic',
+        data.clinicLocation + '  |  ' + data.doctorName,
+        'Clinical Record / SOAP Note',
+        new Date(data.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+    );
+
+    // Patient info box
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(14, 34, 182, 22, 3, 3, 'F');
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...MUTED_COLOR);
+    doc.text('PATIENT DETAILS', 18, 41);
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...DARK_COLOR);
+    doc.text(`Name: ${data.patientName}`, 18, 47);
+    if (data.patientId) doc.text(`Patient ID: ${data.patientId.slice(0, 8).toUpperCase()}`, 110, 47);
+    
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    const ageGender = [data.patientAge ? `${data.patientAge}y` : '', data.patientGender].filter(Boolean).join(' / ');
+    if (ageGender) doc.text(`Age/Gender: ${ageGender}`, 18, 52);
+
+    let y = 62;
+
+    const addSection = (title: string, content: string) => {
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...BRAND_COLOR);
+        doc.text(title + ':', 14, y);
+        y += 6;
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...DARK_COLOR);
+        const splitText = doc.splitTextToSize(content || '—', 182);
+        doc.text(splitText, 14, y);
+        y += (splitText.length * 5) + 6;
+    };
+
+    addSection('Subjective (Chief Complaint)', data.subjective);
+    addSection('Objective (Intra Oral Examination/Findings)', data.objective);
+    addSection('Assessment (Diagnosis)', data.assessment);
+    addSection('Plan', data.plan);
+
+    // Tables for advised etc
+    if (data.advisedTreatments && data.advisedTreatments.length > 0) {
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...BRAND_COLOR);
+        doc.text('Advised Treatments:', 14, y);
+        y += 4;
+        autoTable(doc, { 
+            startY: y, 
+            head: [['S.No', 'Tooth #', 'Treatment', 'Status']], 
+            body: data.advisedTreatments.map((a: any, i: number) => [(i+1).toString(), a.tooth || '—', a.treatment, a.status || 'Pending']), 
+            margin: { left: 14 },
+            headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255] }
+        });
+        y = (doc as any).lastAutoTable.finalY + 8;
+    }
+
+    if (data.advisedLabs && data.advisedLabs.length > 0) {
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...BRAND_COLOR);
+        doc.text('Advised Lab Orders:', 14, y);
+        y += 4;
+        autoTable(doc, { 
+            startY: y, 
+            head: [['S.No', 'Tooth #', 'Item', 'Status']], 
+            body: data.advisedLabs.map((a: any, i: number) => [(i+1).toString(), a.tooth || '—', a.item, a.status || 'Pending']), 
+            margin: { left: 14 },
+            headStyles: { fillColor: [59, 130, 246], textColor: [255, 255, 255] }
+        });
+        y = (doc as any).lastAutoTable.finalY + 8;
+    }
+
+    if (data.treatmentsDone && data.treatmentsDone.length > 0) {
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...BRAND_COLOR);
+        doc.text('Treatments Done:', 14, y);
+        y += 4;
+        autoTable(doc, { 
+            startY: y, 
+            head: [['S.No', 'Tooth #', 'Treatment', 'Status']], 
+            body: data.treatmentsDone.map((a: any, i: number) => [(i+1).toString(), a.tooth || 'All', a.treatment, a.status || 'Completed']), 
+            margin: { left: 14 },
+            headStyles: { fillColor: [139, 92, 246], textColor: [255, 255, 255] }
+        });
+        y = (doc as any).lastAutoTable.finalY + 8;
+    }
+
+    // Signature
+    y += 10;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.text('Authorized Practitioner Signature', 196, y, { align: 'right' });
+
+    const filename = `ClinicalNote_${data.patientName.replace(/\s+/g, '_')}.pdf`;
+    
+    if (mode === 'blob') {
+        return doc.output('blob');
+    } else {
+        const blob = doc.output('blob');
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { window.URL.revokeObjectURL(url); a.remove(); }, 100);
+    }
+}
+
 
