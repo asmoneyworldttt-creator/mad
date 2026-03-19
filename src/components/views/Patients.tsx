@@ -7,6 +7,7 @@ import { PatientOverview } from './PatientOverview';
 import { PatientRegistrationModal } from './PatientRegistrationModal';
 import { SkeletonList } from '../SkeletonLoader';
 import { useAuditLog } from '../../hooks/useAuditLog';
+import { Modal } from '../Modal';
 
 type UserRole = 'master' | 'admin' | 'staff' | 'patient';
 
@@ -32,39 +33,95 @@ const DEFAULT_TREATMENTS = [
     "Space maintainer", "Stainless steel crown (Primary teeth)", "Habit breaking appliance", "Normal scaling", "Deep scaling"
 ];
 
+interface PatientGroup {
+    id: string;
+    name: string;
+    type: 'static' | 'dynamic';
+    patientIds?: string[]; // For Static
+    criteria?: {            // For Dynamic
+        gender?: 'Male' | 'Female' | 'All';
+        ageMin?: number;
+        ageMax?: number;
+        treatment?: string;
+        visitCount?: number;
+    };
+}
+
 const PatientCard = memo(function PatientCard({ p, onClick, theme }: { p: any; onClick: () => void; theme?: string }) {
     const isDark = theme === 'dark';
+    const visitCount = p.patient_history?.length || 0;
+    
+    // Status Resolution Logic
+    let status = 'New';
+    if (p.clinical_notes?.length > 0) {
+        try {
+            const lastNote = p.clinical_notes[0];
+            const parsed = JSON.parse(lastNote.plan);
+            const advised = parsed.advised || [];
+            const treatments_done = parsed.treatments_done || [];
+            if (treatments_done.length > 0 && advised.length === 0) status = 'Completed';
+            else if (treatments_done.length > 0) status = 'In Progress';
+            else if (advised.length > 0) status = 'Pending';
+        } catch (e) {}
+    } else if (visitCount > 0) {
+        status = 'Visited';
+    }
+
+    const statusColors: Record<string, string> = {
+        'Completed': 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+        'In Progress': 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+        'Pending': 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+        'New': 'bg-purple-500/10 text-purple-500 border-purple-500/20',
+        'Visited': 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20'
+    };
+
     return (
         <div 
             onClick={onClick}
-            className={`p-3 rounded-xl border cursor-pointer transition-all hover:shadow-md active:scale-[0.98] ${
-                isDark ? 'bg-slate-900 border-white/5 hover:border-primary/30' : 'bg-white border-slate-100 hover:border-primary/20 shadow-sm'
+            className={`p-4 rounded-2xl border cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 active:scale-[0.98] group relative overflow-hidden ${
+                isDark ? 'bg-slate-900/80 backdrop-blur-sm border-white/5 hover:border-primary/40' : 'bg-white border-slate-100 hover:border-primary/30 shadow-sm'
             }`}
         >
-            <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-lg shrink-0"
-                    style={{ background: 'var(--primary-soft)', color: 'var(--primary)' }}>
-                    {p.name?.charAt(0) || 'U'}
-                </div>
+            {/* Subtle Gradient Glow */}
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+            <div className="flex items-center gap-3 relative z-10">
+                {p.profile_picture_url ? (
+                    <img src={p.profile_picture_url} alt={p.name} className="w-12 h-12 rounded-xl object-cover border border-slate-100 dark:border-white/10" />
+                ) : (
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl shrink-0 shadow-inner"
+                        style={{ background: 'var(--primary-soft)', color: 'var(--primary)', border: '1px solid var(--primary-glow)' }}>
+                        {p.name?.charAt(0) || 'U'}
+                    </div>
+                )}
+                
                 <div className="min-w-0 flex-1">
                     <div className="flex justify-between items-start gap-2">
-                        <h4 className="font-bold text-sm truncate" style={{ color: 'var(--text-dark)' }}>{p.name} {p.last_name || ''}</h4>
-                        <span className="text-[9px] font-bold text-primary shrink-0">#{p.id.slice(0, 8)}</span>
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[10px] text-slate-500 font-medium">{p.gender}, {p.age}y</span>
+                        <div>
+                            <h4 className="font-bold text-sm truncate tracking-tight" style={{ color: 'var(--text-dark)' }}>{p.name} {p.last_name || ''}</h4>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{p.gender}</span>
+                                <span className="w-1 h-1 rounded-full bg-slate-300" />
+                                <span className="text-[10px] text-slate-500 font-bold">{p.age} Yrs</span>
+                            </div>
+                        </div>
+                        <span className="text-[8px] font-black text-primary/60 bg-primary/5 px-1.5 py-0.5 rounded-md self-start">#{p.id.slice(0, 8).toUpperCase()}</span>
                     </div>
                 </div>
             </div>
             
-            <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-slate-50 dark:border-white/5">
-                <div className="flex items-center gap-1.5 min-w-0">
-                    <Phone size={11} className="text-slate-400 shrink-0" />
-                    <span className="text-[10px] font-bold truncate">{p.phone}</span>
+            <div className="flex items-center justify-between gap-2 mt-4 pt-3 border-t border-slate-100/50 dark:border-white/5 relative z-10">
+                <div className="flex items-center gap-1 min-w-0">
+                    <Phone size={10} className="text-slate-400 shrink-0" />
+                    <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 truncate">{p.phone}</span>
                 </div>
-                <div className="flex items-center gap-1.5 justify-end">
-                    <IndianRupee size={10} className="text-emerald-500" />
-                    <span className="text-[10px] font-bold">{(p.total_spent || 0).toLocaleString('en-IN')}</span>
+                <div className="flex items-center gap-2">
+                    <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-md border ${statusColors[status] || 'bg-slate-500/10 text-slate-500'}`}>
+                        {status}
+                    </span>
+                    <span className="text-[9px] font-black text-slate-500 bg-slate-100 dark:bg-white/5 px-2 py-0.5 rounded-md flex items-center gap-1">
+                        Visits: <span className="text-primary">{visitCount}</span>
+                    </span>
                 </div>
             </div>
         </div>
@@ -86,6 +143,29 @@ export function Patients({ userRole, setActiveTab, theme }: { userRole: UserRole
     const [statusFilter, setStatusFilter] = useState('All');
     const [treatments, setTreatments] = useState<string[]>(DEFAULT_TREATMENTS);
 
+    // Grouping & Quick Filter State
+    const [groups, setGroups] = useState<PatientGroup[]>([]);
+    const [selectedGroup, setSelectedGroup] = useState<PatientGroup | null>(null);
+    const [activeQuickFilter, setActiveQuickFilter] = useState<string | null>(null);
+    const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
+    
+    // Group Creation State
+    const [newGroup, setNewGroup] = useState<{name: string, type: 'static' | 'dynamic', patientIds: string[], criteria: any}>({
+        name: '', type: 'static', patientIds: [], criteria: { gender: 'All', ageMin: 0, ageMax: 100, treatment: 'All', visitCount: 0 }
+    });
+
+    useEffect(() => {
+        const savedGroups = localStorage.getItem('patient_groups');
+        if (savedGroups) {
+            setGroups(JSON.parse(savedGroups));
+        }
+    }, []);
+
+    const saveGroups = (updated: PatientGroup[]) => {
+        setGroups(updated);
+        localStorage.setItem('patient_groups', JSON.stringify(updated));
+    };
+
     useEffect(() => {
         if (patientsData.length > 0) {
             const uniqueHistoryTreatments = patientsData.flatMap(p => 
@@ -105,6 +185,7 @@ export function Patients({ userRole, setActiveTab, theme }: { userRole: UserRole
         setIsLoading(false);
     }, []);
 
+
     useEffect(() => {
         fetchPatients();
         log({ action: 'page_view', entity_type: 'patient_directory' });
@@ -115,6 +196,48 @@ export function Patients({ userRole, setActiveTab, theme }: { userRole: UserRole
     }, [fetchPatients]);
 
     const filteredPatients = patientsData.filter(p => {
+        // 1. Quick Filters
+        if (activeQuickFilter) {
+            const ageNum = Number(p.age) || 0;
+            const visitCount = p.patient_history?.length || 0;
+             switch(activeQuickFilter) {
+                case 'Male': if (p.gender !== 'Male') return false; break;
+                case 'Female': if (p.gender !== 'Female') return false; break;
+                case 'Female Over 30': if (p.gender !== 'Female' || ageNum <= 30) return false; break;
+                case 'Female Under 30': if (p.gender !== 'Female' || ageNum >= 30) return false; break;
+                case 'Male Over 30': if (p.gender !== 'Male' || ageNum <= 30) return false; break;
+                case 'Male Under 30': if (p.gender !== 'Male' || ageNum >= 30) return false; break;
+                case 'Children': if (ageNum >= 13) return false; break; 
+                case 'Frequent': if (visitCount < 3) return false; break;
+            }
+        }
+
+        // 2. Smart Groups Logic
+        if (selectedGroup) {
+            if (selectedGroup.type === 'static') {
+                if (!selectedGroup.patientIds?.includes(p.id)) return false;
+            } else if (selectedGroup.type === 'dynamic' && selectedGroup.criteria) {
+                const c = selectedGroup.criteria;
+                const ageNum = Number(p.age) || 0;
+                if (c.gender && c.gender !== 'All' && p.gender !== c.gender) return false;
+                if (c.ageMin !== undefined && ageNum < c.ageMin) return false;
+                if (c.ageMax !== undefined && ageNum > c.ageMax) return false;
+                if (c.visitCount !== undefined && (p.patient_history?.length || 0) < c.visitCount) return false;
+                if (c.treatment && c.treatment !== 'All') {
+                    const matchTr = (t: string) => t.toLowerCase().includes(c.treatment!.toLowerCase());
+                    const hasTr = p.patient_history?.some((h: any) => h.treatment && matchTr(h.treatment)) ||
+                        p.clinical_notes?.some((n: any) => {
+                            try {
+                                const par = JSON.parse(n.plan);
+                                return (par.advised || []).some((a: any) => matchTr(a.treatment || '')) ||
+                                       (par.treatments_done || []).some((t: any) => matchTr(t.treatment || ''));
+                            } catch(e) { return false; }
+                        });
+                    if (!hasTr) return false;
+                }
+            }
+        }
+
         const nameMatcher = (p.name || '') + ' ' + (p.last_name || '');
         const matchesSearch = nameMatcher.toLowerCase().includes(searchTerm.toLowerCase()) ||
             p.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -312,6 +435,52 @@ export function Patients({ userRole, setActiveTab, theme }: { userRole: UserRole
                 </div>
             </div>
 
+            {/* QUICK DASHBOARD FILTER METRICS */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
+                {[
+                    { id: 'All', label: 'All', count: patientsData.length },
+                    { id: 'Male', label: 'Male', count: patientsData.filter(p => p.gender === 'Male').length },
+                    { id: 'Female', label: 'Female', count: patientsData.filter(p => p.gender === 'Female').length },
+                    { id: 'Female Over 30', label: 'F > 30', count: patientsData.filter(p => p.gender === 'Female' && Number(p.age) > 30).length },
+                    { id: 'Male Over 30', label: 'M > 30', count: patientsData.filter(p => p.gender === 'Male' && Number(p.age) > 30).length },
+                    { id: 'Children', label: 'Pediatric', count: patientsData.filter(p => (Number(p.age) || 0) < 13).length },
+                    { id: 'Frequent', label: 'Frequent', count: patientsData.filter(p => (p.patient_history?.length || 0) >= 3).length },
+                ].map(c => (
+                    <button 
+                        key={c.id} 
+                        onClick={() => setActiveQuickFilter(activeQuickFilter === c.id ? null : c.id)}
+                        className={`p-3 rounded-2xl border flex flex-col justify-between items-start transition-all duration-300 cursor-pointer ${
+                            activeQuickFilter === c.id ? 'border-primary bg-primary/5 shadow-md -translate-y-1' : theme === 'dark' ? 'bg-slate-900 border-white/5 hover:bg-white/5' : 'bg-white border-slate-100/80 hover:shadow-md'
+                        }`}
+                    >
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{c.label}</span>
+                        <span className="text-sm font-black mt-1" style={{ color: activeQuickFilter === c.id ? 'var(--primary)' : 'var(--text-dark)' }}>{c.count}</span>
+                    </button>
+                ))}
+            </div>
+
+            {/* SMART GROUPS BAR */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+                <button 
+                    onClick={() => setIsGroupModalOpen(true)} 
+                    className="p-1.5 px-3 rounded-xl border border-dashed border-primary/30 bg-primary/5 text-primary text-[9px] font-black uppercase tracking-wider flex items-center gap-1 shrink-0 active:scale-95 hover:bg-primary/10 transition-all"
+                >
+                    <Plus size={12} /> Create Group
+                </button>
+                {groups.map(g => (
+                    <button 
+                        key={g.id} 
+                        onClick={() => setSelectedGroup(selectedGroup?.id === g.id ? null : g)}
+                        className={`p-1.5 px-3 rounded-xl border text-[9px] font-black uppercase tracking-wider transition-all shrink-0 flex items-center gap-1.5 ${
+                            selectedGroup?.id === g.id ? 'bg-primary text-white border-primary shadow-md' : theme === 'dark' ? 'bg-slate-900 border-white/5 text-slate-400 hover:text-white' : 'bg-white border-slate-100 text-slate-600 hover:border-slate-300'
+                        }`}
+                    >
+                        <span className={`w-1.5 h-1.5 rounded-full ${g.type === 'static' ? 'bg-blue-500' : 'bg-emerald-500'}`} />
+                        {g.name}
+                    </button>
+                ))}
+            </div>
+
             {isLoading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     {[...Array(8)].map((_, i) => <div key={i} className="h-32 rounded-xl bg-slate-100 dark:bg-white/5 animate-pulse" />)}
@@ -328,6 +497,87 @@ export function Patients({ userRole, setActiveTab, theme }: { userRole: UserRole
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">No patient results found</p>
                 </div>
             )}
+
+            <Modal isOpen={isGroupModalOpen} onClose={() => setIsGroupModalOpen(false)} title="Create Smart Group">
+                <div className="space-y-4">
+                    <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Group Name</label>
+                        <input type="text" value={newGroup.name} onChange={e => setNewGroup({...newGroup, name: e.target.value})} className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-xl p-3 text-xs font-bold outline-none focus:border-primary/40 transition-all" placeholder="e.g., VIP Patients" />
+                    </div>
+                    
+                    <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Group Type</label>
+                        <div className="flex gap-2">
+                            {['static', 'dynamic'].map(t => (
+                                <button key={t} onClick={() => setNewGroup({...newGroup, type: t as any})} className={`flex-1 p-2 rounded-xl border text-xs font-black uppercase tracking-wider transition-all ${newGroup.type === t ? 'bg-primary border-primary text-white shadow-md' : 'bg-slate-50 dark:bg-white/5 text-slate-500 border-slate-100 dark:border-white/5'}`}>{t}</button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {newGroup.type === 'static' ? (
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Select Patients</label>
+                            <div className="max-h-48 overflow-y-auto border border-slate-100 dark:border-white/5 rounded-xl divide-y dark:divide-white/5 p-1 bg-slate-50 dark:bg-slate-900/40">
+                                {patientsData.map(p => (
+                                    <label key={p.id} className="flex items-center justify-between p-2 hover:bg-white dark:hover:bg-white/5 rounded-lg cursor-pointer transition-all">
+                                        <span className="text-xs font-bold" style={{ color: 'var(--text-dark)' }}>{p.name} {p.last_name}</span>
+                                        <input type="checkbox" checked={newGroup.patientIds.includes(p.id)} onChange={e => {
+                                            const updated = e.target.checked ? [...newGroup.patientIds, p.id] : newGroup.patientIds.filter(id => id !== p.id);
+                                            setNewGroup({...newGroup, patientIds: updated});
+                                        }} className="rounded text-primary border-slate-300 focus:ring-primary" />
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-3 p-3 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-100 dark:border-white/5">
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black uppercase text-slate-500">Gender Criteria</label>
+                                <select value={newGroup.criteria.gender} onChange={e => setNewGroup({...newGroup, criteria: {...newGroup.criteria, gender: e.target.value}})} className="w-full bg-white dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-lg p-2 text-xs font-bold">
+                                    <option value="All">All Genders</option>
+                                    <option value="Male">Male Only</option>
+                                    <option value="Female">Female Only</option>
+                                </select>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black uppercase text-slate-500">Min Age</label>
+                                    <input type="number" value={newGroup.criteria.ageMin} onChange={e => setNewGroup({...newGroup, criteria: {...newGroup.criteria, ageMin: Number(e.target.value)}})} className="w-full bg-white dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-lg p-2 text-xs font-bold" />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black uppercase text-slate-500">Max Age</label>
+                                    <input type="number" value={newGroup.criteria.ageMax} onChange={e => setNewGroup({...newGroup, criteria: {...newGroup.criteria, ageMax: Number(e.target.value)}})} className="w-full bg-white dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-lg p-2 text-xs font-bold" />
+                                </div>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black uppercase text-slate-500">With Treatment History</label>
+                                <select value={newGroup.criteria.treatment} onChange={e => setNewGroup({...newGroup, criteria: {...newGroup.criteria, treatment: e.target.value}})} className="w-full bg-white dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-lg p-2 text-xs font-bold">
+                                    <option value="All">Any Treatment</option>
+                                    {treatments.map((t, i) => (
+                                        <option key={i} value={t}>{t}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                    )}
+
+                    <button onClick={() => {
+                        if (!newGroup.name) return showToast('Group name required', 'error');
+                        const group: PatientGroup = {
+                            id: Math.random().toString(),
+                            name: newGroup.name,
+                            type: newGroup.type,
+                            patientIds: newGroup.type === 'static' ? newGroup.patientIds : [],
+                            criteria: newGroup.type === 'dynamic' ? newGroup.criteria : undefined
+                        };
+                        const updated = [...groups, group];
+                        saveGroups(updated);
+                        setIsGroupModalOpen(false);
+                        setNewGroup({name: '', type: 'static', patientIds: [], criteria: { gender: 'All', ageMin: 0, ageMax: 100, treatment: 'All', visitCount: 0 }});
+                        showToast(`Group "${newGroup.name}" created!`, 'success');
+                    }} className="w-full py-3 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-wider mt-2 shadow-lg active:scale-98 transition-transform">Create Group</button>
+                </div>
+            </Modal>
 
             <PatientRegistrationModal isOpen={view === 'register'} onClose={() => setView('list')} theme={theme} />
         </div>
