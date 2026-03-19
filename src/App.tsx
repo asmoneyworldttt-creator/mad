@@ -51,6 +51,7 @@ const PerioCharting = lazy(() => import('./components/views/PerioCharting').then
 const LockOutScreen = lazy(() => import('./components/views/LockOutScreen').then(m => ({ default: m.LockOutScreen })));
 const ClinicalNotes = lazy(() => import('./components/views/ClinicalNotes').then(m => ({ default: m.ClinicalNotes })));
 const VitalSignsPanel = lazy(() => import('./components/views/VitalSignsPanel').then(m => ({ default: m.VitalSignsPanel })));
+const Reminder = lazy(() => import('./components/views/Reminder').then(m => ({ default: m.Reminder })));
 
 type UserRole = 'master' | 'admin' | 'staff' | 'patient';
 
@@ -281,7 +282,8 @@ function App() {
       sterilization: 'Sterilization', 'equipment-log': 'Equipment', kiosk: 'Kiosk Mode',
       loyalty: 'Loyalty Hub', resources: 'Resources', 'treatment-plans': 'Treatment Plans',
       teledentistry: 'TeleDentistry', 'perio-charting': 'Perio Charting', 'doctor-calendar': 'Doctor Schedule', suppliers: 'Suppliers',
-      'clinical-notes': 'SOAP Notes', 'vital-signs': 'Vital Signs'
+      'clinical-notes': 'SOAP Notes', 'vital-signs': 'Vital Signs',
+      reminder: 'Reminder Desk'
     };
     document.title = `Dentora — ${titles[activeTab] || 'Dental Management'}`;
   }, [activeTab]);
@@ -357,6 +359,8 @@ function App() {
         return <VitalSignsPanel patient={globalPatient} theme={theme} />;
       case 'notifications':
         return <NotificationModal isOpen={true} onClose={() => setActiveTab('dashboard')} theme={theme} />;
+      case 'reminder':
+        return <Reminder userRole={userRole} theme={theme} />;
       case 'patient-registration':
         return <PatientRegistrationModal isOpen={true} onClose={() => setActiveTab('patients')} onSuccess={(id) => { setGlobalPatient({ id }); setActiveTab('patient-overview'); }} onNavigate={setActiveTab} theme={theme} />;
       default:

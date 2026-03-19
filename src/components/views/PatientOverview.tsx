@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { CustomSelect } from '../ui/CustomControls';
 import imageCompression from 'browser-image-compression';
 import { useToast } from '../../components/Toast';
 import { supabase } from '../../supabase';
@@ -126,7 +127,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
             chiefComplaint: complaint,
             clinicalFindings: findings,
             procedures: procedures,
-            remarks: remarks + (advice ? `\nAdvice: ${advice}` : '') + (followUp ? `\nFollow-up: ${followUp}` : '')
+            remarks: (remarks || '') + (advice ? `\nAdvice: ${advice}` : '') + (followUp ? `\nFollow-up: ${followUp}` : '')
         });
     };
     const [toothChartData, setToothChartData] = useState<any>({});
@@ -146,6 +147,18 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
     const [patientHistory, setPatientHistory] = useState<any[]>([]);
     const [isLoadingData, setIsLoadingData] = useState(false);
     const [clinicalSubTab, setClinicalSubTab] = useState<'soap' | 'vitals' | 'consents' | 'medical_clearance'>('soap');
+    
+    // Follow-up State
+    const [followUpData, setFollowUpData] = useState({ date: '', doctor: 'Dr. Sarah Jenkins', nextTreatment: '', message: '' });
+    const [isSavingFollowUp, setIsSavingFollowUp] = useState(false);
+
+    useEffect(() => {
+        if (!followUpData.date && !followUpData.nextTreatment) return;
+        setFollowUpData(prev => ({
+            ...prev,
+            message: `Hello ${patient.name}, this is a reminder regarding your upcoming visit with ${prev.doctor} for ${prev.nextTreatment || 'treatment'} on ${prev.date}.`
+        }));
+    }, [followUpData.date, followUpData.doctor, followUpData.nextTreatment, patient.name]);
     
     // SOAP Note Modal State
     const [isSoapModalOpen, setIsSoapModalOpen] = useState(false);
@@ -167,7 +180,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
     const groupedHistory = useMemo(() => {
         if (!patientHistory) return [];
         const groups: Record<string, any[]> = {};
-        patientHistory.forEach(visit => {
+        patientHistory.filter(visit => visit.category !== 'FollowUp').forEach(visit => {
             const key = `${visit.date}_${visit.treatment}`;
             if (!groups[key]) groups[key] = [];
             groups[key].push(visit);
@@ -494,6 +507,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
     const tabs = [
         { id: 'home', label: 'Home', icon: Activity },
         { id: 'clinical', label: 'Clinical Notes', icon: ClipboardCheck },
+        { id: 'followup', label: 'Follow-up', icon: Calendar },
         { id: 'billing', label: 'Invoices', icon: FileText },
         { id: 'treatment_plans', label: 'Plans', icon: FileSignature },
         { id: 'prescriptions', label: 'Prescriptions', icon: FileText },
@@ -812,6 +826,94 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                             </div>
                         </div>
                     </div>
+                    </div>
+                )}
+
+                {activeTab === 'followup' && (
+                    <div className="space-y-6">
+                        <div className="flex justify-between items-center">
+                            <h4 className="text-2xl font-bold" style={{ color: 'var(--text-dark)' }}>Scheduled Follow-ups</h4>
+                        </div>
+                        
+                        <div className="p-8 rounded-[2.5rem]" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
+                            <h5 className="font-sans font-bold text-lg mb-6 border-b pb-2" style={{ color: 'var(--text-dark)', borderColor: 'var(--border-color)' }}>Create New Follow-up</h5>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="text-xs font-bold mb-1 block" style={{ color: 'var(--text-muted)' }}>Next Follow-up Date</label>
+                                    <input type="date" value={followUpData.date} onChange={e => setFollowUpData({ ...followUpData, date: e.target.value })} className="w-full rounded-xl px-4 py-3 text-sm" style={{ background: 'var(--bg-page)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }} />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold mb-1 block" style={{ color: 'var(--text-muted)' }}>Doctor Name</label>
+                                    <CustomSelect 
+                                        value={followUpData.doctor} 
+                                        onChange={(val: string) => setFollowUpData({ ...followUpData, doctor: val })} 
+                                        options={doctorsList.length > 0 ? doctorsList : ['Dr. Sarah Jenkins']} 
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold mb-1 block" style={{ color: 'var(--text-muted)' }}>WhatsApp Number</label>
+                                    <input type="text" value={patient.phone || ''} disabled className="w-full rounded-xl px-4 py-3 text-sm opacity-60" style={{ background: 'var(--bg-page)', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }} />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold mb-1 block" style={{ color: 'var(--text-muted)' }}>Next Treatment</label>
+                                    <input type="text" placeholder="e.g. Crown Fitment" value={followUpData.nextTreatment} onChange={e => setFollowUpData({ ...followUpData, nextTreatment: e.target.value })} className="w-full rounded-xl px-4 py-3 text-sm" style={{ background: 'var(--bg-page)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }} />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="text-xs font-bold mb-1 block" style={{ color: 'var(--text-muted)' }}>Follow-up Message</label>
+                                    <textarea rows={3} value={followUpData.message} onChange={e => setFollowUpData({ ...followUpData, message: e.target.value })} className="w-full rounded-xl px-4 py-3 text-sm" style={{ background: 'var(--bg-page)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }} placeholder="Pre-typed message will load here..."></textarea>
+                                </div>
+                            </div>
+                            
+                            <button onClick={async () => {
+                                if (!followUpData.date) return showToast('Please select a date', 'error');
+                                setIsSavingFollowUp(true);
+                                const { error } = await supabase.from('patient_history').insert({
+                                    id: crypto.randomUUID(),
+                                    patient_id: patient.id,
+                                    date: followUpData.date,
+                                    treatment: followUpData.nextTreatment || 'Follow-up',
+                                    notes: followUpData.message,
+                                    category: 'FollowUp',
+                                    doctor_name: followUpData.doctor
+                                });
+                                if (error) showToast(error.message, 'error');
+                                else {
+                                    showToast('Follow-up scheduled!', 'success');
+                                    setFollowUpData({ date: '', doctor: 'Dr. Sarah Jenkins', nextTreatment: '', message: '' });
+                                    fetchData();
+                                }
+                                setIsSavingFollowUp(false);
+                            }} disabled={isSavingFollowUp} className="mt-6 w-full py-3.5 bg-primary hover:scale-[1.01] active:scale-95 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg transition-all flex items-center justify-center gap-2">
+                                {isSavingFollowUp ? 'Scheduling...' : 'Schedule Follow-up'}
+                            </button>
+                        </div>
+                        
+                        <div className="space-y-4">
+                            <h5 className="font-sans font-bold text-lg" style={{ color: 'var(--text-dark)' }}>Existing Follow-ups</h5>
+                            {patientHistory.filter(h => h.category === 'FollowUp').length === 0 ? (
+                                <p className="text-sm font-medium text-slate-400">No scheduled follow-ups found.</p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {patientHistory.filter(h => h.category === 'FollowUp').map((h, i) => (
+                                        <div key={i} className="p-5 rounded-2xl border flex justify-between items-center transition-all bg-white dark:bg-slate-900/40" style={{ borderColor: 'var(--border-color)' }}>
+                                            <div>
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-1">{h.date}</p>
+                                                <p className="font-bold text-sm tracking-tight" style={{ color: 'var(--text-dark)' }}>{h.treatment}</p>
+                                                <p className="text-xs font-medium text-slate-400 mt-1 italic">"{h.notes}"</p>
+                                            </div>
+                                            <button onClick={() => {
+                                                const text = h.notes || '';
+                                                const url = `https://wa.me/${patient.phone?.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`;
+                                                window.open(url, '_blank');
+                                            }} className="p-3 bg-emerald-500 rounded-xl text-white hover:scale-105 active:scale-95 transition-all shadow-md">
+                                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.3-.149-1.777-.878-2.046-.977-.269-.1-.466-.149-.663.149-.197.3-.765.977-.937 1.173-.171.196-.341.221-.644.072-.303-.15-1.279-.471-2.435-1.503-.9-.801-1.507-1.792-1.683-2.09-.175-.299-.019-.461.13-.609.134-.133.302-.349.453-.524.15-.174.2-.299.3-.498.1-.2.05-.375-.025-.524-.075-.149-.663-1.599-.908-2.189-.244-.589-.492-.51-.663-.51h-.552c-.197 0-.518.074-.789.373-.27.299-1.033 1.009-1.033 2.46 0 1.45 1.056 2.85 1.205 3.05.149.196 2.073 3.166 5.02 4.444.7.304 1.248.485 1.674.622.703.221 1.343.19 1.85.114.565-.084 1.777-.726 2.025-1.425.249-.699.249-1.295.174-1.424-.075-.129-.269-.196-.569-.345z"/></svg>
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
 

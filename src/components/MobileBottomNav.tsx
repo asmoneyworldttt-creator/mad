@@ -7,6 +7,7 @@ const ALL_QUICK_LINKS = [
     { id: 'appointments', icon: Calendar, label: 'Calendar', roles: ['master', 'admin', 'staff', 'patient'] },
     { id: 'doctor-calendar', icon: CalendarRange, label: 'Dr. Schedule', roles: ['master', 'admin', 'staff'] },
     { id: 'patients', icon: Users, label: 'Patients', roles: ['master', 'admin', 'staff'] },
+    { id: 'reminder', icon: Bell, label: 'Reminder', roles: ['master', 'admin', 'staff'] },
     { id: 'quickbills', icon: FileText, label: 'Billing', roles: ['master', 'admin', 'staff'] },
     { id: 'emr', icon: Activity, label: 'EMR', roles: ['master', 'admin', 'staff', 'patient'] },
     { id: 'labwork', icon: FlaskConical, label: 'Lab Orders', roles: ['master', 'admin', 'staff'] },
