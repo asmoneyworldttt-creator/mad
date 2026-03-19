@@ -1,10 +1,10 @@
 
-import { useState, useEffect, useRef } from 'react'; import { Search, Plus, Save, IndianRupee, Calendar, Printer, List, Receipt, ChevronRight, X, Download } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react'; import { Search, Plus, Save, IndianRupee, Calendar, Printer, List, Receipt, ChevronRight, X, Download, FileText } from 'lucide-react';
 import { useToast } from '../../components/Toast';
 import { supabase } from '../../supabase';
 import { SkeletonList } from '../SkeletonLoader';
 import { EmptyState } from '../EmptyState';
-import { downloadInvoicePDF } from '../../utils/pdfExport';
+import { downloadInvoicePDF, downloadDentalCertificatePDF } from '../../utils/pdfExport';
 import { CustomSelect } from '../ui/CustomControls';
 
 type UserRole = 'master' | 'admin' | 'staff' | 'patient';
@@ -29,15 +29,27 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
     // ── Form ──
     const [clinicInfo, setClinicInfo] = useState({ location: 'Main Clinic – Downtown', doctor: 'Dr. S. Jenkins', date: new Date().toISOString().split('T')[0] });
     const [treatmentInfo, setTreatmentInfo] = useState({ complaint: '', treatmentDone: '', observationNotes: '', medicine: '' });
+    const [selectedTreatments, setSelectedTreatments] = useState<{ treatment: string; tooth: string; cost: number; status: string }[]>([]);
+    const [generateCertificate, setGenerateCertificate] = useState(false);
+    const [certificateInfo, setCertificateInfo] = useState({ chiefComplaint: '', clinicalFindings: '', remarks: '' });
     const [billingInfo, setBillingInfo] = useState({ fees: 0, profFee: 0, discount: 0, gstRate: 0, paymentMethod: 'Cash', paymentStatus: 'Paid' as 'Paid' | 'Unpaid' | 'Partial' });
     const [followUpInfo, setFollowUpInfo] = useState({ remarks: '', advice: '', referTo: '', followUpDate: '', followUpTime: '' });
     const [isSaving, setIsSaving] = useState(false);
     const invoiceRef = useRef<any>(null);
 
+    const [fetchedTreatments, setFetchedTreatments] = useState<string[]>([]); // To provide dropdown standard treatments
+
     // ── Computed totals ──
-    const subtotal = billingInfo.fees;
+    const subtotal = selectedTreatments.reduce((acc, t) => acc + (Number(t.cost) || 0), 0) + billingInfo.fees;
     const gstAmount = Math.round((subtotal - billingInfo.discount) * billingInfo.gstRate / 100);
     const totalPayable = subtotal - billingInfo.discount + gstAmount;
+
+    useEffect(() => {
+        // Load standard treatments from somewhere or make a local array
+        setFetchedTreatments([
+            'Oral examination', 'Scaling & polishing', 'Composite restoration', 'Glass ionomer restoration', 'Root Canal Treatment', 'Simple extraction', 'Surgical extraction', 'Crown (PFM)', 'Crown (Zirconia)', 'Bridges', 'Denture', 'Veneers', 'Implant placement'
+        ]);
+    }, []);
 
     useEffect(() => {
         if (searchQuery.length > 2) {
@@ -88,6 +100,12 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
         const date = clinicInfo.date;
         const invoiceNo = getInvoiceNumber();
 
+        const treatmentsStr = selectedTreatments.length > 0 ? selectedTreatments.map(t => `${t.treatment}${t.tooth ? ` (${t.tooth})` : ''}`).join(', ') : (treatmentInfo.treatmentDone || 'General Consultation');
+
+        const notesStr = (treatmentInfo.observationNotes ? `${treatmentInfo.observationNotes}\n` : '') +
+                        (generateCertificate ? `[Certificate]: true\n[Complaint]: ${certificateInfo.chiefComplaint}\n[Findings]: ${certificateInfo.clinicalFindings}\n[CertRemarks]: ${certificateInfo.remarks}\n` : '') +
+                        `[FollowUp]: ${followUpInfo.followUpDate || ''} ${followUpInfo.followUpTime || ''}`;
+
         const { data: billData, error: billError } = await supabase.from('bills').insert({
             patient_id: patientId,
             patient_name: patientInfo.name,
@@ -97,9 +115,9 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
             prof_fee: billingInfo.profFee,
             discount: billingInfo.discount,
             payment_method: billingInfo.paymentMethod,
-            treatment_name: treatmentInfo.treatmentDone || 'General Consultation',
+            treatment_name: treatmentsStr,
             complaint: treatmentInfo.complaint,
-            notes: treatmentInfo.observationNotes,
+            notes: notesStr,
             doctor_name: clinicInfo.doctor,
             invoice_number: invoiceNo,
         }).select().single();
@@ -111,7 +129,7 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
             treatment: `Bill Generated: ${invoiceNo}`,
             category: 'Financial',
             cost: totalPayable,
-            notes: `Treatment: ${treatmentInfo.treatmentDone || 'General Consultation'}. Method: ${billingInfo.paymentMethod}`,
+            notes: `Treatment: ${treatmentsStr}. Method: ${billingInfo.paymentMethod}`,
             doctor_name: clinicInfo.doctor
         });
 
@@ -130,14 +148,44 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
         if (billError) { showToast('Error saving bill: ' + billError.message, 'error'); return; }
 
         showToast(`Bill ${invoiceNo} saved!`, 'success');
-        // Auto-download invoice PDF
-        handleDownloadInvoice({ id: invoiceNo, amount: totalPayable, date, invoice_number: invoiceNo });
+
+        // ── AUTO DOWNLOAD SECTION ──
+        handleDownloadInvoice({ id: invoiceNo, amount: totalPayable, date, invoice_number: invoiceNo, treatment_name: treatmentsStr });
+
+        if (generateCertificate) {
+            // Import if missing from top: downloadDentalCertificatePDF
+            const downloadFn = (window as any).downloadDentalCertificatePDF || downloadDentalCertificatePDF;
+            if (typeof downloadFn === 'function') {
+                setTimeout(() => {
+                    downloadFn({
+                        patientName: patientInfo.name,
+                        patientPhone: patientInfo.phone,
+                        patientAge: selectedPatient?.age,
+                        patientGender: selectedPatient?.gender,
+                        patientId: selectedPatient?.id,
+                        date: date,
+                        clinicName: 'DentiSphere Clinic',
+                        clinicLocation: clinicInfo.location,
+                        doctorName: clinicInfo.doctor,
+                        chiefComplaint: certificateInfo.chiefComplaint,
+                        clinicalFindings: certificateInfo.clinicalFindings,
+                        procedures: selectedTreatments.length > 0 ? selectedTreatments : [{ tooth: '—', treatment: treatmentInfo.treatmentDone || 'Dental Treatment', status: 'Completed', cost: billingInfo.fees }],
+                        remarks: certificateInfo.remarks
+                    });
+                    showToast('Dental Certificate PDF downloaded!', 'success');
+                }, 1000);
+            }
+        }
+
         // Reset
         setTreatmentInfo({ complaint: '', treatmentDone: '', observationNotes: '', medicine: '' });
         setBillingInfo({ fees: 0, profFee: 0, discount: 0, gstRate: 0, paymentMethod: 'Cash', paymentStatus: 'Paid' });
         setFollowUpInfo({ remarks: '', advice: '', referTo: '', followUpDate: '', followUpTime: '' });
         setSelectedPatient(null);
         setPatientInfo({ id: '', name: '', phone: '', address: '' });
+        setSelectedTreatments([]);
+        setGenerateCertificate(false);
+        setCertificateInfo({ chiefComplaint: '', clinicalFindings: '', remarks: '' });
     };
 
     const handleDownloadInvoice = (bill: any) => {
@@ -160,6 +208,37 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
             paymentStatus: bill.status || billingInfo.paymentStatus,
         });
         showToast('Invoice PDF downloaded!', 'success');
+    };
+
+    const handleDownloadCertificateFromHistory = (bill: any) => {
+        const notes = bill.notes || '';
+        const complaint = notes.match(/\[Complaint\]:\s*([\s\S]*?)(?=\n\[|$)/)?.[1]?.trim() || '';
+        const findings = notes.match(/\[Findings\]:\s*([\s\S]*?)(?=\n\[|$)/)?.[1]?.trim() || '';
+        const remarks = notes.match(/\[CertRemarks\]:\s*([\s\S]*?)(?=\n\[|$)/)?.[1]?.trim() || '';
+
+        const procedures = bill.treatment_name?.split(', ').map((it: string) => {
+            const toothMatch = it.match(/\((.*?)\)/);
+            return { treatment: it.replace(/\(.*?\)/, '').trim(), tooth: toothMatch ? toothMatch[1] : '—', status: 'Completed', cost: 0 };
+        }) || [];
+
+        const downloadFn = (window as any).downloadDentalCertificatePDF || downloadDentalCertificatePDF;
+        if (typeof downloadFn === 'function') {
+            downloadFn({
+                patientName: bill.patients?.name || bill.patient_name || 'Patient',
+                patientPhone: bill.patients?.phone || '',
+                date: bill.date,
+                clinicName: 'DentiSphere Clinic',
+                clinicLocation: clinicInfo.location,
+                doctorName: bill.doctor_name || clinicInfo.doctor,
+                chiefComplaint: complaint || bill.complaint || '',
+                clinicalFindings: findings || '',
+                procedures: procedures.length > 0 ? procedures : [{ tooth: '—', treatment: bill.treatment_name || 'Treatment', status: 'Completed', cost: 0 }],
+                remarks: remarks || ''
+            });
+            showToast('Health Certificate downloaded!', 'success');
+        } else {
+            showToast('Certificate exporter not ready', 'error');
+        }
     };
 
     // ─── BILL HISTORY VIEW ───
@@ -204,12 +283,20 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
                                               </span>
                                           </td>
                                          <td className="px-6 py-5 text-sm font-bold" style={{ color: 'var(--text-muted)' }}>{new Date(b.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
-                                        <td className="px-6 py-5">
+                                        <td className="px-6 py-5 flex items-center gap-1.5">
                                             <button onClick={() => handleDownloadInvoice(b)}
                                                 className="p-2.5 rounded-xl border transition-all hover:scale-105 shadow-sm"
-                                                style={{ background: 'var(--primary-soft)', borderColor: 'var(--border-color)', color: 'var(--primary)' }}>
+                                                style={{ background: 'var(--primary-soft)', borderColor: 'var(--border-color)', color: 'var(--primary)' }}
+                                                title="Download Invoice">
                                                 <Download size={18} />
                                             </button>
+                                            {b.notes?.includes('[Certificate]: true') && (
+                                                <button onClick={() => handleDownloadCertificateFromHistory(b)}
+                                                    className="p-2.5 rounded-xl border transition-all hover:scale-105 shadow-sm bg-amber-500/5 text-amber-500 border-amber-500/20"
+                                                    title="Download Treatment Certificate">
+                                                    <FileText size={18} />
+                                                </button>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}
@@ -338,17 +425,96 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
                         </div>
                     </div>
 
-                    {/* Treatment Details */}
+                    {/* Treatment Details & Certificate */}
                     <div className={cardCls} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
-                        <p className="text-[9px] font-black uppercase tracking-widest px-2 mb-4" style={{ color: 'var(--text-muted)' }}>Procedures</p>
+                        <p className="text-xs font-bold text-primary flex items-center gap-2 mb-4">Treatment & Procedures</p>
                         <div className="space-y-4">
                             <div>
-                                <label className={labelCls} style={{ color: 'var(--text-muted)' }}>Reason for visit</label>
-                                <input type="text" value={treatmentInfo.complaint} onChange={e => setTreatmentInfo({ ...treatmentInfo, complaint: e.target.value })} className={inputCls} placeholder="Clinical presentation..." style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }} />
+                                <label className={labelCls} style={{ color: 'var(--text-muted)' }}>Reason for visit (Chief Complaint)</label>
+                                <input type="text" value={treatmentInfo.complaint} onChange={e => setTreatmentInfo({ ...treatmentInfo, complaint: e.target.value })} className={inputCls} placeholder="e.g. Toothache, Swelling..." style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }} />
                             </div>
+
+                            <div className="border-t border-dashed pt-4 border-black/5">
+                                <label className={labelCls} style={{ color: 'var(--text-muted)' }}>Add Specific Procedure</label>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
+                                    <div className="sm:col-span-1">
+                                        <CustomSelect 
+                                            value="" 
+                                            onChange={(val) => {
+                                                if (!val) return;
+                                                setSelectedTreatments([...selectedTreatments, { treatment: val, tooth: '—', cost: 0, status: 'Completed' }]);
+                                            }} 
+                                            options={fetchedTreatments} 
+                                        />
+                                    </div>
+                                    <input type="text" placeholder="Custom Procedure..." className={inputCls} style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)' }} onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            const val = (e.target as HTMLInputElement).value;
+                                            if (val) {
+                                                setSelectedTreatments([...selectedTreatments, { treatment: val, tooth: '—', cost: 0, status: 'Completed' }]);
+                                                (e.target as HTMLInputElement).value = '';
+                                            }
+                                        }
+                                    }} />
+                                </div>
+
+                                {selectedTreatments.length > 0 && (
+                                    <div className="space-y-2 mb-4">
+                                        {selectedTreatments.map((t, i) => (
+                                            <div key={i} className="p-3 rounded-xl bg-slate-50 dark:bg-white/5 border flex items-center justify-between gap-3 text-sm">
+                                                <div className="flex-1">
+                                                    <p className="font-bold">{t.treatment}</p>
+                                                    <div className="flex gap-4 mt-1">
+                                                        <div className="flex items-center gap-1">
+                                                            <span className="text-[10px] text-slate-400">Tooth:</span>
+                                                            <input type="text" value={t.tooth} onChange={e => {
+                                                                const list = [...selectedTreatments];
+                                                                list[i].tooth = e.target.value;
+                                                                setSelectedTreatments(list);
+                                                            }} className="w-16 bg-transparent border-b border-black/10 px-1 outline-none font-bold text-center text-xs" />
+                                                        </div>
+                                                        <div className="flex items-center gap-1">
+                                                            <span className="text-[10px] text-slate-400">Cost (₹):</span>
+                                                            <input type="number" value={t.cost || ''} onChange={e => {
+                                                                const list = [...selectedTreatments];
+                                                                list[i].cost = parseFloat(e.target.value) || 0;
+                                                                setSelectedTreatments(list);
+                                                            }} className="w-20 bg-transparent border-b border-black/10 px-1 outline-none font-bold text-center text-xs text-primary" />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <button onClick={() => setSelectedTreatments(selectedTreatments.filter((_, idx) => idx !== i))} className="text-rose-500 hover:scale-110"><X size={16} /></button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
                             <div>
-                                <label className={labelCls} style={{ color: 'var(--text-muted)' }}>Procedure details</label>
-                                <textarea rows={2} value={treatmentInfo.treatmentDone} onChange={e => setTreatmentInfo({ ...treatmentInfo, treatmentDone: e.target.value })} className={`${inputCls} resize-none`} placeholder="Procedure breakdown..." style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }} />
+                                <label className={labelCls} style={{ color: 'var(--text-muted)' }}>General Procedure Details</label>
+                                <textarea rows={2} value={treatmentInfo.treatmentDone} onChange={e => setTreatmentInfo({ ...treatmentInfo, treatmentDone: e.target.value })} className={`${inputCls} resize-none`} placeholder="Specify anything extra..." style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }} />
+                            </div>
+
+                            <div className="border-t border-dashed pt-4 border-black/5 mt-4">
+                                <label className="flex items-center gap-3 cursor-pointer text-sm font-bold">
+                                    <input type="checkbox" checked={generateCertificate} onChange={e => setGenerateCertificate(e.target.checked)} className="rounded border-slate-300 text-primary focus:ring-primary w-4 h-4" />
+                                    Generate Treatment Certificate (Medical Report)
+                                </label>
+
+                                {generateCertificate && (
+                                    <div className="mt-4 p-5 rounded-2xl bg-primary/5 border border-primary/20 space-y-4 animate-slide-up">
+                                        <p className="text-xs font-bold text-primary">Certificate Configuration</p>
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-500 mb-1 block">Clinical Findings</label>
+                                            <input type="text" value={certificateInfo.clinicalFindings} onChange={e => setCertificateInfo({ ...certificateInfo, clinicalFindings: e.target.value })} className={inputCls} placeholder="Intra oral finding details..." />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-500 mb-1 block">Procedure/Instructions For Certificate</label>
+                                            <textarea rows={2} value={certificateInfo.remarks} onChange={e => setCertificateInfo({ ...certificateInfo, remarks: e.target.value })} className={`${inputCls} resize-none`} placeholder="Specific clinical remarks..." />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

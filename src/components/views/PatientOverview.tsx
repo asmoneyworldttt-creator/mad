@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import imageCompression from 'browser-image-compression';
 import { useToast } from '../../components/Toast';
 import { supabase } from '../../supabase';
 import {
@@ -37,6 +38,7 @@ import { RealisticDentition } from './Dentition3D';
 import { VitalSignsPanel } from './VitalSignsPanel';
 import { 
     downloadInvoicePDF, 
+    downloadDentalCertificatePDF, 
     downloadTreatmentPlanPDF, 
     downloadLabOrderPDF,
     downloadPrescriptionPDF,
@@ -51,7 +53,40 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
     const { showToast } = useToast();
     const [view, setView] = useState<PatientView>('overview');
     const [selectedBill, setSelectedBill] = useState<any>(null);
+
+    const handleDownloadCertificateFromHistory = (bill: any) => {
+        const notes = bill.notes || '';
+        const complaint = notes.match(/\[Complaint\]:\s*([\s\S]*?)(?=\n\[|$)/)?.[1]?.trim() || '';
+        const findings = notes.match(/\[Findings\]:\s*([\s\S]*?)(?=\n\[|$)/)?.[1]?.trim() || '';
+        const remarks = notes.match(/\[CertRemarks\]:\s*([\s\S]*?)(?=\n\[|$)/)?.[1]?.trim() || '';
+        const followUp = notes.match(/\[FollowUp\]:\s*([\s\S]*?)(?=\n\[|$)/)?.[1]?.trim() || '';
+        const advice = notes.match(/\[Advice\]:\s*([\s\S]*?)(?=\n\[|$)/)?.[1]?.trim() || '';
+
+        const procedures = bill.treatment_name?.split(', ').map((it: string) => {
+            const toothMatch = it.match(/\((.*?)\)/);
+            return { treatment: it.replace(/\(.*?\)/, '').trim(), tooth: toothMatch ? toothMatch[1] : '—', status: 'Completed', cost: 0 };
+        }) || [];
+
+        downloadDentalCertificatePDF({
+            patientName: patient.name || 'Patient',
+            patientPhone: patient.phone || '',
+            patientAge: patient.age,
+            patientGender: patient.gender,
+            patientId: patient.id,
+            date: bill.date || new Date().toISOString().split('T')[0],
+            clinicName: 'DentiSphere Clinic',
+            clinicLocation: 'Main Center',
+            doctorName: bill.doctor_name || 'Attending Doctor',
+            chiefComplaint: complaint,
+            clinicalFindings: findings,
+            procedures: procedures,
+            remarks: remarks + (advice ? `\nAdvice: ${advice}` : '') + (followUp ? `\nFollow-up: ${followUp}` : '')
+        });
+    };
     const [toothChartData, setToothChartData] = useState<any>({});
+    const [photos, setPhotos] = useState<{ name: string, url: string }[]>([]);
+    const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+    const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
     
     // Real data states
     const [patientBills, setPatientBills] = useState<any[]>([]);
@@ -190,9 +225,22 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
         }
     };
 
+    const fetchPhotos = async () => {
+        if (!patient?.id) return;
+        const { data, error } = await supabase.storage.from('clinical-assets').list(`photos/${patient.id}`);
+        if (data) {
+            const list = data.map(f => {
+                const { data: { publicUrl } } = supabase.storage.from('clinical-assets').getPublicUrl(`photos/${patient.id}/${f.name}`);
+                return { name: f.name, url: publicUrl };
+            });
+            setPhotos(list);
+        }
+    };
+
     useEffect(() => {
         fetchData();
         loadToothChart();
+        if (activeTab === 'gallery') fetchPhotos();
 
         // Real-time subscriptions for clinical/financial sync
         const channel = supabase.channel(`patient_sync_${patient.id}`)
@@ -211,6 +259,10 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
             supabase.removeChannel(channel);
         };
     }, [patient.id]);
+
+    useEffect(() => {
+        if (activeTab === 'gallery') fetchPhotos();
+    }, [activeTab]);
 
     const handleSaveNote = async () => {
         if (!newNote.subjective && !newNote.objective && !newNote.assessment && !newNote.plan && advisedTreatments.length === 0 && advisedLabOrders.length === 0 && treatmentsDone.length === 0) {
@@ -572,14 +624,19 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                     </div>
                                 </div>
                                 <div className="p-6 rounded-[2rem]" style={{ background: 'var(--card-bg-alt)', border: '1px solid var(--border-color)' }}>
-                                    <h4 className="text-base font-bold mb-4" style={{ color: 'var(--text-muted)' }}>Medical Conditions</h4>
-                                    <div className="flex flex-wrap gap-2.5 mb-5">
-                                        <span className="px-4 py-1.5 bg-rose-500/10 text-rose-500 rounded-xl border border-rose-500/20 text-sm font-bold">Hypertension</span>
-                                        <span className="px-4 py-1.5 bg-amber-500/10 text-amber-500 rounded-xl border border-amber-500/20 text-sm font-bold">Penicillin Allergy</span>
-                                    </div>
-                                    <div className="p-5 rounded-2xl bg-slate-900/50 text-white/80 text-base font-medium leading-relaxed italic border border-white/5 shadow-inner">
-                                        "Patient experiences sensitivity at Q3 quadrant. Observe for gingivitis during cleaning."
-                                    </div>
+                                    <h4 className="text-base font-bold mb-4" style={{ color: 'var(--text-muted)' }}>Medical Conditions & Allergies</h4>
+                                    {patient.allergies ? (
+                                        <div className="flex flex-wrap gap-2.5 mb-5">
+                                            <span className="px-4 py-1.5 bg-rose-500/10 text-rose-500 rounded-xl border border-rose-500/20 text-sm font-bold">{patient.allergies}</span>
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm font-medium text-slate-400 mb-4">No reported allergies recorded.</p>
+                                    )}
+                                    {patient.medical_notes && (
+                                        <div className="p-5 rounded-2xl bg-slate-100 dark:bg-slate-900/50 text-slate-700 dark:text-white/80 text-base font-medium leading-relaxed italic border dark:border-white/5 shadow-inner">
+                                            "{patient.medical_notes}"
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -746,6 +803,11 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                             })} className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 hover:text-primary transition-all">
                                                 <Download size={16} />
                                             </button>
+                                            {bill.notes?.includes('[Certificate]: true') && (
+                                                <button onClick={() => handleDownloadCertificateFromHistory(bill)} title="Download Certificate" className="p-2.5 rounded-xl border bg-emerald-500/10 border-emerald-500/20 text-emerald-600 hover:scale-105 transition-all">
+                                                    <FileText size={16} />
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -1330,35 +1392,75 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                     <div className="space-y-10">
                         <div className="flex justify-between items-center">
                             <h4 className="text-2xl font-sans font-bold" style={{ color: 'var(--text-dark)' }}>Patient Photos</h4>
-                            <label className="bg-primary hover:bg-primary-hover text-white px-6 py-3 rounded-2xl font-bold text-xs uppercase cursor-pointer transition-all active:scale-95 shadow-premium flex items-center gap-2">
-                                <Plus size={18} className="inline mr-2" /> Upload Clinical Photo
-                                <input type="file" accept="image/*" className="sr-only" onChange={async (e) => {
+                            <label className={`bg-primary hover:bg-primary-hover text-white px-6 py-3 rounded-2xl font-bold text-xs uppercase cursor-pointer transition-all active:scale-95 shadow-premium flex items-center gap-2 ${isUploadingPhoto ? 'opacity-50 pointer-events-none' : ''}`}>
+                                <Plus size={18} /> {isUploadingPhoto ? 'Uploading...' : 'Upload Clinical Photo'}
+                                <input type="file" accept="image/*" className="sr-only" disabled={isUploadingPhoto} onChange={async (e) => {
                                     const file = e.target.files?.[0];
-                                    if (file) {
+                                    if (!file) return;
+
+                                    setIsUploadingPhoto(true);
+                                    showToast('Compressing photo...', 'info');
+
+                                    try {
+                                        const options = { maxSizeMB: 0.5, maxWidthOrHeight: 1200, useWebWorker: true };
+                                        const compressedFile = await imageCompression(file, options);
+
                                         showToast('Uploading clinical photo...', 'info');
-                                        // Mock upload or real Supabase Storage logic
-                                        setTimeout(() => showToast('Photo uploaded to Clinical Vault!', 'success'), 1500);
+                                        const filename = `${Date.now()}_${file.name}`;
+                                        const { data, error } = await supabase.storage.from('clinical-assets').upload(`photos/${patient.id}/${filename}`, compressedFile);
+
+                                        if (data) {
+                                            showToast('Photo uploaded to Clinical Vault!', 'success');
+                                            fetchPhotos();
+                                        } else {
+                                            showToast(error.message, 'error');
+                                        }
+                                    } catch (err) {
+                                        showToast('Upload failed', 'error');
+                                    } finally {
+                                        setIsUploadingPhoto(false);
                                     }
                                 }} />
                             </label>
                         </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                            {[1, 2, 3].map(i => (
-                                <div key={i} className="aspect-square rounded-[2rem] bg-slate-100 overflow-hidden relative group border border-slate-200" style={{ background: 'var(--card-bg-alt)' }}>
-                                    <div className="absolute inset-0 flex items-center justify-center text-slate-300">
-                                        <ImageIcon size={48} />
+
+                        {photos.length > 0 ? (
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                                {photos.map((p, i) => (
+                                    <div key={i} className="aspect-square rounded-[2rem] bg-slate-100 overflow-hidden relative group border border-slate-200" style={{ background: 'var(--card-bg-alt)' }}>
+                                        <img src={p.url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={p.name} />
+                                        <div className="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                                            <button onClick={() => setPreviewPhoto(p.url)} className="p-3 bg-white rounded-xl text-primary shadow-xl hover:scale-105 active:scale-95 transition-all"><Eye size={20} /></button>
+                                            <button onClick={async () => {
+                                                if (confirm('Are you sure you want to delete this photo?')) {
+                                                    const { error } = await supabase.storage.from('clinical-assets').remove([`photos/${patient.id}/${p.name}`]);
+                                                    if (!error) {
+                                                        showToast('Photo removed', 'success');
+                                                        fetchPhotos();
+                                                    } else {
+                                                        showToast(error.message, 'error');
+                                                    }
+                                                }
+                                            }} className="p-3 bg-white rounded-xl text-red-500 shadow-xl hover:scale-105 active:scale-95 transition-all"><Trash size={20} /></button>
+                                        </div>
                                     </div>
-                                    <div className="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
-                                        <button className="p-3 bg-white rounded-xl text-primary shadow-xl"><Eye size={20} /></button>
-                                        <button className="p-3 bg-white rounded-xl text-red-500 shadow-xl"><Trash size={20} /></button>
-                                    </div>
-                                </div>
-                            ))}
-                            <div className="aspect-square rounded-[2rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 hover:border-primary hover:text-primary transition-all cursor-pointer" style={{ borderColor: 'var(--border-color)' }}>
-                                <Plus size={32} />
-                                <span className="text-[10px] font-bold mt-2 uppercase tracking-widest">Add View</span>
+                                ))}
                             </div>
-                        </div>
+                        ) : (
+                            <div className="py-20 text-center bg-slate-50/50 rounded-[3rem] border border-dashed border-slate-200">
+                                <ImageIcon size={48} className="mx-auto mb-4 text-slate-300" />
+                                <p className="text-slate-500 font-bold">No clinical photos uploaded yet.</p>
+                            </div>
+                        )}
+
+                        {previewPhoto && (
+                            <div className="fixed inset-0 bg-black/80 z-[999] flex items-center justify-center p-4 animate-fade-in" onClick={() => setPreviewPhoto(null)}>
+                                <div className="max-w-4xl max-h-[90vh] relative" onClick={e => e.stopPropagation()}>
+                                    <img src={previewPhoto} className="max-w-full max-h-[85vh] rounded-3xl object-contain shadow-2xl" alt="Preview Photo" />
+                                    <button onClick={() => setPreviewPhoto(null)} className="absolute -top-12 right-0 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all">✕</button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 

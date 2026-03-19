@@ -58,7 +58,29 @@ function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (localStorage.getItem('dentora_theme') as 'light' | 'dark') || 'light';
   });
-  const [activeTab, setActiveTab] = useState('dashboard');
+  // ─── Hash-based Navigation for Back Button & Refresh Resistance ───
+  const [activeTab, setActiveTab] = useState(() => {
+    const hash = window.location.hash.replace('#', '');
+    return hash || 'dashboard';
+  });
+
+  useEffect(() => {
+    if (activeTab) {
+      window.location.hash = activeTab;
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '');
+      if (hash && hash !== activeTab) {
+        setActiveTab(hash);
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [activeTab]);
+
   const [globalPatient, setGlobalPatient] = useState<any>(null);
   const [userRole, setUserRole] = useState<UserRole>('patient');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -240,43 +262,6 @@ function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
-
-  // ── HIPAA: 15-minute idle session auto-logout ──────────────────────
-  useEffect(() => {
-    if (!session) return;
-    const IDLE_MS = 15 * 60 * 1000; // 15 minutes
-    const WARN_MS = 14 * 60 * 1000; // warn at 14 minutes
-    let idleTimer: ReturnType<typeof setTimeout>;
-    let warnTimer: ReturnType<typeof setTimeout>;
-    let warned = false;
-
-    const resetTimers = () => {
-      clearTimeout(idleTimer);
-      clearTimeout(warnTimer);
-      warned = false;
-      warnTimer = setTimeout(() => {
-        if (!warned) {
-          warned = true;
-          // show warning via DOM toast (avoids hook-in-hook issues)
-          const evt = new CustomEvent('dentora:toast', { detail: { msg: '⚠️ Session expiring in 60 seconds due to inactivity', type: 'error' } });
-          window.dispatchEvent(evt);
-        }
-      }, WARN_MS);
-      idleTimer = setTimeout(async () => {
-        await supabase.auth.signOut();
-      }, IDLE_MS);
-    };
-
-    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
-    events.forEach(e => window.addEventListener(e, resetTimers, { passive: true }));
-    resetTimers();
-
-    return () => {
-      clearTimeout(idleTimer);
-      clearTimeout(warnTimer);
-      events.forEach(e => window.removeEventListener(e, resetTimers));
-    };
-  }, [session]);
 
   const switchRole = (role: UserRole) => {
     setUserRole(role);

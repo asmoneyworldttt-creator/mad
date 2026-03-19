@@ -158,10 +158,10 @@ export function Dashboard({ setActiveTab, userRole, theme }: { setActiveTab?: (t
             { count: apptCount }, { data: allApts }, { count: missedCount },
             { count: totalVisitsCount }, { count: newPatCount }, { count: totalPatCount },
             { data: billsData }, { count: pendingLabCount },
-            { data: expensesData }, { count: doctorCount }, { data: staffData }, { data: labCasesData }
+            { data: expensesData }, { count: doctorCount }, { data: labCasesData }
         ] = await Promise.all([
             supabase.from('appointments').select('*', { count: 'exact', head: true }).gte('date', start).lte('date', end),
-            supabase.from('appointments').select('*'),
+            supabase.from('appointments').select('*').gte('date', start).lte('date', end), // Optimized with filters
             supabase.from('appointments').select('*', { count: 'exact', head: true }).eq('status', 'Missed').gte('date', start).lte('date', end),
             supabase.from('patient_history').select('*', { count: 'exact', head: true }).gte('date', start).lte('date', end),
             supabase.from('patients').select('*', { count: 'exact', head: true }).gte('created_at', start).lte('created_at', end + 'T23:59:59'),
@@ -170,7 +170,6 @@ export function Dashboard({ setActiveTab, userRole, theme }: { setActiveTab?: (t
             supabase.from('lab_orders').select('*', { count: 'exact', head: true }).neq('order_status', 'Delivered to Patient').gte('created_at', start).lte('created_at', end + 'T23:59:59'),
             supabase.from('accounts').select('amount').eq('type', 'expense').gte('created_at', start).lte('created_at', end + 'T23:59:59'),
             supabase.from('staff').select('role', { count: 'exact', head: true }).eq('role', 'doctor'),
-            supabase.from('staff').select('id'), // Fetch IDs for general staff info
             supabase.from('lab_orders').select('patient_name, order_status, created_at').neq('order_status', 'Delivered to Patient').order('created_at', { ascending: false }).limit(5),
         ]);
 
