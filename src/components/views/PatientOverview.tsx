@@ -47,23 +47,43 @@ import {
     type TreatmentPlanData
 } from '../../utils/pdfExport';
 
-const ToothSelector = ({ selected, onSelect }: { selected: string, onSelect: (tooth: string) => void }) => {
-    const row1 = ['18', '17', '16', '15', '14', '13', '12', '11', '21', '22', '23', '24', '25', '26', '27', '28'];
-    const row2 = ['48', '47', '46', '45', '44', '43', '42', '41', '31', '32', '33', '34', '35', '36', '37', '38'];
+const ToothSelector = ({ selected, onSelect, patientAge }: { selected: string, onSelect: (tooth: string) => void, patientAge?: number }) => {
+    const [chartType, setChartType] = useState<'adult' | 'pediatric'>('adult');
+
+    useEffect(() => {
+        if (patientAge !== undefined && patientAge !== null) {
+            setChartType(Number(patientAge) < 18 ? 'pediatric' : 'adult');
+        }
+    }, [patientAge]);
+
+    const adultRow1 = ['18', '17', '16', '15', '14', '13', '12', '11', '21', '22', '23', '24', '25', '26', '27', '28'];
+    const adultRow2 = ['48', '47', '46', '45', '44', '43', '42', '41', '31', '32', '33', '34', '35', '36', '37', '38'];
+
+    const pediaRow1 = ['55', '54', '53', '52', '51', '61', '62', '63', '64', '65'];
+    const pediaRow2 = ['85', '84', '83', '82', '81', '71', '72', '73', '74', '75'];
+
+    const row1 = chartType === 'adult' ? adultRow1 : pediaRow1;
+    const row2 = chartType === 'adult' ? adultRow2 : pediaRow2;
 
     return (
         <div className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-white/10 mt-2">
-            <p className="text-[9px] font-black text-slate-400 uppercase mb-2 text-center">Select Tooth Number</p>
-            <div className="flex justify-center gap-1 mb-1 overflow-x-auto py-1">
+            <div className="flex justify-between items-center mb-2 px-1">
+                <p className="text-[9px] font-black text-slate-400 uppercase">Select Tooth Number</p>
+                <div className="flex gap-1 border border-slate-200 dark:border-white/10 rounded-lg p-0.5 bg-white dark:bg-white/5">
+                    <button type="button" onClick={() => setChartType('adult')} className={`px-2 py-0.5 rounded-md text-[8px] font-bold transition-all ${chartType === 'adult' ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>Adult</button>
+                    <button type="button" onClick={() => setChartType('pediatric')} className={`px-2 py-0.5 rounded-md text-[8px] font-bold transition-all ${chartType === 'pediatric' ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>Pediatric</button>
+                </div>
+            </div>
+            <div className={`flex justify-center gap-1 mb-1 overflow-x-auto py-1 ${chartType === 'pediatric' ? 'px-4' : ''}`}>
                 {row1.map(t => (
-                    <button type="button" key={t} onClick={() => onSelect(t)} className={`w-7 h-9 text-[10px] font-bold rounded-lg border flex items-center justify-center transition-all ${selected === t ? 'bg-primary text-white border-primary shadow-md scale-105' : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:border-primary/40'}`}>
+                    <button type="button" key={t} onClick={() => onSelect(t)} className={`w-7 h-9 text-[10px] font-bold rounded-lg border flex items-center justify-center flex-shrink-0 transition-all ${selected === t ? 'bg-primary text-white border-primary shadow-md scale-105' : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:border-primary/40'}`}>
                         {t}
                     </button>
                 ))}
             </div>
-            <div className="flex justify-center gap-1 overflow-x-auto py-1">
+            <div className={`flex justify-center gap-1 overflow-x-auto py-1 ${chartType === 'pediatric' ? 'px-4' : ''}`}>
                 {row2.map(t => (
-                    <button type="button" key={t} onClick={() => onSelect(t)} className={`w-7 h-9 text-[10px] font-bold rounded-lg border flex items-center justify-center transition-all ${selected === t ? 'bg-primary text-white border-primary shadow-md scale-105' : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:border-primary/40'}`}>
+                    <button type="button" key={t} onClick={() => onSelect(t)} className={`w-7 h-9 text-[10px] font-bold rounded-lg border flex items-center justify-center flex-shrink-0 transition-all ${selected === t ? 'bg-primary text-white border-primary shadow-md scale-105' : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:border-primary/40'}`}>
                         {t}
                     </button>
                 ))}
@@ -1672,7 +1692,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                         }} className="p-2.5 rounded-xl bg-emerald-500 text-white flex items-center justify-center"><Plus size={16} /></button>
                                     </div>
                                     {newAdvice.treatment && (
-                                        <ToothSelector selected={newAdvice.tooth} onSelect={t => setNewAdvice({ ...newAdvice, tooth: t })} />
+                                        <ToothSelector selected={newAdvice.tooth} onSelect={t => setNewAdvice({ ...newAdvice, tooth: t })} patientAge={patient.age} />
                                     )}
                                     
                                     {advisedTreatments.length > 0 && (
@@ -1708,7 +1728,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                         }} className="p-2.5 rounded-xl bg-blue-500 text-white flex items-center justify-center"><Plus size={16} /></button>
                                     </div>
                                     {newLabAdvice.item && (
-                                        <ToothSelector selected={newLabAdvice.tooth} onSelect={t => setNewLabAdvice({ ...newLabAdvice, tooth: t })} />
+                                        <ToothSelector selected={newLabAdvice.tooth} onSelect={t => setNewLabAdvice({ ...newLabAdvice, tooth: t })} patientAge={patient.age} />
                                     )}
                                     
                                     {advisedLabOrders.length > 0 && (
@@ -1747,7 +1767,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                         }} className="p-2.5 rounded-xl bg-violet-500 text-white flex items-center justify-center"><Plus size={16} /></button>
                                     </div>
                                     {newTreatmentDone.treatment && (
-                                        <ToothSelector selected={newTreatmentDone.tooth} onSelect={t => setNewTreatmentDone({ ...newTreatmentDone, tooth: t })} />
+                                        <ToothSelector selected={newTreatmentDone.tooth} onSelect={t => setNewTreatmentDone({ ...newTreatmentDone, tooth: t })} patientAge={patient.age} />
                                     )}
                                     
                                     {treatmentsDone.length > 0 && (

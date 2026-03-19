@@ -319,9 +319,21 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
     };
 
 
+    const [chartType, setChartType] = useState<'adult' | 'pediatric'>('adult');
+
+    useEffect(() => {
+        if (selectedPatient?.age !== undefined && selectedPatient?.age !== null) {
+            setChartType(Number(selectedPatient.age) < 18 ? 'pediatric' : 'adult');
+        }
+    }, [selectedPatient]);
+
     // Tooth Map config
-    const upperTeeth = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28];
-    const lowerTeeth = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
+    const upperTeeth = chartType === 'adult' 
+        ? [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28] 
+        : [55, 54, 53, 52, 51, 61, 62, 63, 64, 65];
+    const lowerTeeth = chartType === 'adult' 
+        ? [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38] 
+        : [85, 84, 83, 82, 81, 71, 72, 73, 74, 75];
 
     if (view === 'add') {
         const { financial } = formData;
@@ -419,7 +431,13 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
 
                         {/* Interactive Dental Chart */}
                         <div className="rounded-2xl p-6 shadow-sm" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
-                             <h3 className="font-sans font-bold text-lg mb-4 border-b pb-2" style={{ color: 'var(--text-dark)', borderColor: 'var(--border-color)' }}>Tooth Selection</h3>
+                            <div className="flex justify-between items-center mb-4 border-b pb-2" style={{ borderColor: 'var(--border-color)' }}>
+                                <h3 className="font-sans font-bold text-lg" style={{ color: 'var(--text-dark)' }}>Tooth Selection</h3>
+                                <div className="flex gap-1 border border-slate-200 dark:border-white/10 rounded-lg p-0.5 bg-white dark:bg-white/5">
+                                    <button type="button" onClick={() => setChartType('adult')} className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all ${chartType === 'adult' ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>Adult Chart</button>
+                                    <button type="button" onClick={() => setChartType('pediatric')} className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all ${chartType === 'pediatric' ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>Pediatric Chart</button>
+                                </div>
+                            </div>
                             <div className="rounded-xl p-4 border mb-6 overflow-x-auto custom-scrollbar" style={{ background: 'var(--bg-page)', borderColor: 'var(--border-color)' }}>
                                 <div className="flex justify-center gap-1 mb-6 min-w-max">
                                     {upperTeeth.map(t => (
