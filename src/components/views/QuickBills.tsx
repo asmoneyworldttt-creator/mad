@@ -52,7 +52,7 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
     const [isLoadingBills, setIsLoadingBills] = useState(false);
 
     // ── Form ──
-    const [clinicInfo, setClinicInfo] = useState({ location: 'Main Clinic – Downtown', doctor: 'Dr. S. Jenkins', date: new Date().toISOString().split('T')[0] });
+    const [clinicInfo, setClinicInfo] = useState({ location: '', doctor: 'Dr. S. Jenkins', date: new Date().toISOString().split('T')[0] });
     const [treatmentInfo, setTreatmentInfo] = useState({ complaint: '', treatmentDone: '', observationNotes: '', medicine: '' });
     const [selectedTreatments, setSelectedTreatments] = useState<{ treatment: string; tooth: string; cost: number; status: string }[]>([]);
     const [generateCertificate, setGenerateCertificate] = useState(false);
@@ -64,6 +64,7 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
 
     const [fetchedTreatments, setFetchedTreatments] = useState<string[]>([]); // To provide dropdown standard treatments
     const [doctors, setDoctors] = useState<string[]>([]);
+    const [branches, setBranches] = useState<string[]>([]);
     const [activeToothIndex, setActiveToothIndex] = useState<number | null>(null);
 
     // ── Computed totals ──
@@ -98,6 +99,28 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
             .then(({ data }) => {
                 if (data) setDoctors(data.map(d => d.name));
             });
+
+        // Load branches
+        const fetchClinics = async () => {
+            const { data } = await supabase.from('branches').select('name');
+            if (data && data.length > 0) {
+                const names = data.map(c => c.name);
+                setBranches(names);
+                setClinicInfo(prev => ({ ...prev, location: names[0] }));
+            } else {
+                setBranches(['Main Hub']);
+                setClinicInfo(prev => ({ ...prev, location: 'Main Hub' }));
+            }
+        };
+        fetchClinics();
+
+        const channel = supabase.channel('branches-realtime')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'branches' }, () => {
+                fetchClinics();
+            })
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
     }, []);
 
     useEffect(() => {
@@ -137,21 +160,27 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
         setSearchQuery('');
         setSearchResults([]);
 
-        // Auto-populate treatments from recent note
-        supabase.from('clinical_notes').select('plan').eq('patient_id', p.id).order('created_at', { ascending: false }).limit(1)
+        // Auto-populate completed treatments and chief complaint from recent note
+        supabase.from('clinical_notes').select('plan, subjective').eq('patient_id', p.id).order('created_at', { ascending: false }).limit(1)
             .then(({ data }) => {
                 if (data && data.length > 0) {
                     try {
                         const parsed = JSON.parse(data[0].plan);
                         if (parsed && parsed.treatments_done) {
-                            const mapped = parsed.treatments_done.map((t: any) => ({
+                            const completedTreatments = parsed.treatments_done.filter((t: any) => t.status === 'Completed' || t.status === 'Complete');
+                            const mapped = completedTreatments.map((t: any) => ({
                                 treatment: t.treatment,
                                 tooth: t.tooth || '',
-                                cost: 0, // Fallback cost, practitioners will enter
+                                cost: 0, 
                                 status: t.status || 'Completed'
                             }));
                             setSelectedTreatments(mapped);
-                            showToast('Auto-populated treatments from recent note', 'info');
+                            if (completedTreatments.length > 0) {
+                                showToast('Auto-populated completed treatments', 'info');
+                            }
+                        }
+                        if (data[0].subjective) {
+                            setTreatmentInfo(prev => ({ ...prev, complaint: data[0].subjective }));
                         }
                     } catch (e) {}
                 }
@@ -437,10 +466,7 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
                                 <CustomSelect
                                     value={clinicInfo.location}
                                     onChange={val => setClinicInfo({ ...clinicInfo, location: val })}
-                                    options={[
-                                        'Main Clinic – Downtown',
-                                        'Branch – Northside'
-                                    ]}
+                                    options={branches.length > 0 ? branches : ['Loading Centers...']}
                                 />
                             </div>
                         </div>
