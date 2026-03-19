@@ -368,7 +368,7 @@ export interface InvoiceData {
     paymentStatus: string;
 }
 
-export function downloadInvoicePDF(data: InvoiceData): void {
+export function downloadInvoicePDF(data: InvoiceData, mode: 'download' | 'blob' = 'download'): void | Blob {
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
 
     addClinicHeader(
@@ -440,14 +440,24 @@ export function downloadInvoicePDF(data: InvoiceData): void {
     doc.text(data.paymentStatus.toUpperCase(), 129, 55.5, { align: 'center' });
 
     // Line items table
+    const procedures = data.treatmentName.split(', ');
+    const bodyRows = procedures.map((p, index) => {
+        const toothMatch = p.match(/\((.*?)\)/);
+        const tooth = toothMatch ? toothMatch[1] : '—';
+        const name = p.replace(/\(.*?\)/, '').trim();
+        // Spread amount or place sum aggregate at end row line
+        return [(index + 1).toString(), name, tooth, index === procedures.length - 1 ? `₹${data.grossAmount.toLocaleString('en-IN')}` : '—'];
+    });
+
     autoTable(doc, {
         startY: 68,
-        head: [['#', 'Description', 'Amount (₹)']],
-        body: [[1, data.treatmentName, `₹${data.grossAmount.toLocaleString('en-IN')}`]],
+        head: [['Sl.No', 'Procedure Description', 'Tooth No', 'Amount (₹)']],
+        body: bodyRows,
         headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
-        bodyStyles: { fontSize: 10, textColor: DARK_COLOR },
-        columnStyles: { 0: { cellWidth: 12 }, 2: { halign: 'right' } },
+        bodyStyles: { fontSize: 9, textColor: DARK_COLOR },
+        columnStyles: { 0: { cellWidth: 15 }, 2: { cellWidth: 25 }, 3: { halign: 'right' } },
         margin: { left: 14, right: 14 },
+        alternateRowStyles: { fillColor: [248, 250, 252] }
     });
 
     let y = (doc as any).lastAutoTable.finalY + 6;
@@ -482,9 +492,20 @@ export function downloadInvoicePDF(data: InvoiceData): void {
     doc.text('Net Payable', 134, y + 8);
     doc.text(`₹${data.totalAmount.toLocaleString('en-IN')}`, 192, y + 8, { align: 'right' });
 
-    // Signature
-    y += 24;
+    // Signature and Seal
+    y += 20;
     y = Math.max(y, 220);
+
+    // Clinic Seal and Thank You note
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(8);
+    doc.setTextColor(...MUTED_COLOR);
+    doc.text('Thank you for choosing DentiSphere Clinic!', 14, y + 23);
+
+    doc.setDrawColor(220, 220, 220);
+    doc.roundedRect(14, y, 45, 18, 2, 2, 'S');
+    doc.text('Clinic Seal / Stamp', 36.5, y + 10, { align: 'center' });
+
     doc.setDrawColor(...DARK_COLOR);
     doc.setLineWidth(0.3);
     doc.line(130, y + 18, 196, y + 18);
@@ -499,7 +520,19 @@ export function downloadInvoicePDF(data: InvoiceData): void {
 
     addFooter(doc);
     const filename = `Invoice_${data.patientName.replace(/\s+/g, '_')}_${data.invoiceNumber}.pdf`;
-    doc.save(filename);
+    
+    if (mode === 'blob') {
+        return doc.output('blob');
+    } else {
+        const blob = doc.output('blob');
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { window.URL.revokeObjectURL(url); a.remove(); }, 100);
+    }
 }
 
 export interface ConsentData {
@@ -759,4 +792,165 @@ export function downloadMedicalClearancePDF(data: MedicalClearanceData): void {
     const filename = `MedicalClearance_${data.patientName.replace(/\s+/g, '_')}.pdf`;
     doc.save(filename);
 }
+
+export interface DentalCertificateData {
+    patientName: string;
+    patientPhone?: string;
+    patientAge?: string;
+    patientGender?: string;
+    patientId?: string;
+    date: string;
+    clinicName: string;
+    clinicLocation: string;
+    doctorName: string;
+    chiefComplaint: string;
+    clinicalFindings: string;
+    procedures: { tooth: string; treatment: string; status: string; cost?: number }[];
+    remarks?: string;
+}
+
+export function downloadDentalCertificatePDF(data: DentalCertificateData, mode: 'download' | 'blob' = 'download'): void | Blob {
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+
+    addClinicHeader(
+        doc,
+        data.clinicName || 'DentiSphere Clinic',
+        data.clinicLocation + '  |  ' + data.doctorName,
+        'Dental Treatment Certificate',
+        new Date(data.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+    );
+
+    // Patient info box
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(14, 34, 182, 22, 3, 3, 'F');
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...MUTED_COLOR);
+    doc.text('PATIENT DETAILS', 18, 41);
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...DARK_COLOR);
+    doc.text(`Name: ${data.patientName}`, 18, 47);
+    if (data.patientId) doc.text(`Patient ID: ${data.patientId.slice(0, 8).toUpperCase()}`, 110, 47);
+    
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    const ageGender = [data.patientAge ? `${data.patientAge}y` : '', data.patientGender].filter(Boolean).join(' / ');
+    if (ageGender) doc.text(`Age/Gender: ${ageGender}`, 18, 52);
+    if (data.patientPhone) doc.text(`Phone: ${data.patientPhone}`, 110, 52);
+
+    let y = 62;
+
+    // Chief Complaint
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...BRAND_COLOR);
+    doc.text('Chief Complaint:', 14, y);
+    y += 6;
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...DARK_COLOR);
+    const complaintText = data.chiefComplaint || '—';
+    const splitComplaint = doc.splitTextToSize(complaintText, 182);
+    doc.text(splitComplaint, 14, y);
+    y += (splitComplaint.length * 5) + 6;
+
+    // Clinical Findings
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...BRAND_COLOR);
+    doc.text('Clinical Findings:', 14, y);
+    y += 6;
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...DARK_COLOR);
+    const findingsText = data.clinicalFindings || '—';
+    const splitFindings = doc.splitTextToSize(findingsText, 182);
+    doc.text(splitFindings, 14, y);
+    y += (splitFindings.length * 5) + 6;
+
+    // Procedures Done table
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...BRAND_COLOR);
+    doc.text('Treatment Provided:', 14, y);
+    y += 4;
+
+    autoTable(doc, {
+        startY: y,
+        head: [['S. No', 'Procedure', 'Tooth No(s)', 'Charges (₹)']],
+        body: data.procedures.map((p, i) => [
+            (i + 1).toString(),
+            p.treatment,
+            p.tooth || '—',
+            `₹${(p.cost || 0).toLocaleString('en-IN')}`
+        ]),
+        headStyles: { fillColor: BRAND_COLOR, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
+        bodyStyles: { fontSize: 9, textColor: DARK_COLOR },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        columnStyles: { 3: { halign: 'right' } },
+        margin: { left: 14, right: 14 },
+    });
+
+    y = (doc as any).lastAutoTable.finalY + 8;
+
+    // Total Amount
+    const totalAmount = data.procedures.reduce((acc, p) => acc + (p.cost || 0), 0);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(...BRAND_COLOR);
+    doc.text(`Total Amount: ₹${totalAmount.toLocaleString('en-IN')}`, 196, y, { align: 'right' });
+    y += 10;
+
+    // Remarks
+    if (data.remarks) {
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...MUTED_COLOR);
+        doc.text('Remarks:', 14, y);
+        y += 5;
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...DARK_COLOR);
+        doc.text(data.remarks, 14, y);
+        y += 10;
+    }
+
+    // Declaration
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(...DARK_COLOR);
+    doc.text('Declaration:', 14, y);
+    y += 5;
+    doc.setFont('helvetica', 'normal');
+    const declaration = `This is to certify that the above-mentioned patient underwent the stated dental procedures at our clinic.`;
+    const splitDeclaration = doc.splitTextToSize(declaration, 182);
+    doc.text(splitDeclaration, 14, y);
+
+    // Signature
+    y += 30;
+    y = Math.max(y, 230);
+    doc.setDrawColor(...DARK_COLOR);
+    doc.setLineWidth(0.3);
+    doc.line(130, y, 196, y);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text(data.doctorName, 163, y + 5, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.text('Doctor Signature & Seal', 163, y + 10, { align: 'center' });
+
+    addFooter(doc);
+    const filename = `DentalCertificate_${data.patientName.replace(/\s+/g, '_')}.pdf`;
+    
+    if (mode === 'blob') {
+        return doc.output('blob');
+    } else {
+        const blob = doc.output('blob');
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { window.URL.revokeObjectURL(url); a.remove(); }, 100);
+    }
+}
+
 
