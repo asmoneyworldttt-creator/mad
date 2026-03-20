@@ -24,20 +24,19 @@ const ITEM_STATUS_CONFIG: any = {
     Done: { icon: CheckCircle2, color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20' },
 };
 
-const TREATMENTS = [
-    'Scaling & Polishing', 'Composite Restoration', 'Root Canal Treatment', 'Crown (PFM)', 'Crown (Zirconia)',
-    'Tooth Extraction', 'Implant Placement', 'Teeth Whitening', 'Denture (Full)', 'Denture (Partial)',
-    'Orthodontic Treatment', 'Sealants', 'Fluoride Application', 'Bone Grafting', 'Sinus Lift',
-    'Gum Treatment (Flap Surgery)', 'Night Guard', 'Bleaching Tray', 'Veneer', 'Bridge (PFM)'
-];
 
 export function TreatmentPlans({ userRole, theme, setActiveTab }: { userRole: UserRole; theme?: 'light' | 'dark'; setActiveTab?: (tab: string) => void }) {
+
     const { showToast } = useToast();
     const isDark = theme === 'dark';
+
+    const [treatmentsList, setTreatmentsList] = useState<string[]>([]);
+    const [priceMap, setPriceMap] = useState<Record<string, number>>({});
 
     const [plans, setPlans] = useState<any[]>([]);
     const [selectedPlan, setSelectedPlan] = useState<any>(null);
     const [planItems, setPlanItems] = useState<any[]>([]);
+
     const [isLoading, setIsLoading] = useState(true);
     const [view, setView] = useState<'list' | 'detail' | 'new'>('list');
     const [search, setSearch] = useState('');
@@ -79,11 +78,24 @@ export function TreatmentPlans({ userRole, theme, setActiveTab }: { userRole: Us
 
     useEffect(() => {
         fetchPlans();
+        fetchTreatments();
         const ch = supabase.channel('tx_plans')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'treatment_plans' }, fetchPlans)
             .subscribe();
         return () => { supabase.removeChannel(ch); };
     }, []);
+
+    const fetchTreatments = async () => {
+        const { data } = await supabase.from('treatments_master').select('treatment_name, fixed_price');
+        if (data) {
+            setTreatmentsList(data.map((t: any) => t.treatment_name));
+            const map: Record<string, number> = {};
+            data.forEach((t: any) => { map[t.treatment_name] = Number(t.fixed_price); });
+            setPriceMap(map);
+        }
+    };
+
+
 
     useEffect(() => {
         if (newPlan.patientSearch.length > 2) {
@@ -524,10 +536,10 @@ export function TreatmentPlans({ userRole, theme, setActiveTab }: { userRole: Us
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
                                                 <div className="space-y-1.5">
                                                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Treatment Type</label>
-                                                    <select value={item.treatment_name} onChange={e => { const n = [...newItems]; n[i].treatment_name = e.target.value; setNewItems(n); }}
+                                                    <select value={item.treatment_name} onChange={e => { const n = [...newItems]; n[i].treatment_name = e.target.value; n[i].unit_cost = priceMap[e.target.value] || 0; n[i].cost = n[i].unit_cost * (n[i].selected_teeth?.length || 1); setNewItems(n); }}
                                                         className={`w-full px-5 py-3.5 rounded-2xl border font-bold text-sm outline-none ${isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-700'}`}>
                                                         <option value="">Select Treatment...</option>
-                                                        {TREATMENTS.map(t => <option key={t}>{t}</option>)}
+                                                        {treatmentsList.map(t => <option key={t} value={t}>{t}</option>)}
                                                     </select>
                                                 </div>
                                                 <div className="space-y-1.5">

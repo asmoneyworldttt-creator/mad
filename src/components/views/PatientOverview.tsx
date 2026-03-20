@@ -93,7 +93,7 @@ const ToothSelector = ({ selected, onSelect, patientAge }: { selected: string, o
     );
 };
 
-type PatientView = 'overview' | 'treatment_plan' | 'bill_detail';
+type PatientView = 'overview' | 'treatment_plan' | 'bill_detail' | 'appointment_booking';
 
 export function PatientOverview({ onBack, patient, theme, setActiveTab: setGlobalActiveTab }: { onBack: () => void, patient: any, theme?: 'light' | 'dark', setActiveTab?: (tab: string) => void }) {
     const [activeTab, setActiveTab] = useState('home');
@@ -138,6 +138,11 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
     // Real data states
     const [patientBills, setPatientBills] = useState<any[]>([]);
     const [patientPlans, setPatientPlans] = useState<any[]>([]);
+    
+    // Appointment Booking State
+    const [selectedPendingTreatment, setSelectedPendingTreatment] = useState('');
+    const [bookingForm, setBookingForm] = useState({ date: '', time: '09:00 AM', doctor: 'Dr. Sarah Jenkins', treatment: '' });
+
     const [patientLabOrders, setPatientLabOrders] = useState<any[]>([]);
     const [patientPrescriptions, setPatientPrescriptions] = useState<any[]>([]);
     const [patientNotes, setPatientNotes] = useState<any[]>([]);
@@ -192,27 +197,9 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
         }));
     }, [patientHistory]);
 
-    const standardTreatments = [
-        'Oral examination', 'Periodontal charting', 'Pulp vitality testing', 
-        'Intraoral periapical radiograph (IOPA)', 'Bitewing radiograph', 'Occlusal radiograph', 
-        'Orthopantomogram (OPG)', 'CBCT', 'Study models / intraoral scan', 
-        'Oral prophylaxis (Scaling & polishing)', 'Fluoride therapy', 'Pit & fissure sealants', 
-        'Desensitization therapy', 'Oral hygiene instruction', 'Composite restoration', 
-        'Glass ionomer restoration', 'Temporary restoration', 'Core build-up', 'Post & core', 
-        'Pulpotomy', 'Pulpectomy', 'RCT – Started (Access opening + BMP initiated)', 
-        'Same RCT – Dressing / Cleaning & shaping visit', 'RCT – Completed (Obturation done)', 
-        'Retreatment RCT', 'Apexification', 'Apicoectomy', 'Scaling & root planing', 
-        'Gingivectomy', 'Flap surgery', 'Crown lengthening', 'Bone graft / GTR', 
-        'Simple extraction', 'Surgical extraction', 'Impacted tooth removal', 'Frenectomy', 
-        'Biopsy', 'Alveoloplasty', 'Crown (PFM / Zirconia / E-max)', 'Fixed partial denture (Bridge)', 
-        'Removable partial denture', 'Complete denture', 'Veneers', 'Full mouth rehabilitation', 
-        'Implant placement', 'Immediate implant placement', 'Healing abutment placement', 
-        'Implant crown / bridge', 'Sinus lift', 'Ridge augmentation', 'Removable orthodontic appliance', 
-        'Fixed orthodontic treatment (Braces)', 'Clear aligners', 'Retainers', 'Space maintainer', 
-        'Stainless steel crown (Primary teeth)', 'Habit breaking appliance', 'Normal scaling', 'Deep scaling',
-        'Deep filling', 'RVG'
-    ];
-    const standardLabs = ['Crown', 'Bridge', 'Precision Denture', 'Inlay', 'Onlay', 'Veneer', 'Post & Core', 'Denture', 'Bite Block', 'Special Tray', 'Bleaching Tray', 'Night Guard'];
+    const [standardTreatments, setStandardTreatments] = useState<string[]>([]);
+    const [standardLabs, setStandardLabs] = useState(['Crown', 'Bridge', 'Precision Denture', 'Inlay', 'Onlay', 'Veneer', 'Post & Core', 'Denture', 'Bite Block', 'Special Tray', 'Bleaching Tray', 'Night Guard']);
+
 
     const treatmentCounts = useMemo(() => {
         if (!patientHistory) return {};
@@ -269,6 +256,10 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
         setPatientConsents(consents || []);
         setPatientMedicalClearances(medClearances || []);
         setPatientHistory(history || []);
+
+        const { data: mData } = await supabase.from('treatments_master').select('name').order('name');
+        if (mData) setStandardTreatments(mData.map((t: any) => t.name));
+
         if (Array.isArray(arguments[0]) && arguments[0].length > 9) {
              const doctors = arguments[0][9]?.data;
              if (doctors) setDoctorsList(doctors.map((d: any) => d.name));
@@ -345,7 +336,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
         });
 
         const noteObj = {
-            patient_id: patient.id,
+            name: patient.name, patient_id: patient.id,
             subjective: newNote.subjective,
             objective: newNote.objective,
             assessment: newNote.assessment,
@@ -366,7 +357,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
         // AUTO SYNC TO TREATMENT plan if treatments advised (Only new inserts, skip on edits for duplicate prevention if desired, or let build logic)
         if (!isEditingNote && advisedTreatments.length > 0) {
             const { data: planData, error: planError } = await supabase.from('treatment_plans').insert({
-                patient_id: patient.id,
+                name: patient.name, patient_id: patient.id,
                 title: `Plan from Note - ${new Date().toLocaleDateString()}`,
                 status: 'Draft',
                 total_cost: 0,
@@ -387,7 +378,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
 
         if (treatmentsDone.length > 0) {
             const historyItems = treatmentsDone.map(t => ({
-                patient_id: patient.id,
+                name: patient.name, patient_id: patient.id,
                 date: new Date().toISOString().split('T')[0],
                 treatment: t.treatment,
                 notes: `Tooth: ${t.tooth}. Status: ${t.status || 'Completed'}`,
@@ -399,7 +390,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
 
         const adviceStr = advisedTreatments.map(a => `${a.tooth}: ${a.treatment}`).join(', ');
         await supabase.from('patient_history').insert({
-            patient_id: patient.id,
+            name: patient.name, patient_id: patient.id,
             date: new Date().toISOString().split('T')[0],
             treatment: 'SOAP Note Recorded',
             notes: `Subj: ${newNote.subjective.substring(0, 30)}... Advice: ${adviceStr.substring(0, 50)}`,
@@ -436,17 +427,48 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
         const completedLabs = patientLabOrders.filter(l => l.order_status === 'Ready' || l.order_status === 'Delivered').length;
         const paidBills = patientBills.filter(b => b.status === 'Paid').length;
 
+        let completedClinical = 0;
+        let pendingClinical = 0;
+        patientNotes.forEach(note => {
+            try {
+                const parsed = JSON.parse(note.plan);
+                const advised = note.advised_treatments || parsed?.advised || [];
+                if (advised) {
+                    advised.forEach((a: any) => {
+                        if (a.status === 'Completed') completedClinical++;
+                        else pendingClinical++;
+                    });
+                }
+            } catch (e) {}
+        });
+
         const activePlans = patientPlans.filter(p => p.status === 'Active').length;
         const pendingLabs = patientLabOrders.filter(l => l.order_status === 'Pending' || l.order_status === 'In-Transit').length;
 
         const unpaidBills = patientBills.filter(b => b.status === 'Unpaid' || b.status === 'Partially Paid').length;
         
         return {
-            completed: completedPlans + completedLabs + paidBills,
+            completed: completedPlans + completedLabs + paidBills + completedClinical,
             inProgress: activePlans + pendingLabs,
-            pending: unpaidBills
+            pending: unpaidBills + pendingClinical
         };
-    }, [patientPlans, patientLabOrders, patientBills]);
+    }, [patientPlans, patientLabOrders, patientBills, patientNotes]);
+
+
+    const pendingTreatmentsCount = useMemo(() => {
+        let count = 0;
+        patientNotes.forEach(note => {
+            try {
+                const parsed = JSON.parse(note.plan);
+                const advised = note.advised_treatments || parsed?.advised || [];
+                advised.forEach((a: any) => {
+                    if (a.status !== 'Completed') count++;
+                });
+            } catch (e) {}
+        });
+        return count;
+    }, [patientNotes]);
+
 
     const patientLifecycle = useMemo(() => {
         if (!patient || !patient.last_visit) return { status: 'New', color: 'bg-primary/10 text-primary border-primary/20' };
@@ -596,8 +618,63 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
         );
     }
 
+    if (view === 'appointment_booking') {
+        const handleBookNow = async () => {
+             if (!bookingForm.date) { showToast('Please select a date', 'error'); return; }
+             const { error } = await supabase.from('appointments').insert({
+                 name: patient.name, patient_id: patient.id,
+                 patient_name: patient.name,
+                 date: bookingForm.date,
+                 time: bookingForm.time,
+                 type: selectedPendingTreatment || bookingForm.treatment || 'Consultation',
+                 status: 'Pending',
+                 doctor_name: bookingForm.doctor
+             });
+             if (error) { showToast(error.message, 'error'); }
+             else { showToast('Appointment created successfully!', 'success'); setView('overview'); fetchData(); }
+        };
+
+        return (
+            <div className={`animate-slide-up space-y-10 pb-12 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                <div className="flex items-center gap-6">
+                    <button onClick={() => setView('overview')} className="p-4 border rounded-2xl transition-all shadow-premium" style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)', color: 'var(--text-muted)' }}>
+                        <ChevronLeft size={24} />
+                    </button>
+                    <div>
+                        <h2 className="text-3xl font-bold">Book Appointment</h2>
+                        <p className="text-sm font-medium mt-1 text-slate-500">Schedule session for {patient.name}</p>
+                    </div>
+                </div>
+                
+                <div className="p-8 rounded-[2.5rem] border shadow-premium max-w-2xl mx-auto" style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="text-xs font-bold text-slate-400">Treatment / Service</label>
+                            <input type="text" value={selectedPendingTreatment || bookingForm.treatment || ''} onChange={e => setSelectedPendingTreatment(e.target.value)} placeholder="Type treatment name..." className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none" style={{ color: 'var(--text-dark)' }} />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-slate-400">Date</label>
+                            <input type="date" value={bookingForm.date} onChange={e => setBookingForm({ ...bookingForm, date: e.target.value })} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none" style={{ color: 'var(--text-dark)' }} />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-slate-400">Time</label>
+                            <input type="time" value={bookingForm.time} onChange={e => setBookingForm({ ...bookingForm, time: e.target.value })} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none" style={{ color: 'var(--text-dark)' }} />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-slate-400">Attending Doctor</label>
+                            <select value={bookingForm.doctor} onChange={e => setBookingForm({ ...bookingForm, doctor: e.target.value })} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none" style={{ color: 'var(--text-dark)' }}>
+                                {doctorsList.map((d, i) => <option key={i} value={d}>{d}</option>)}
+                            </select>
+                        </div>
+                        <button onClick={handleBookNow} className="w-full py-4 bg-primary text-white rounded-xl font-bold">Book Now</button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
+
         <div className={`animate-slide-up space-y-8 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
             <div className="p-3 md:p-4 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-3" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
                 <div className="flex items-center gap-3 w-full md:w-auto">
@@ -870,7 +947,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                 setIsSavingFollowUp(true);
                                 const { error } = await supabase.from('patient_history').insert({
                                     id: crypto.randomUUID(),
-                                    patient_id: patient.id,
+                                    name: patient.name, patient_id: patient.id,
                                     date: followUpData.date,
                                     treatment: followUpData.nextTreatment || 'Follow-up',
                                     notes: followUpData.message,
@@ -1398,7 +1475,19 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                                                          </div>
                                                                      </div>
                                                                  )}
+                                                                 {advised && advised.some((a: any) => a.status !== 'Completed') && (
+                                                                     <div className="mt-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex flex-col sm:flex-row justify-between items-center gap-3">
+                                                                         <div className="flex items-center gap-2 text-amber-600 dark:text-amber-500">
+                                                                             <AlertTriangle size={14} className="flex-shrink-0" />
+                                                                             <p className="text-[10px] font-bold leading-relaxed">Pending treatments detected. Book appointment to complete.</p>
+                                                                         </div>
+                                                                         <button onClick={() => { setActiveTab('appointments'); showToast('Booking redirected...', 'info'); }} className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[8px] font-black uppercase tracking-widest shadow-sm transition-all whitespace-nowrap">
+                                                                             Book Appointment
+                                                                         </button>
+                                                                     </div>
+                                                                 )}
                                                             </>
+
                                                         );
                                                     })()}
                                                 </div>
@@ -1693,14 +1782,48 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                     <div className="space-y-10">
                         <div className="flex justify-between items-center">
                             <h4 className="text-2xl font-sans font-bold" style={{ color: 'var(--text-dark)' }}>Upcoming Appointments</h4>
-                            <button onClick={() => showToast('Redirecting to global calendar...', 'info')} className="bg-primary text-white px-8 py-3 rounded-2xl font-bold text-xs uppercase shadow-premium transition-all active:scale-95">
+                            <button onClick={() => { setSelectedPendingTreatment(''); setBookingForm({ ...bookingForm, date: new Date().toISOString().split('T')[0] }); setView('appointment_booking'); }} className="bg-primary text-white px-8 py-3 rounded-2xl font-bold text-xs uppercase shadow-premium transition-all active:scale-95">
                                 Schedule New
                             </button>
+
                         </div>
-                        <div className="bg-white/5 border border-white/5 rounded-[3rem] p-12 text-center" style={{ background: 'var(--card-bg-alt)' }}>
-                            <Calendar size={48} className="mx-auto text-slate-300 mb-4" />
-                            <p className="font-bold italic" style={{ color: 'var(--text-muted)' }}>No upcoming appointments for this patient.</p>
-                        </div>
+                        {(() => {
+                            const pendingItems: string[] = [];
+                            patientNotes.forEach(note => {
+                                try {
+                                    const parsed = JSON.parse(note.plan);
+                                    const advised = note.advised_treatments || parsed?.advised || [];
+                                    advised.forEach((a: any) => { if (a.status !== 'Completed') pendingItems.push(a.treatment); });
+                                } catch (e) {}
+                            });
+
+                            if (pendingItems.length === 0) {
+                                return (
+                                    <div className="bg-white/5 border border-white/5 rounded-[3rem] p-12 text-center" style={{ background: 'var(--card-bg-alt)' }}>
+                                        <Calendar size={48} className="mx-auto text-slate-300 mb-4" />
+                                        <p className="font-bold italic" style={{ color: 'var(--text-muted)' }}>No upcoming appointments for this patient.</p>
+                                    </div>
+                                );
+                            }
+
+                            return (
+                                <div className="p-8 rounded-[3rem] bg-amber-500/10 border border-amber-500/20 text-center flex flex-col items-center justify-center">
+                                    <AlertTriangle size={48} className="text-amber-500 mb-4" />
+                                    <p className="font-bold text-xl text-amber-600 dark:text-amber-500 mb-2">You have pending treatments:</p>
+                                    <div className="flex flex-wrap justify-center gap-2 mb-6">
+                                        {Array.from(new Set(pendingItems)).map((it, idx) => (
+                                            <span key={idx} className="bg-amber-500/20 px-3 py-1 rounded-xl text-xs font-bold text-amber-700 dark:text-amber-400 border border-amber-500/20">• {it}</span>
+                                        ))}
+                                    </div>
+                                    <p className="text-xs font-medium text-amber-600/80 mb-6">Please book an appointment to complete these treatments.</p>
+                                    <button onClick={() => { setSelectedPendingTreatment(Array.from(new Set(pendingItems))[0] || ''); setBookingForm({ ...bookingForm, date: new Date().toISOString().split('T')[0] }); setView('appointment_booking'); }} className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl text-xs font-bold uppercase tracking-widest shadow-lg shadow-amber-500/20 transition-all active:scale-95">
+                                        Book Appointment
+                                    </button>
+                                </div>
+                            );
+                        })()}
+
+
                     </div>
                 )}
 
@@ -1864,9 +1987,18 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                         <button onClick={() => {
                                             if (newTreatmentDone.treatment) {
                                                 setTreatmentsDone([...treatmentsDone, newTreatmentDone]);
+                                                // Link Status to Advised Treatments
+                                                const updatedAdvised = advisedTreatments.map(a => {
+                                                    if (a.treatment === newTreatmentDone.treatment && (!newTreatmentDone.tooth || a.tooth === newTreatmentDone.tooth)) {
+                                                        return { ...a, status: newTreatmentDone.status };
+                                                    }
+                                                    return a;
+                                                });
+                                                setAdvisedTreatments(updatedAdvised);
                                                 setNewTreatmentDone({ tooth: '', treatment: '', status: 'Completed' });
                                             }
                                         }} className="p-2.5 rounded-xl bg-violet-500 text-white flex items-center justify-center"><Plus size={16} /></button>
+
                                     </div>
                                     {newTreatmentDone.treatment && (
                                         <ToothSelector selected={newTreatmentDone.tooth} onSelect={t => setNewTreatmentDone({ ...newTreatmentDone, tooth: t })} patientAge={patient.age} />

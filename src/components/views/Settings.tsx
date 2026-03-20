@@ -89,6 +89,15 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
         reader.readAsDataURL(file);
     };
 
+    // Treatments Master State
+    const [treatments, setTreatments] = useState<any[]>([]);
+    const [isLoadingTreatments, setIsLoadingTreatments] = useState(false);
+    const [isSavingTreatment, setIsSavingTreatment] = useState(false);
+    const [editingTreatmentId, setEditingTreatmentId] = useState<number | null>(null);
+    const [treatmentForm, setTreatmentForm] = useState({ category: 'General', name: '', price: '' });
+    const [isTreatmentModalOpen, setIsTreatmentModalOpen] = useState(false);
+
+
     // Form State
     const [staffForm, setStaffForm] = useState({
         name: '', role: 'Associate Dentist', email: '', mobile: '', qualifications: '',
@@ -138,7 +147,9 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
     useEffect(() => {
         if (activeTab === 'staff') fetchStaff();
         if (activeTab === 'general') fetchBranches();
+        if (activeTab === 'treatments') fetchTreatments();
     }, [activeTab]);
+
 
     const fetchBranches = async () => {
         const { data, error } = await supabase.from('branches').select('*');
@@ -223,6 +234,52 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
             showToast("AI auto-filled professional details based on DCI registry.", 'success');
         }, 1200);
     };
+
+    const fetchTreatments = async () => {
+        setIsLoadingTreatments(true);
+        const { data, error } = await supabase.from('treatments_master').select('*').order('treatment_name');
+        if (data) setTreatments(data);
+        setIsLoadingTreatments(false);
+    };
+
+    const handleSaveTreatment = async () => {
+        if (!treatmentForm.name || !treatmentForm.price) return showToast('Fields missing: Name & Price', 'error');
+        setIsSavingTreatment(true);
+        const payload = {
+            category: treatmentForm.category,
+            treatment_name: treatmentForm.name,
+            fixed_price: parseFloat(treatmentForm.price)
+        };
+
+        const { error } = editingTreatmentId 
+            ? await supabase.from('treatments_master').update(payload).eq('treatment_id', editingTreatmentId)
+            : await supabase.from('treatments_master').insert([payload]);
+
+        if (!error) {
+            showToast(editingTreatmentId ? 'Treatment updated' : 'Treatment added', 'success');
+            setIsTreatmentModalOpen(false);
+            setEditingTreatmentId(null);
+            setTreatmentForm({ category: 'General', name: '', price: '' });
+            fetchTreatments();
+        } else {
+            showToast(error.message, 'error');
+        }
+        setIsSavingTreatment(false);
+    };
+
+    const handleDeleteTreatment = async (id: number, name: string) => {
+        if (confirm(`Are you sure you want to delete treatment "${name}"?`)) {
+            const { error } = await supabase.from('treatments_master').delete().eq('treatment_id', id);
+
+            if (!error) {
+                showToast('Treatment removed', 'success');
+                fetchTreatments();
+            } else {
+                showToast(error.message, 'error');
+            }
+        }
+    };
+
 
     const handleSaveStaff = async () => {
         if (!staffForm.name || !staffForm.email) return showToast('Mandatory fields missing: Name & Email', 'error');
@@ -609,7 +666,9 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
     const tabs = [
         { id: 'general', label: 'Clinic Profile', icon: SettingsIcon },
         { id: 'staff', label: 'Team Infrastructure', icon: Users, badge: 'RBAC' },
+        { id: 'treatments', label: 'Treatments & Pricing', icon: FileText },
         { id: 'inventory', label: 'Procurement Settings', icon: Activity },
+
         { id: 'marketing', label: 'Broadcast & SMS', icon: Mail },
         { id: 'consents', label: 'Legal Architecture', icon: ShieldCheck },
         { id: 'security', label: 'Security & Protocol', icon: Shield },
@@ -819,7 +878,164 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
                         </div>
                     )}
 
+                    {activeTab === 'treatments' && (
+                        <div className={`p-5 rounded-xl border shadow-lg relative overflow-hidden group`} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
+                            <div className="absolute top-0 right-0 p-5 opacity-5 pointer-events-none transition-transform group-hover:scale-110 group-hover:rotate-12 duration-1000 rotate-animation"><FileText size={50} /></div>
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-3 relative z-10">
+                                <div>
+                                    <h3 className="font-bold text-base flex items-center gap-2.5 tracking-tight" style={{ color: 'var(--text-dark)' }}>
+                                        <FileText size={18} className="text-primary" /> Master Treatments & Pricing
+                                    </h3>
+                                    <p className="text-[9px] font-medium opacity-60" style={{ color: 'var(--text-muted)' }}>Centralized service pricing directory.</p>
+                                </div>
+                                <button onClick={() => { setEditingTreatmentId(null); setTreatmentForm({ category: 'General', name: '', price: '' }); setIsTreatmentModalOpen(true); }} className="bg-primary hover:scale-105 active:scale-95 text-white text-[8px] font-bold uppercase tracking-wider px-4 py-2 rounded-xl shadow-lg shadow-primary/20 transition-all flex items-center gap-1.5">
+                                    <Plus size={14} /> New Treatment
+                                </button>
+                            </div>
+
+                            <div className="overflow-x-auto custom-scrollbar relative z-10">
+                                <table className="w-full text-left">
+                                    <thead>
+                                        <tr className="text-[8px] font-bold uppercase tracking-[0.15em] text-slate-400 border-b" style={{ borderColor: 'var(--border-color)' }}>
+                                            <th className="px-4 py-3">Category</th>
+                                            <th className="px-4 py-3">Treatment Name</th>
+                                            <th className="px-4 py-3">Price (₹)</th>
+                                            <th className="px-4 py-3 text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50/10">
+                                        {treatments.length > 0 ? treatments.map(t => (
+                                            <tr key={t.treatment_id} className="group transition-all hover:bg-primary/[0.02]">
+                                                <td className="px-4 py-4">
+                                                    <span className="text-[8px] font-bold uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded-lg">{t.category}</span>
+                                                </td>
+                                                <td className="px-4 py-4">
+                                                    <p className="font-bold text-[13px] tracking-tight" style={{ color: 'var(--text-main)' }}>{t.treatment_name}</p>
+                                                </td>
+                                                <td className="px-4 py-4">
+                                                    <p className="font-black text-sm tracking-tight text-primary">₹{Number(t.fixed_price).toLocaleString()}</p>
+                                                </td>
+                                                <td className="px-4 py-4 text-right">
+                                                    <div className="flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-all">
+                                                        <button onClick={() => { setEditingTreatmentId(t.treatment_id); setTreatmentForm({ category: t.category, name: t.treatment_name, price: t.fixed_price.toString() }); setIsTreatmentModalOpen(true); }} className="p-2 bg-white shadow-md border border-slate-100 text-slate-400 hover:text-primary rounded-lg transition-all"><Edit3 size={12} /></button>
+                                                        <button onClick={() => handleDeleteTreatment(t.treatment_id, t.treatment_name)} className="p-2 bg-white shadow-md border border-slate-100 text-slate-400 hover:text-red-500 rounded-lg transition-all"><Trash2 size={12} /></button>
+                                                   </div>
+                                                </td>
+                                            </tr>
+                                        )) : (
+
+                                            <tr>
+                                                <td colSpan={4} className="py-24 text-center">
+                                                    <EmptyState
+                                                        icon={FileText}
+                                                        title="No Treatments Registered"
+                                                        description="Initialize your master treatment directory with standard prices."
+                                                        actionLabel="Load Master Directory"
+                                                        onAction={async () => {
+                                                            const standard = [
+                                                                { category: 'General', name: 'Oral examination', price: 500 },
+                                                                { category: 'General', name: 'Periodontal charting', price: 1000 },
+                                                                { category: 'General', name: 'Pulp vitality testing', price: 500 },
+                                                                { category: 'Radiology', name: 'Intraoral periapical radiograph (IOPA)', price: 300 },
+                                                                { category: 'Radiology', name: 'Bitewing radiograph', price: 400 },
+                                                                { category: 'Radiology', name: 'Occlusal radiograph', price: 500 },
+                                                                { category: 'Radiology', name: 'Orthopantomogram (OPG)', price: 1200 },
+                                                                { category: 'Radiology', name: 'CBCT', price: 3500 },
+                                                                { category: 'Diagnostic', name: 'Study models / intraoral scan', price: 1500 },
+                                                                { category: 'General', name: 'Oral prophylaxis (Scaling & polishing)', price: 1500 },
+                                                                { category: 'Preventive', name: 'Fluoride therapy', price: 1200 },
+                                                                { category: 'Preventive', name: 'Pit & fissure sealants', price: 800 },
+                                                                { category: 'General', name: 'Desensitization therapy', price: 600 },
+                                                                { category: 'Preventive', name: 'Oral hygiene instruction', price: 200 },
+                                                                { category: 'Restorative', name: 'Composite restoration', price: 2500 },
+                                                                { category: 'Restorative', name: 'Glass ionomer restoration', price: 1500 },
+                                                                { category: 'Restorative', name: 'Temporary restoration', price: 500 },
+                                                                { category: 'Restorative', name: 'Core build-up', price: 2000 },
+                                                                { category: 'Restorative', name: 'Post & core', price: 4500 },
+                                                                { category: 'Pediatric', name: 'Pulpotomy', price: 2500 },
+                                                                { category: 'Pediatric', name: 'Pulpectomy', price: 3500 },
+                                                                { category: 'Root Canal', name: 'RCT – Started (Access opening + BMP initiated)', price: 3500 },
+                                                                { category: 'Root Canal', name: 'Same RCT – Dressing / Cleaning & shaping visit', price: 1500 },
+                                                                { category: 'Root Canal', name: 'RCT – Completed (Obturation done)', price: 7000 },
+                                                                { category: 'Root Canal', name: 'Retreatment RCT', price: 9000 },
+                                                                { category: 'Endodontic', name: 'Apexification', price: 4000 },
+                                                                { category: 'Surgical', name: 'Apicoectomy', price: 8000 },
+                                                                { category: 'Periodontal', name: 'Scaling & root planing', price: 3500 },
+                                                                { category: 'Surgical', name: 'Gingivectomy', price: 4000 },
+                                                                { category: 'Surgical', name: 'Flap surgery', price: 15000 },
+                                                                { category: 'Surgical', name: 'Crown lengthening', price: 3500 },
+                                                                { category: 'Surgical', name: 'Bone graft / GTR', price: 12000 },
+                                                                { category: 'Surgical', name: 'Simple extraction', price: 1200 },
+                                                                { category: 'Surgical', name: 'Surgical extraction', price: 3500 },
+                                                                { category: 'Surgical', name: 'Impacted tooth removal', price: 6000 },
+                                                                { category: 'Surgical', name: 'Frenectomy', price: 3000 },
+                                                                { category: 'Surgical', name: 'Biopsy', price: 3000 },
+                                                                { category: 'Surgical', name: 'Alveoloplasty', price: 5000 },
+                                                                { category: 'Prosthetic', name: 'Crown (PFM / Zirconia / E-max)', price: 12000 },
+                                                                { category: 'Prosthetic', name: 'Fixed partial denture (Bridge)', price: 35000 },
+                                                                { category: 'Prosthetic', name: 'Removable partial denture', price: 8000 },
+                                                                { category: 'Prosthetic', name: 'Complete denture', price: 25000 },
+                                                                { category: 'Cosmetic', name: 'Veneers', price: 15000 },
+                                                                { category: 'Cosmetic', name: 'Full mouth rehabilitation', price: 150000 },
+                                                                { category: 'Surgical', name: 'Implant placement', price: 35000 },
+                                                                { category: 'Surgical', name: 'Immediate implant placement', price: 40000 },
+                                                                { category: 'Surgical', name: 'Healing abutment placement', price: 3000 },
+                                                                { category: 'Prosthetic', name: 'Implant crown / bridge', price: 18000 },
+                                                                { category: 'Surgical', name: 'Sinus lift', price: 25000 },
+                                                                { category: 'Surgical', name: 'Ridge augmentation', price: 20000 },
+                                                                { category: 'Orthodontic', name: 'Removable orthodontic appliance', price: 8000 },
+                                                                { category: 'Orthodontic', name: 'Fixed orthodontic treatment (Braces)', price: 45000 },
+                                                                { category: 'Orthodontic', name: 'Clear aligners', price: 85000 },
+                                                                { category: 'Orthodontic', name: 'Retainers', price: 4000 },
+                                                                { category: 'Pediatric', name: 'Space maintainer', price: 3500 },
+                                                                { category: 'Pediatric', name: 'Stainless steel crown (Primary teeth)', price: 3000 },
+                                                                { category: 'Orthodontic', name: 'Habit breaking appliance', price: 5000 },
+                                                                { category: 'General', name: 'Normal scaling', price: 1000 },
+                                                                { category: 'General', name: 'Deep scaling', price: 2000 },
+                                                                { category: 'Restorative', name: 'Deep filling', price: 2500 },
+                                                                { category: 'Radiology', name: 'RVG', price: 300 }
+                                                            ];
+
+                                                            for (const t of standard) {
+                                                                await supabase.from('treatments_master').insert([t]);
+                                                            }
+                                                            fetchTreatments();
+                                                            showToast("Master Treatments directory seeded with defaults.", 'success');
+                                                        }}
+                                                    />
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {isTreatmentModalOpen && (
+                                <Modal isOpen={isTreatmentModalOpen} onClose={() => setIsTreatmentModalOpen(false)} title={editingTreatmentId ? "Edit Treatment" : "Add Service Item"}>
+                                    <div className="space-y-4 p-2">
+                                        <div>
+                                            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">Category</label>
+                                            <input type="text" value={treatmentForm.category} onChange={e => setTreatmentForm({ ...treatmentForm, category: e.target.value })} className={`w-full border rounded-xl px-4 py-2.5 text-xs font-semibold outline-none transition-all ${theme === 'dark' ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder="General, Restorative, Ortho..." />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">Treatment Name</label>
+                                            <input type="text" value={treatmentForm.name} onChange={e => setTreatmentForm({ ...treatmentForm, name: e.target.value })} className={`w-full border rounded-xl px-4 py-2.5 text-xs font-semibold outline-none transition-all ${theme === 'dark' ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder="e.g. Composite Restoration" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1">Standard Market Price (₹)</label>
+                                            <input type="number" value={treatmentForm.price} onChange={e => setTreatmentForm({ ...treatmentForm, price: e.target.value })} className={`w-full border rounded-xl px-4 py-2.5 text-xs font-semibold outline-none transition-all ${theme === 'dark' ? 'bg-slate-900 border-white/10 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder="0.00" />
+                                        </div>
+                                        <button onClick={handleSaveTreatment} disabled={isSavingTreatment} className="w-full py-3 bg-primary hover:bg-primary-hover text-white rounded-xl font-bold text-xs uppercase shadow-lg shadow-primary/30 transition-all flex items-center justify-center gap-2">
+                                            {isSavingTreatment ? 'Saving Index...' : 'Commit Configuration'}
+                                        </button>
+                                    </div>
+                                </Modal>
+                            )}
+                        </div>
+                    )}
+
                     {activeTab === 'marketing' && (
+
                         <div className={`p-6 rounded-2xl border shadow-lg relative overflow-hidden group`} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
                             <div className="absolute top-0 right-0 p-6 opacity-5 pointer-events-none transition-transform group-hover:scale-110 group-hover:rotate-12 duration-1000 rotate-animation"><Mail size={60} /></div>
                             <h3 className={`font-bold text-lg mb-6 flex items-center gap-3 relative z-10 ${theme === 'dark' ? 'text-white' : 'text-text-dark'}`}>

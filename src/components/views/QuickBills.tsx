@@ -92,27 +92,21 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
     const gstAmount = Math.round((subtotal - billingInfo.discount) * billingInfo.gstRate / 100);
     const totalPayable = subtotal - billingInfo.discount + gstAmount;
 
+    const [priceMap, setPriceMap] = useState<Record<string, number>>({});
+
     useEffect(() => {
-        setFetchedTreatments([
-            'Oral examination', 'Periodontal charting', 'Pulp vitality testing', 
-            'Intraoral periapical radiograph (IOPA)', 'Bitewing radiograph', 'Occlusal radiograph', 
-            'Orthopantomogram (OPG)', 'CBCT', 'Study models / intraoral scan', 
-            'Oral prophylaxis (Scaling & polishing)', 'Fluoride therapy', 'Pit & fissure sealants', 
-            'Desensitization therapy', 'Oral hygiene instruction', 'Composite restoration', 
-            'Glass ionomer restoration', 'Temporary restoration', 'Core build-up', 'Post & core', 
-            'Pulpotomy', 'Pulpectomy', 'RCT – Started (Access opening + BMP initiated)', 
-            'Same RCT – Dressing / Cleaning & shaping visit', 'RCT – Completed (Obturation done)', 
-            'Retreatment RCT', 'Apexification', 'Apicoectomy', 'Scaling & root planing', 
-            'Gingivectomy', 'Flap surgery', 'Crown lengthening', 'Bone graft / GTR', 
-            'Simple extraction', 'Surgical extraction', 'Impacted tooth removal', 'Frenectomy', 
-            'Biopsy', 'Alveoloplasty', 'Crown (PFM / Zirconia / E-max)', 'Fixed partial denture (Bridge)', 
-            'Removable partial denture', 'Complete denture', 'Veneers', 'Full mouth rehabilitation', 
-            'Implant placement', 'Immediate implant placement', 'Healing abutment placement', 
-            'Implant crown / bridge', 'Sinus lift', 'Ridge augmentation', 'Removable orthodontic appliance', 
-            'Fixed orthodontic treatment (Braces)', 'Clear aligners', 'Retainers', 'Space maintainer', 
-            'Stainless steel crown (Primary teeth)', 'Habit breaking appliance', 'Normal scaling', 'Deep scaling',
-            'Deep filling', 'RVG'
-        ]);
+        const fetchTreatments = async () => {
+            const { data } = await supabase.from('treatments_master').select('treatment_name, fixed_price');
+            if (data) {
+                setFetchedTreatments(data.map((t: any) => t.treatment_name));
+                const map: Record<string, number> = {};
+                data.forEach((t: any) => { map[t.treatment_name] = Number(t.fixed_price); });
+                setPriceMap(map);
+            }
+
+        };
+        fetchTreatments();
+
         
         // Load doctors
         supabase.from('staff').select('name').or('role.eq.Doctor,role.eq.Associate Dentist')
@@ -557,8 +551,10 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
                                             value="" 
                                             onChange={(val) => {
                                                 if (!val) return;
-                                                setSelectedTreatments([...selectedTreatments, { treatment: val, tooth: '—', cost: 0, status: 'Completed' }]);
+                                                const price = priceMap[val] || 0;
+                                                setSelectedTreatments([...selectedTreatments, { treatment: val, tooth: '—', cost: price, status: 'Completed' }]);
                                             }} 
+
                                             options={fetchedTreatments} 
                                         />
                                     </div>
@@ -603,13 +599,19 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
                                                                 const list = [...selectedTreatments];
                                                                 const existing = list[i].tooth && list[i].tooth !== '—' ? list[i].tooth.split(',').filter(Boolean) : [];
                                                                 if (existing.includes(tooth)) {
-                                                                    list[i].tooth = existing.filter(x => x !== tooth).join(',');
+                                                                    list[i].tooth = existing.filter((x: string) => x !== tooth).join(',');
                                                                 } else {
                                                                     list[i].tooth = [...existing, tooth].join(',');
                                                                 }
                                                                 if (!list[i].tooth) list[i].tooth = '—';
+                                                                
+                                                                const count = list[i].tooth && list[i].tooth !== '—' ? list[i].tooth.split(',').filter(Boolean).length : 1;
+                                                                const basePrice = priceMap[list[i].treatment] || 0;
+                                                                list[i].cost = basePrice * count;
+                                                                
                                                                 setSelectedTreatments(list);
                                                             }} 
+
                                                             patientAge={patientInfo.age}
                                                         />
                                                     )}

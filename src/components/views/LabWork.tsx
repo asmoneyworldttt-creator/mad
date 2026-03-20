@@ -16,7 +16,23 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
     const [orders, setOrders] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
+    const [priceMap, setPriceMap] = useState<Record<string, number>>({});
     const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
+
+    useEffect(() => {
+        fetchPrices();
+    }, []);
+
+    const fetchPrices = async () => {
+        const { data } = await supabase.from('treatments_master').select('treatment_name, fixed_price');
+        if (data) {
+            const map: Record<string, number> = {};
+            data.forEach((t: any) => { map[t.treatment_name] = Number(t.fixed_price); });
+            setPriceMap(map);
+        }
+    };
+
+
 
     const groupedOrders = useMemo(() => {
         const groups: Record<string, any[]> = {};
@@ -108,6 +124,19 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
             setSearchResults([]);
         }
     }, [formData.patientSearch]);
+
+    useEffect(() => {
+        if (formData.prosthesis.length > 0) {
+            const match = formData.prosthesis[formData.prosthesis.length - 1]; // Load last selected
+            const price = priceMap[match] || 0;
+            const multiply = formData.selectedTeeth.length || 1;
+            setFormData(prev => ({ 
+                ...prev, 
+                financial: { ...prev.financial, rate: price, qty: multiply } 
+            }));
+        }
+    }, [formData.prosthesis, formData.selectedTeeth, priceMap]);
+
 
     const loadRecommendedAdvice = async (pId: string) => {
         const { data: notes } = await supabase
