@@ -9,7 +9,8 @@
      Professional, premium light styling with glassmorphism
   ═══════════════════════════════════════════════════ */
   :root {
-    color-scheme: light !important; /* Forces inputs/pickers to stay legible on system dark mode overrides */
+    color-scheme: light !important;
+    /* Forces inputs/pickers to stay legible on system dark mode overrides */
     /* Surfaces */
     --bg-page: #FDFDFF;
 
@@ -76,94 +77,93 @@
 
 
   /* ═══════════════════════════════════════════════════
-     DARK MODE — AxoDental Theme (Cyan · Violet · Coral)
-     Applied ONLY when body has .dark-theme class
+     DARK MODE — Applied when body has .dark-theme class
   ═══════════════════════════════════════════════════ */
   .dark-theme {
     color-scheme: dark !important;
 
-    /* ── Deep Space Background Surfaces ── */
-    --void: #040410;
-    --bg-page: #060614;
-    --bg-deep: #080820;
-    --surface: #0C0C24;
-    --surface-raised: #111130;
-    --surface-glass: rgba(12, 12, 36, 0.7);
+    /* ── Ambient Backdrop Surface (Stitch Spec) ── */
+    --void: #000000;
+    --bg-page: #000000; /* Infinite background for glows to pop */
+    --surface: #131313; /* Level 0 base surface */
+    --bg-deep: #0D0D0D;
+    
+    /* ── Layering Tiers ── */
+    --surface-glass: rgba(19, 19, 19, 0.6);
+    --surface-raised: #1B1B1B; /* Level 1: Sections */
+    --card-bg: rgba(42, 42, 42, 0.6); /* Level 2: Interactive Cards (2a2a2a) @ 60% opacity with 24px blur */
+    --card-bg-alt: #131313;
 
-    /* ── AxoDental Brand Colors (from logo) ── */
+    /* ── AxoDental Luminescent Palette ── */
+    --primary: #A1E4FF; /* Stitch Spec Primary */
+    --primary-hover: #00CFFF;
+    --primary-glow: rgba(161, 228, 255, 0.25);
+
+    --secondary: #D2BBFF; /* Stitch Spec Secondary */
+    --secondary-soft: rgba(210, 187, 255, 0.12);
+
+    --tertiary: #58F2DC; /* Stitch Spec Tertiary */
+    --tertiary-soft: rgba(88, 242, 220, 0.12);
+
     --pulse-cyan: #00CFFF;
     --pulse-violet: #7C3AED;
     --pulse-orange: #FF6B35;
 
-    /* ── Primary: Logo Cyan ── */
-    --primary: #00CFFF;
-    --primary-hover: #00AADD;
-    --primary-soft: rgba(0, 207, 255, 0.12);
-    --primary-glow: rgba(0, 207, 255, 0.3);
-
-    /* ── Secondary: Logo Violet ── */
-    --secondary: #7C3AED;
-    --secondary-soft: rgba(124, 58, 237, 0.12);
-    --secondary-glow: rgba(124, 58, 237, 0.3);
-
-    /* ── Accent: Logo Coral/Orange ── */
-    --accent: #FF6B35;
-    --accent-soft: rgba(255, 107, 53, 0.12);
-
-    /* ── Status Colors ── */
-    --success: #06D6A0;
-    --success-soft: rgba(6, 214, 160, 0.12);
+    /* ── Status ── */
+    --success: #58F2DC;
     --warning: #FFB703;
-    --warning-soft: rgba(255, 183, 3, 0.12);
-    --error: #EF4444;
-    --error-soft: rgba(239, 68, 68, 0.12);
-    --alert: #EF4444;
+    --error: #FFB4AB;
+    --error-soft: rgba(255, 180, 171, 0.12);
+    --alert: #FFB4AB;
 
-    /* ── Typography: readable on deep backgrounds ── */
-    --text-dark: #EEE8FF;
-    --text-main: #D8D2F5;
-    --text-muted: #7A74A0;
-    --text-light: #4A4670;
-
-    /* ── Card & Interface Surfaces ── */
-    --card-bg: rgba(12, 12, 36, 0.8);
-    --card-bg-alt: rgba(17, 17, 48, 0.65);
+    /* ── Typography (Stitch Spec) ── */
+    --text-dark: #FFFFFF;
+    --text-main: #E2E2E2; /* on_surface spec */
+    --text-muted: #ABABAB; /* on_surface_variant */
+    --text-light: #757575;
 
     /* ── Sidebar ── */
-    --sidebar-bg: #07071A;
-    --sidebar-text: #EEE8FF;
-    --sidebar-muted: #6A6490;
-    --sidebar-active: #00CFFF;
-    --sidebar-border: rgba(124, 58, 237, 0.15);
+    --sidebar-bg: #0E0E0E;
+    --sidebar-text: #E2E2E2;
+    --sidebar-muted: #757575;
+    --sidebar-active: #A1E4FF;
+    --sidebar-border: rgba(60, 73, 78, 0.15); /* outline_variant @ 15% */
 
-    /* ── Glassmorphism ── */
-    --glass-bg: rgba(12, 12, 36, 0.65);
-    --glass-border: rgba(0, 207, 255, 0.18);
-    --glass-shadow: rgba(0, 0, 0, 0.85);
+    /* ── Glassmorphism (Stitch Spec: 60% opacity with 24px blur) ── */
+    --glass-bg: rgba(14, 14, 14, 0.6);
+    --glass-border: rgba(60, 73, 78, 0.15); /* Ghost border */
+    --glass-shadow: rgba(0, 0, 0, 0.9);
 
-    /* ── Borders ── */
-    --border-color: rgba(124, 58, 237, 0.18);
-    --border-subtle: rgba(124, 58, 237, 0.09);
+    /* ── Borders & Elevation ── */
+    --border-color: rgba(60, 73, 78, 0.15); /* Ghost border @ 15% opacity */
+    --border-subtle: rgba(60, 73, 78, 0.08);
 
-    /* ── Glow Shadows (new) ── */
-    --glow-cyan: 0 0 24px rgba(0, 207, 255, 0.25), 0 4px 32px rgba(0, 0, 0, 0.6);
-    --glow-violet: 0 0 24px rgba(124, 58, 237, 0.25), 0 4px 32px rgba(0, 0, 0, 0.6);
-    --card-shadow-dark: 0 4px 24px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(124, 58, 237, 0.08) inset;
-    --card-border-dark: rgba(124, 58, 237, 0.16);
+    --glow-cyan: 0 0 32px rgba(161, 228, 255, 0.2), 0 12px 48px rgba(0, 0, 0, 0.6);
+    --glow-violet: 0 0 32px rgba(210, 187, 255, 0.18), 0 12px 48px rgba(0, 0, 0, 0.6);
+    --card-shadow-dark: 0 12px 48px rgba(0, 0, 0, 0.06); /* Diffuse 6% diffuse Ambient shadow */
+    --card-border-dark: rgba(60, 73, 78, 0.15);
 
-    /* ── Brand Gradient (used on buttons/highlights) ── */
-    --gradient-brand: linear-gradient(135deg, #00CFFF 0%, #7C3AED 60%, #FF6B35 100%);
-    --gradient-brand-soft: linear-gradient(135deg, rgba(0,207,255,0.15) 0%, rgba(124,58,237,0.15) 100%);
+    --gradient-brand: linear-gradient(135deg, #A1E4FF 0%, #00CFFF 40%, #D2BBFF 100%);
 
-    /* ── Radius ── */
-    --radius-premium: 20px;
+    --radius-premium: 24px;
     --radius-bento: 24px;
     --radius-card: 16px;
   }
 
+  /* ── Stitch Spec Typography Override ── */
+  .dark-theme, .dark-theme body, .dark-theme button, .dark-theme input, .dark-theme textarea, .dark-theme select {
+    font-family: 'Inter', system-ui, sans-serif !important;
+  }
+
+  .dark-theme h1, .dark-theme h2, .dark-theme h3, .dark-theme h4 {
+    font-family: 'Space Grotesk', system-ui, sans-serif !important;
+    letter-spacing: -0.03em !important;
+  }
 
   * {
-    min-width: 0; /* Prevents flex-children stretching outside parent bounds triggers layouts */
+
+    min-width: 0;
+    /* Prevents flex-children stretching outside parent bounds triggers layouts */
   }
 
   body {
@@ -354,119 +354,6 @@
 .dark-theme .hover\:bg-slate-50\/80:hover {
   background: var(--primary-soft) !important;
 }
-
-/* ══════════════════════════════════════════════════════
-   AXODENTAL DARK THEME — Premium UI Component Upgrades
-   Applies to ALL 48 views via .dark-theme class cascade
-   ══════════════════════════════════════════════════════ */
-
-/* ── DM Sans Font for Dark Mode: clean, healthcare-grade ── */
-.dark-theme,
-.dark-theme body,
-.dark-theme * {
-  font-family: 'DM Sans', 'Plus Jakarta Sans', system-ui, sans-serif !important;
-  letter-spacing: -0.01em;
-}
-
-/* ── Card: premium deep surface with hover lift ── */
-.dark-theme [class*="rounded-\[2rem\]"],
-.dark-theme [class*="rounded-\[2\.5rem\]"],
-.dark-theme [class*="rounded-\[3rem\]"] {
-  box-shadow: var(--card-shadow-dark) !important;
-  border-color: var(--card-border-dark) !important;
-  transition: box-shadow 0.3s ease, border-color 0.3s ease, transform 0.25s ease !important;
-  will-change: transform;
-}
-
-.dark-theme [class*="rounded-\[2rem\]"]:hover,
-.dark-theme [class*="rounded-\[2\.5rem\]"]:hover {
-  box-shadow: var(--glow-violet) !important;
-  border-color: rgba(0, 207, 255, 0.22) !important;
-  transform: translateY(-2px);
-}
-
-/* ── Primary Buttons: brand gradient glow ── */
-.dark-theme .bg-primary,
-.dark-theme [class*="bg-primary"] {
-  background: linear-gradient(135deg, #00CFFF, #7C3AED) !important;
-  box-shadow: 0 0 18px rgba(0, 207, 255, 0.28), 0 4px 12px rgba(0,0,0,0.4) !important;
-  border: none !important;
-}
-
-.dark-theme .bg-primary:hover,
-.dark-theme [class*="bg-primary"]:hover {
-  background: linear-gradient(135deg, #00AADD, #6D28D9) !important;
-  box-shadow: 0 0 28px rgba(0, 207, 255, 0.4), 0 6px 20px rgba(0,0,0,0.5) !important;
-  transform: translateY(-1px);
-}
-
-/* ── Sidebar Active Item: cyan left-border glow ── */
-.dark-theme .bg-primary\/10,
-.dark-theme [class*="bg-primary\/10"] {
-  background: rgba(0, 207, 255, 0.08) !important;
-  border-left: 2px solid var(--primary) !important;
-  box-shadow: inset 3px 0 12px rgba(0, 207, 255, 0.1) !important;
-}
-
-/* ── Emerald green accent: re-map to teal in dark mode ── */
-.dark-theme .bg-emerald-500,
-.dark-theme .hover\:bg-emerald-600:hover {
-  background: #06D6A0 !important;
-}
-.dark-theme .text-emerald-500 {
-  color: #06D6A0 !important;
-}
-.dark-theme .bg-emerald-500\/10,
-.dark-theme [class*="bg-emerald-500\/"] {
-  background: rgba(6, 214, 160, 0.12) !important;
-}
-
-/* ── Stat/KPI badge glow ── */
-.dark-theme [class*="bg-primary\/5"],
-.dark-theme [class*="bg-primary\/10"] {
-  background: var(--gradient-brand-soft) !important;
-}
-
-/* ── Page transition: fade for seamless navigation ── */
-.dark-theme .animate-slide-up {
-  animation: darkSlideUp 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards !important;
-}
-
-@keyframes darkSlideUp {
-  from {
-    opacity: 0;
-    transform: translateY(14px) scale(0.99);
-    filter: blur(2px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-    filter: blur(0);
-  }
-}
-
-/* ── Scrollbar: brand-colored in dark mode ── */
-.dark-theme ::-webkit-scrollbar-thumb {
-  background: rgba(124, 58, 237, 0.35) !important;
-}
-.dark-theme ::-webkit-scrollbar-thumb:hover {
-  background: var(--primary) !important;
-}
-
-/* ── Mobile: button text overflow protection ── */
-@media (max-width: 480px) {
-  .dark-theme button {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
-  }
-  .dark-theme [class*="rounded-\[2rem\]"],
-  .dark-theme [class*="rounded-\[2\.5rem\]"] {
-    padding: 1rem !important;
-  }
-}
-
 
 @layer components {
 
@@ -797,8 +684,16 @@
 @media (max-width: 767px) {
 
   /* ── Typography scaling ── */
-  p, span, h1, h2, h3, h4, th, td {
-    word-break: break-all; /* Prevents long IDs/numbers stretching containers triggers */
+  p,
+  span,
+  h1,
+  h2,
+  h3,
+  h4,
+  th,
+  td {
+    word-break: break-all;
+    /* Prevents long IDs/numbers stretching containers triggers */
     overflow-wrap: anywhere;
   }
 
