@@ -140,7 +140,8 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
     const [patientPlans, setPatientPlans] = useState<any[]>([]);
     
     // Appointment Booking State
-    const [selectedPendingTreatment, setSelectedPendingTreatment] = useState('');
+    const [selectedPendingTreatments, setSelectedPendingTreatments] = useState<string[]>([]);
+
     const [bookingForm, setBookingForm] = useState({ date: '', time: '09:00 AM', doctor: 'Dr. Sarah Jenkins', treatment: '' });
 
     const [patientLabOrders, setPatientLabOrders] = useState<any[]>([]);
@@ -257,8 +258,9 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
         setPatientMedicalClearances(medClearances || []);
         setPatientHistory(history || []);
 
-        const { data: mData } = await supabase.from('treatments_master').select('name').order('name');
-        if (mData) setStandardTreatments(mData.map((t: any) => t.name));
+        const { data: mData } = await supabase.from('treatments_master').select('treatment_name').order('treatment_name');
+        if (mData) setStandardTreatments(mData.map((t: any) => t.treatment_name));
+
 
         if (Array.isArray(arguments[0]) && arguments[0].length > 9) {
              const doctors = arguments[0][9]?.data;
@@ -336,8 +338,9 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
         });
 
         const noteObj = {
-            name: patient.name, patient_id: patient.id,
+            patient_id: patient.id,
             subjective: newNote.subjective,
+
             objective: newNote.objective,
             assessment: newNote.assessment,
             plan: planData,
@@ -621,18 +624,28 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
     if (view === 'appointment_booking') {
         const handleBookNow = async () => {
              if (!bookingForm.date) { showToast('Please select a date', 'error'); return; }
+             const rowType = selectedPendingTreatments.length > 0 ? selectedPendingTreatments.join(', ') : (bookingForm.treatment || 'Consultation');
              const { error } = await supabase.from('appointments').insert({
                  name: patient.name, patient_id: patient.id,
                  patient_name: patient.name,
                  date: bookingForm.date,
                  time: bookingForm.time,
-                 type: selectedPendingTreatment || bookingForm.treatment || 'Consultation',
+                 type: rowType,
                  status: 'Pending',
                  doctor_name: bookingForm.doctor
              });
              if (error) { showToast(error.message, 'error'); }
              else { showToast('Appointment created successfully!', 'success'); setView('overview'); fetchData(); }
         };
+
+        const allPending: string[] = [];
+        patientNotes.forEach(note => {
+            try {
+                const parsed = JSON.parse(note.plan);
+                const advised = parsed?.advised || [];
+                advised.forEach((a: any) => { if (a.status !== 'Completed' && !allPending.includes(a.treatment)) allPending.push(a.treatment); });
+            } catch (e) {}
+        });
 
         return (
             <div className={`animate-slide-up space-y-10 pb-12 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
@@ -649,13 +662,35 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                 <div className="p-8 rounded-[2.5rem] border shadow-premium max-w-2xl mx-auto" style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
                     <div className="space-y-4">
                         <div>
-                            <label className="text-xs font-bold text-slate-400">Treatment / Service</label>
-                            <input type="text" value={selectedPendingTreatment || bookingForm.treatment || ''} onChange={e => setSelectedPendingTreatment(e.target.value)} placeholder="Type treatment name..." className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none" style={{ color: 'var(--text-dark)' }} />
+                            <label className="text-xs font-bold text-slate-400 mb-1.5 block">Treatment / Service</label>
+                            {allPending.length > 0 ? (
+                                <div className="space-y-2 bg-slate-50 dark:bg-slate-800 p-4 rounded-xl border dark:border-white/10 mb-2">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Select Pending Treatments to Include:</p>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {allPending.map((p, idx) => {
+                                            const isChecked = selectedPendingTreatments.includes(p);
+                                            return (
+                                                <button key={idx} onClick={() => {
+                                                    if (isChecked) {
+                                                        setSelectedPendingTreatments(selectedPendingTreatments.filter(t => t !== p));
+                                                    } else {
+                                                        setSelectedPendingTreatments([...selectedPendingTreatments, p]);
+                                                    }
+                                                }} className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${isChecked ? 'bg-amber-500 text-white border-amber-500' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-transparent hover:bg-slate-300'}`}>
+                                                    {p}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ) : null}
+                            <input type="text" value={bookingForm.treatment} onChange={e => { setBookingForm({ ...bookingForm, treatment: e.target.value }); if (selectedPendingTreatments.length > 0) setSelectedPendingTreatments([]); }} placeholder={selectedPendingTreatments.length > 0 ? "Or type another treatment..." : "Type treatment name..."} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none" style={{ color: 'var(--text-dark)' }} />
                         </div>
                         <div>
                             <label className="text-xs font-bold text-slate-400">Date</label>
                             <input type="date" value={bookingForm.date} onChange={e => setBookingForm({ ...bookingForm, date: e.target.value })} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none" style={{ color: 'var(--text-dark)' }} />
                         </div>
+
                         <div>
                             <label className="text-xs font-bold text-slate-400">Time</label>
                             <input type="time" value={bookingForm.time} onChange={e => setBookingForm({ ...bookingForm, time: e.target.value })} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none" style={{ color: 'var(--text-dark)' }} />
@@ -1782,22 +1817,32 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                     <div className="space-y-10">
                         <div className="flex justify-between items-center">
                             <h4 className="text-2xl font-sans font-bold" style={{ color: 'var(--text-dark)' }}>Upcoming Appointments</h4>
-                            <button onClick={() => { setSelectedPendingTreatment(''); setBookingForm({ ...bookingForm, date: new Date().toISOString().split('T')[0] }); setView('appointment_booking'); }} className="bg-primary text-white px-8 py-3 rounded-2xl font-bold text-xs uppercase shadow-premium transition-all active:scale-95">
+                            <button onClick={() => { setSelectedPendingTreatments([]); setBookingForm({ ...bookingForm, date: new Date().toISOString().split('T')[0] }); setView('appointment_booking'); }} className="bg-primary text-white px-8 py-3 rounded-2xl font-bold text-xs uppercase shadow-premium transition-all active:scale-95">
+
                                 Schedule New
                             </button>
 
                         </div>
                         {(() => {
-                            const pendingItems: string[] = [];
+                            const groupedPending: Record<string, string[]> = {};
                             patientNotes.forEach(note => {
                                 try {
                                     const parsed = JSON.parse(note.plan);
-                                    const advised = note.advised_treatments || parsed?.advised || [];
-                                    advised.forEach((a: any) => { if (a.status !== 'Completed') pendingItems.push(a.treatment); });
+                                    const advised = parsed?.advised || [];
+                                    const dateLabel = new Date(note.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                                    advised.forEach((a: any) => {
+                                        if (a.status !== 'Completed') {
+                                            if (!groupedPending[dateLabel]) groupedPending[dateLabel] = [];
+                                            if (!groupedPending[dateLabel].includes(a.treatment)) {
+                                                groupedPending[dateLabel].push(a.treatment);
+                                            }
+                                        }
+                                    });
                                 } catch (e) {}
                             });
 
-                            if (pendingItems.length === 0) {
+                            const dates = Object.keys(groupedPending);
+                            if (dates.length === 0) {
                                 return (
                                     <div className="bg-white/5 border border-white/5 rounded-[3rem] p-12 text-center" style={{ background: 'var(--card-bg-alt)' }}>
                                         <Calendar size={48} className="mx-auto text-slate-300 mb-4" />
@@ -1810,18 +1855,31 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                 <div className="p-8 rounded-[3rem] bg-amber-500/10 border border-amber-500/20 text-center flex flex-col items-center justify-center">
                                     <AlertTriangle size={48} className="text-amber-500 mb-4" />
                                     <p className="font-bold text-xl text-amber-600 dark:text-amber-500 mb-2">You have pending treatments:</p>
-                                    <div className="flex flex-wrap justify-center gap-2 mb-6">
-                                        {Array.from(new Set(pendingItems)).map((it, idx) => (
-                                            <span key={idx} className="bg-amber-500/20 px-3 py-1 rounded-xl text-xs font-bold text-amber-700 dark:text-amber-400 border border-amber-500/20">• {it}</span>
+                                    <div className="space-y-4 mb-6 w-full max-w-md">
+                                        {dates.map((date, idx) => (
+                                            <div key={idx} className="bg-white/5 p-3 rounded-2xl border border-amber-500/10 text-left">
+                                                <p className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-1.5">{date}</p>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {groupedPending[date].map((it, i) => (
+                                                        <span key={i} className="bg-amber-500/20 px-2.5 py-1 rounded-lg text-xs font-bold text-amber-700 dark:text-amber-400 border border-amber-500/20">• {it}</span>
+                                                    ))}
+                                                </div>
+                                            </div>
                                         ))}
                                     </div>
                                     <p className="text-xs font-medium text-amber-600/80 mb-6">Please book an appointment to complete these treatments.</p>
-                                    <button onClick={() => { setSelectedPendingTreatment(Array.from(new Set(pendingItems))[0] || ''); setBookingForm({ ...bookingForm, date: new Date().toISOString().split('T')[0] }); setView('appointment_booking'); }} className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl text-xs font-bold uppercase tracking-widest shadow-lg shadow-amber-500/20 transition-all active:scale-95">
+                                    <button onClick={() => {
+                                        const allPending = Object.values(groupedPending).flat();
+                                        setSelectedPendingTreatments(allPending);
+                                        setBookingForm({ ...bookingForm, date: new Date().toISOString().split('T')[0] });
+                                        setView('appointment_booking');
+                                    }} className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl text-xs font-bold uppercase tracking-widest shadow-lg shadow-amber-500/20 transition-all active:scale-95">
                                         Book Appointment
                                     </button>
                                 </div>
                             );
                         })()}
+
 
 
                     </div>

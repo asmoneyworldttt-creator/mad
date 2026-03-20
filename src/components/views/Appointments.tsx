@@ -176,9 +176,22 @@ export function Appointments({ userRole, theme, setActiveTab }: { userRole: User
     const [isSearchingPatients, setIsSearchingPatients] = useState(false);
     const [showPatientResults, setShowPatientResults] = useState(false);
 
+    const [patientMap, setPatientMap] = useState<any>({});
+
     useEffect(() => {
+        const fetchPatients = async () => {
+            const { data } = await supabase.from('patients').select('id, phone');
+            if (data) {
+                const map: any = {};
+                data.forEach((p: any) => { map[p.id] = p; });
+                setPatientMap(map);
+            }
+        };
+
         fetchAppointments();
         fetchDoctors();
+        fetchPatients();
+
 
         const channel = supabase
             .channel('appointments_realtime')
@@ -371,7 +384,8 @@ export function Appointments({ userRole, theme, setActiveTab }: { userRole: User
                 <div className="absolute left-0 top-0 w-8 sm:w-10 text-center">
                     <p className={`text-[10px] font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{formatTime(apt.time)}</p>
                 </div>
-                <div className={`absolute left-[16px] sm:left-[24px] top-1.5 w-2 h-2 rounded-full border z-10 ${
+                {/* CSS ALIGNMENT FIX: Centered dot alignment layout */}
+                <div className={`absolute left-[16px] sm:left-[24px] top-[14px] w-2.5 h-2.5 rounded-full border z-10 -translate-y-1/2 ${
                     apt.status === 'Confirmed' ? 'bg-emerald-500 border-white dark:border-slate-900' :
                     apt.status === 'Completed' ? 'bg-primary border-white dark:border-slate-900' :
                     apt.status === 'Cancelled' ? 'bg-rose-500 border-white dark:border-slate-900' : 'bg-slate-300 border-white dark:border-slate-900'
@@ -384,12 +398,19 @@ export function Appointments({ userRole, theme, setActiveTab }: { userRole: User
                 >
                     <div className="flex justify-between items-center gap-3">
                         <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-8 h-8 rounded-md bg-primary/5 flex items-center justify-center text-primary font-bold text-xs shrink-0">{apt.name.charAt(0)}</div>
+                            <div className="w-8 h-8 rounded-md bg-primary/5 flex items-center justify-center text-primary font-bold text-xs shrink-0">{apt.name?.charAt(0) || 'P'}</div>
                             <div className="min-w-0">
                                 <h4 className={`text-xs sm:text-sm font-bold truncate ${isCancelled ? 'line-through opacity-50' : ''} ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>{apt.name}</h4>
-                                <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-0.5">
                                     <span className="text-[9px] sm:text-[10px] text-slate-500 flex items-center gap-1"><Stethoscope size={10} /> {apt.doctor_name || 'Assign Doctor'}</span>
-                                    <span className="hidden sm:inline text-[9px] text-slate-400 bg-slate-50 dark:bg-white/5 px-1 py-0.5 rounded">{apt.type}</span>
+                                    <span className="text-[9px] text-slate-400 bg-slate-50 dark:bg-white/5 px-1 py-0.5 rounded">{apt.type || 'Consultation'}</span>
+                                    {/* Patient ID and Mobile support */}
+                                    {apt.patient_id && (
+                                        <span className="text-[9px] text-slate-500 font-medium">
+                                            ID: <span className="text-slate-700 dark:text-slate-300 font-bold">{apt.patient_id.slice(0, 8)}</span>
+                                            {patientMap[apt.patient_id]?.phone && <span> • <span className="text-primary font-bold">{patientMap[apt.patient_id].phone}</span></span>}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -403,12 +424,13 @@ export function Appointments({ userRole, theme, setActiveTab }: { userRole: User
                                 apt.status === 'Cancelled' ? 'bg-rose-50 text-rose-500 border-rose-100' : 'bg-slate-50 text-slate-500'
                             }`}
                         >
-                            {['Confirmed', 'Completed', 'Cancelled', 'Missed'].map(s => (
+                            {['Confirmed', 'Completed', 'Missed'].map(s => (
                                 <option key={s} value={s} className="text-black bg-white">{s}</option>
                             ))}
                         </select>
                     </div>
                 </div>
+
             </div>
         );
     };
