@@ -673,31 +673,15 @@
    ══════════════════════════════════════════════ */
 @media (max-width: 767px) {
 
-  /* ── Typography scaling ── */
+  /* ── Typography: only content text wraps, NOT table cells or buttons ── */
   p,
-  span,
-  h1,
-  h2,
-  h3,
-  h4,
-  th,
-  td {
+  span {
     overflow-wrap: anywhere;
-    /* only wrap when absolutely necessary — do NOT use word-break:break-all which breaks button labels */
   }
 
-  h1,
-  h2 {
-
-    font-size: clamp(1.4rem, 5vw, 2rem) !important;
-  }
-
-  h3 {
-    font-size: clamp(1rem, 4vw, 1.4rem) !important;
-  }
-
-  h4 {
-    font-size: clamp(0.9rem, 3.5vw, 1.1rem) !important;
+  /* Headings: clamp only for actual page headings, not UI labels */
+  .page-title {
+    font-size: clamp(1.2rem, 4.5vw, 1.8rem) !important;
   }
 
   /* ── Cards: reduce padding on mobile ── */

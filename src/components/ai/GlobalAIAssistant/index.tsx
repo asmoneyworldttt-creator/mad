@@ -39,7 +39,7 @@ export function GlobalAIAssistant({ activeTab }: { activeTab: string }) {
     };
 
     return (
-        <div className="fixed bottom-32 right-6 z-[60] flex flex-col items-end pointer-events-none md:bottom-8">
+        <div className="fixed bottom-28 right-3 z-[60] flex flex-col items-end pointer-events-none md:bottom-8 md:right-6">
             <div className="pointer-events-auto flex flex-col items-end">
             <AnimatePresence>
                 {isOpen && !isMinimized && (
@@ -47,7 +47,7 @@ export function GlobalAIAssistant({ activeTab }: { activeTab: string }) {
                         initial={{ opacity: 0, scale: 0.9, y: 20, transformOrigin: 'bottom right' }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                        className="mb-4 w-[380px] h-[600px] max-h-[80vh] bg-white rounded-2xl shadow-premium border border-slate-200 flex flex-col overflow-hidden"
+                        className="mb-4 w-[calc(100vw-1.5rem)] sm:w-[380px] h-[70vh] sm:h-[600px] max-h-[80vh] bg-white rounded-2xl shadow-premium border border-slate-200 flex flex-col overflow-hidden"
                     >
                         {/* Header */}
                         <div className="p-4 bg-primary text-white flex items-center justify-between shadow-sm">

@@ -247,27 +247,28 @@ export function PatientRegistrationModal({ isOpen, onClose, onSuccess, onNavigat
                     className="absolute bottom-1/4 -right-10 w-80 h-80 rounded-full bg-violet-400/10 blur-3xl opacity-60"
                 />
             </div>
-            <div className="p-8 md:p-12">
+            <div className="p-4 sm:p-8 md:p-12">
                 {/* Header */}
-                <header className="flex items-start justify-between mb-12">
-                    <div className="flex items-center gap-6">
-                        <div className="w-16 h-16 rounded-[2rem] bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/20">
-                            <User size={32} />
+                <header className="flex items-start justify-between mb-6 sm:mb-12">
+                    <div className="flex items-center gap-3 sm:gap-6">
+                        <div className="w-10 h-10 sm:w-16 sm:h-16 rounded-[1.5rem] sm:rounded-[2rem] bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/20 shrink-0">
+                            <User size={20} className="sm:hidden" />
+                            <User size={32} className="hidden sm:block" />
                         </div>
                         <div>
-                            <h2 className={`text-3xl font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-800'}`}>Clinical Onboarding</h2>
-                            <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mt-1">Status: New Registry Entry • Phase {step + 1} of {STEPS.length}</p>
+                            <p className={`text-lg sm:text-3xl font-black tracking-tight ${isDark ? 'text-white' : 'text-slate-800'}`}>Clinical Onboarding</p>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">New Registry • Phase {step + 1} of {STEPS.length}</p>
                         </div>
                     </div>
                     {!isPage && (
-                        <button onClick={onClose} className="p-4 hover:bg-slate-100 dark:hover:bg-white/5 rounded-2xl transition-all">
-                            <XCircle size={32} className="text-slate-400" />
+                        <button onClick={onClose} className="p-2 sm:p-4 hover:bg-slate-100 dark:hover:bg-white/5 rounded-2xl transition-all shrink-0">
+                            <XCircle size={24} className="text-slate-400" />
                         </button>
                     )}
                 </header>
 
                 {/* Stepper Indicator */}
-                <div className="flex items-center gap-4 mb-12 max-w-2xl">
+                <div className="flex items-center gap-2 sm:gap-4 mb-6 sm:mb-12 overflow-x-auto no-scrollbar pb-1">
                     {STEPS.map((s, i) => (
                         <div key={s} className="flex-1 flex items-center gap-4">
                             <div className={cn(

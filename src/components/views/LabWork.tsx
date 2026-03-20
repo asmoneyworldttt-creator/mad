@@ -666,11 +666,11 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
             <div className={`rounded-[3rem] border overflow-hidden shadow-2xl transition-all`} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
                 <div className="p-8 flex flex-col sm:flex-row gap-6 justify-between border-b" style={{ borderColor: 'var(--border-color)', background: 'var(--card-bg-alt)' }}>
                     <div className="relative w-full max-w-sm">
-                        <Search size={18} className="absolute left-5 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+                        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
                         <input
                             type="text"
                             placeholder="Find lab record..."
-                            className="w-full rounded-[2rem] py-4 pl-14 pr-6 text-sm font-bold outline-none transition-all shadow-inner"
+                            className="w-full rounded-[2rem] py-3 pl-12 pr-6 text-sm font-bold outline-none transition-all shadow-inner"
                             style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
                         />
                     </div>
@@ -701,8 +701,8 @@ export function LabWork({ userRole, theme }: { userRole: UserRole; theme?: 'ligh
                                         </div>
 
                                         {isExpanded && (
-                                            <div className="overflow-x-auto bg-slate-50/50 dark:bg-black/10">
-                                                <table className="w-full text-left border-collapse">
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-left border-collapse min-w-[600px]">
                                                     <thead>
                                                         <tr className="text-[9px] font-black uppercase tracking-wider text-slate-400 bg-slate-100/30 dark:bg-white/5">
                                                             <th className="p-3 pl-8">Order ID</th>

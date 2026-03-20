@@ -118,10 +118,12 @@ export function SmartTimelineTab({ patient, bills = [], plans = [], prescription
             </div>
 
             {/* ── Filter Bar ── */}
-            <div className={`p-2 rounded-2xl border flex items-center gap-2 overflow-x-auto max-w-full backdrop-blur-md ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100'}`}>
-                {filterOptions.map(f => (
-                    <button key={f} onClick={() => setFilter(f)} className={`px-4 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${filter === f ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-white/5'}`}>{f}</button>
-                ))}
+            <div className={`p-2 rounded-2xl border overflow-x-auto no-scrollbar backdrop-blur-md ${isDark ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100'}`}>
+                <div className="flex items-center gap-1.5 min-w-max">
+                    {filterOptions.map(f => (
+                        <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all shrink-0 ${filter === f ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-white/5'}`}>{f}</button>
+                    ))}
+                </div>
             </div>
 
             {/* ── Timeline Body ── */}

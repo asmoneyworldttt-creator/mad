@@ -137,29 +137,29 @@ export function VitalSignsPanel({ patient: initialPatient, theme }: VitalSignsPa
             </div>
 
             {!collapsed && (
-                <div className={`px-8 pb-7 border-t ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
+                <div className={`px-4 sm:px-8 pb-4 sm:pb-7 border-t ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
                     {/* Allergy + Conditions Row */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6">
-                        <div className={`p-5 rounded-2xl ${allergies.length > 0 ? 'bg-rose-500/5 border border-rose-500/20' : isDark ? 'bg-white/5 border border-white/10' : 'bg-slate-50 border border-slate-100'}`}>
-                            <p className="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest mb-3">Known Allergies</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4">
+                        <div className={`p-3 sm:p-5 rounded-xl sm:rounded-2xl ${allergies.length > 0 ? 'bg-rose-500/5 border border-rose-500/20' : isDark ? 'bg-white/5 border border-white/10' : 'bg-slate-50 border border-slate-100'}`}>
+                            <p className="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">Known Allergies</p>
                             {allergies.length > 0 ? (
-                                <div className="flex flex-wrap gap-2">
+                                <div className="flex flex-wrap gap-1.5">
                                     {allergies.map((a, i) => (
-                                        <span key={i} className="text-[10px] font-bold px-2.5 py-1 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-lg">{a}</span>
+                                        <span key={i} className="text-[10px] font-bold px-2 py-0.5 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-lg">{a}</span>
                                     ))}
                                 </div>
                             ) : <p className="text-xs text-slate-400 italic">None recorded</p>}
                         </div>
 
-                        <div className={`p-5 rounded-2xl ${isDark ? 'bg-white/5 border border-white/10' : 'bg-slate-50 border border-slate-100'}`}>
-                            <p className="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest mb-3">Medical Conditions</p>
+                        <div className={`p-3 sm:p-5 rounded-xl sm:rounded-2xl ${isDark ? 'bg-white/5 border border-white/10' : 'bg-slate-50 border border-slate-100'}`}>
+                            <p className="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">Medical Conditions</p>
                             {selectedPatient?.medical_conditions ? (
                                 <p className="text-xs font-medium text-slate-300">{selectedPatient.medical_conditions}</p>
                             ) : <p className="text-xs text-slate-400 italic">None recorded</p>}
                         </div>
 
-                        <div className={`p-5 rounded-2xl ${isDark ? 'bg-white/5 border border-white/10' : 'bg-slate-50 border border-slate-100'}`}>
-                            <p className="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest mb-3">Current Medications</p>
+                        <div className={`p-3 sm:p-5 rounded-xl sm:rounded-2xl ${isDark ? 'bg-white/5 border border-white/10' : 'bg-slate-50 border border-slate-100'}`}>
+                            <p className="text-[9px] font-extrabold text-slate-500 uppercase tracking-widest mb-2">Current Medications</p>
                             {selectedPatient?.current_medications ? (
                                 <p className="text-xs font-medium text-slate-300">{selectedPatient.current_medications}</p>
                             ) : <p className="text-xs text-slate-400 italic">None recorded</p>}

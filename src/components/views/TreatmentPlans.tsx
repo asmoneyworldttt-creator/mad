@@ -295,49 +295,57 @@ export function TreatmentPlans({ userRole, theme, setActiveTab }: { userRole: Us
         const paidPct = selectedPlan.total_cost > 0 ? Math.round((selectedPlan.paid_amount / selectedPlan.total_cost) * 100) : 0;
         return (
             <div className="animate-slide-up space-y-6 pb-10">
-                <div className="flex items-center gap-4">
-                    <button onClick={() => setView('list')} className={`p-3 rounded-2xl border transition-all ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`} aria-label="Back to plans list"><ArrowLeft size={20} /></button>
-                    <div className="flex-1">
-                        <h2 className={`text-2xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>{selectedPlan.title}</h2>
-                        <p className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{selectedPlan.patients?.name} · {selectedPlan.patients?.phone}</p>
+                <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-3">
+                        <button onClick={() => setView('list')} className={`p-3 rounded-2xl border transition-all shrink-0 ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`} aria-label="Back">
+                            <ArrowLeft size={20} />
+                        </button>
+                        <div className="flex-1 min-w-0">
+                            <h2 className={`text-lg font-bold tracking-tight truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>{selectedPlan.title}</h2>
+                            <p className={`text-xs font-medium truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{selectedPlan.patients?.name} · {selectedPlan.patients?.phone}</p>
+                        </div>
                     </div>
-                    <button
-                        onClick={() => setActiveTab?.('appointments')}
-                        className="px-5 py-2.5 rounded-2xl text-sm font-bold flex items-center gap-2 text-white transition-all hover:scale-105"
-                        style={{ background: 'var(--primary)', boxShadow: '0 4px 16px var(--primary-glow)' }}
-                    >
-                        <Calendar size={16} /> Schedule Appointment
-                    </button>
-                    <CustomSelect 
-                        value={selectedPlan.status} 
-                        onChange={val => handleUpdatePlanStatus(selectedPlan.id, val)}
-                        options={['Draft', 'Active', 'Completed', 'Cancelled']}
-                        className="w-40"
-                    />
-                    <button onClick={() => downloadTreatmentPlanPDF({
-                        patientName: selectedPlan.patients?.name || 'Patient',
-                        patientPhone: selectedPlan.patients?.phone || '',
-                        planTitle: selectedPlan.title,
-                        date: selectedPlan.created_at || new Date().toISOString(),
-                        items: planItems.map(i => ({ treatment_name: i.treatment_name, tooth_reference: i.tooth_reference, cost: i.cost, status: i.status })),
-                        totalCost: selectedPlan.total_cost,
-                        discountAmount: selectedPlan.metadata?.discount_amount
-                    })} className={`p-3 rounded-2xl border transition-all ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`} aria-label="Download PDF"><Download size={18} /></button>
+                    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+                        <button
+                            onClick={() => setActiveTab?.('appointments')}
+                            className="px-4 py-2 rounded-2xl text-xs font-bold flex items-center gap-1.5 text-white transition-all hover:scale-105 shrink-0 whitespace-nowrap"
+                            style={{ background: 'var(--primary)', boxShadow: '0 4px 16px var(--primary-glow)' }}
+                        >
+                            <Calendar size={14} /> Schedule
+                        </button>
+                        <div className="shrink-0">
+                            <CustomSelect 
+                                value={selectedPlan.status} 
+                                onChange={val => handleUpdatePlanStatus(selectedPlan.id, val)}
+                                options={['Draft', 'Active', 'Completed', 'Cancelled']}
+                                className="w-36"
+                            />
+                        </div>
+                        <button onClick={() => downloadTreatmentPlanPDF({
+                            patientName: selectedPlan.patients?.name || 'Patient',
+                            patientPhone: selectedPlan.patients?.phone || '',
+                            planTitle: selectedPlan.title,
+                            date: selectedPlan.created_at || new Date().toISOString(),
+                            items: planItems.map(i => ({ treatment_name: i.treatment_name, tooth_reference: i.tooth_reference, cost: i.cost, status: i.status })),
+                            totalCost: selectedPlan.total_cost,
+                            discountAmount: selectedPlan.metadata?.discount_amount
+                        })} className={`p-2.5 rounded-2xl border transition-all shrink-0 ${isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`} aria-label="Download PDF"><Download size={16} /></button>
 
-                    <button onClick={() => {
-                        const message = `*Treatment Plan Summary*\n\n` +
-                            `Patient: ${selectedPlan.patients?.name || 'Valued Patient'}\n` +
-                            `Title: ${selectedPlan.title}\n` +
-                            `Total Estimated: ${formatINR(selectedPlan.total_cost)}\n\n` +
-                            `*Items:*\n` +
-                            planItems.map(i => `- ${i.treatment_name} (${i.tooth_reference || 'General'}): ${formatINR(i.cost)}`).join('\n') +
-                            `\n\n_Powered by Dentora_`;
-                        const phone = selectedPlan.patients?.phone?.replace(/\D/g, '');
-                        if (phone) window.open(`https://wa.me/91${phone}?text=${encodeURIComponent(message)}`, '_blank');
-                        else showToast('Patient has no valid phone number saved.', 'error');
-                    }} className="p-3 rounded-2xl border bg-emerald-500 text-white transition-all shadow-xl shadow-emerald-500/10 active:scale-95" aria-label="Share WhatsApp"><MessageCircle size={18} /></button>
+                        <button onClick={() => {
+                            const message = `*Treatment Plan Summary*\n\n` +
+                                `Patient: ${selectedPlan.patients?.name || 'Valued Patient'}\n` +
+                                `Title: ${selectedPlan.title}\n` +
+                                `Total Estimated: ${formatINR(selectedPlan.total_cost)}\n\n` +
+                                `*Items:*\n` +
+                                planItems.map(i => `- ${i.treatment_name} (${i.tooth_reference || 'General'}): ${formatINR(i.cost)}`).join('\n') +
+                                `\n\n_Powered by Dentora_`;
+                            const phone = selectedPlan.patients?.phone?.replace(/\D/g, '');
+                            if (phone) window.open(`https://wa.me/91${phone}?text=${encodeURIComponent(message)}`, '_blank');
+                            else showToast('Patient has no valid phone number saved.', 'error');
+                        }} className="p-2.5 rounded-2xl border bg-emerald-500 text-white transition-all shadow-xl shadow-emerald-500/10 active:scale-95 shrink-0" aria-label="WhatsApp"><MessageCircle size={16} /></button>
 
-                    <button onClick={() => { setPlanToDelete(selectedPlan.id); setShowDeleteModal(true); }} className="p-3 rounded-2xl border transition-all" style={{ background: 'var(--red-soft)', borderColor: 'var(--red-subtle)', color: 'var(--error)' }}><Trash2 size={18} /></button>
+                        <button onClick={() => { setPlanToDelete(selectedPlan.id); setShowDeleteModal(true); }} className="p-2.5 rounded-2xl border transition-all shrink-0" style={{ background: 'var(--red-soft)', borderColor: 'var(--red-subtle)', color: 'var(--error)' }}><Trash2 size={16} /></button>
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

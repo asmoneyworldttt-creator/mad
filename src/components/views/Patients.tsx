@@ -354,6 +354,19 @@ export function Patients({ userRole, setActiveTab, theme }: { userRole: UserRole
         return <MasterTimeline patients={patientsData} theme={theme} onBack={() => setView('list')} onSelectPatient={(p: any) => { setView('list'); setSelectedPatient(p); }} />;
     }
 
+    if (view === 'register') {
+        return (
+            <PatientRegistrationModal
+                isPage={true}
+                isOpen={true}
+                onClose={() => setView('list')}
+                onSuccess={() => { setView('list'); fetchPatients(); }}
+                onNavigate={setActiveTab}
+                theme={theme}
+            />
+        );
+    }
+
     if (selectedPatient) {
         return <PatientOverview patient={selectedPatient} onBack={() => setSelectedPatient(null)} theme={theme} setActiveTab={setActiveTab} />;
     }
@@ -380,8 +393,8 @@ export function Patients({ userRole, setActiveTab, theme }: { userRole: UserRole
                             <Users size={18} />
                         </div>
                         <div>
-                            <div className="flex items-center gap-2">
-                                <h2 className="text-sm font-bold uppercase tracking-tight">Patient Directory</h2>
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <p className="text-sm font-bold whitespace-nowrap" style={{ color: 'var(--text-dark)' }}>Patient Directory</p>
                                 <div className="flex items-center gap-1 bg-slate-100 dark:bg-white/5 p-0.5 rounded-lg border border-black/5">
                                     <button onClick={() => setView('list')} className={`px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest whitespace-nowrap ${(view as string) === 'list' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary' : 'text-slate-400'}`}>Directory</button>
                                     <button onClick={() => setView('timeline')} className={`px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest whitespace-nowrap ${(view as string) === 'timeline' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary' : 'text-slate-400'}`}>Timeline</button>
@@ -392,13 +405,13 @@ export function Patients({ userRole, setActiveTab, theme }: { userRole: UserRole
                     </div>
                     <div className="flex items-center gap-2 w-full sm:w-auto">
                         <div className="relative flex-1 sm:w-64">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
                             <input
                                 type="text"
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
                                 placeholder="Search Name, ID or Phone..."
-                                className={`w-full pl-9 pr-4 py-1.5 rounded-lg border outline-none font-bold text-xs transition-all`}
+                                className={`w-full pl-9 pr-4 py-2 rounded-lg border outline-none font-bold text-xs transition-all`}
                                 style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }}
                             />
                         </div>
@@ -606,7 +619,7 @@ export function Patients({ userRole, setActiveTab, theme }: { userRole: UserRole
                 </div>
             </Modal>
 
-            <PatientRegistrationModal isOpen={view === 'register'} onClose={() => setView('list')} theme={theme} />
+            <PatientRegistrationModal isOpen={false} onClose={() => setView('list')} theme={theme} />
         </div>
     );
 }
