@@ -200,21 +200,20 @@
     border: 0;
   }
 
-  /* Minimum touch target size 44x44px (WCAG 2.5.5) */
+  /* Minimum touch target size — desktop accessibility (WCAG 2.5.5) */
   button,
   [role="button"],
   a,
   input[type="checkbox"],
   input[type="radio"],
   select {
-    min-height: 44px;
-    min-width: 44px;
+    min-height: 32px;
   }
 
-  /* Exception: inline icon-only buttons in tight UI can be 36px minimum */
+  /* Tight UI icon buttons */
   button.icon-sm {
-    min-height: 36px;
-    min-width: 36px;
+    min-height: 28px;
+    min-width: 28px;
   }
 }
 
@@ -634,6 +633,15 @@
   background: var(--primary);
 }
 
+/* ── No Scrollbar utility ── */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* ── Print / selection ── */
 ::selection {
   background: var(--primary-soft);
@@ -674,9 +682,8 @@
   h4,
   th,
   td {
-    word-break: break-all;
-    /* Prevents long IDs/numbers stretching containers triggers */
     overflow-wrap: anywhere;
+    /* only wrap when absolutely necessary — do NOT use word-break:break-all which breaks button labels */
   }
 
   h1,
@@ -710,13 +717,19 @@
     min-width: 560px;
   }
 
-  /* ── Input touch targets ── */
+  /* ── Input/Button sizing on mobile (prevents iOS zoom + keeps compact UI) ── */
   input,
   select,
-  textarea,
-  button {
+  textarea {
     font-size: 16px !important;
-    /* prevents iOS zoom on focus */
+    /* 16px prevents iOS auto-zoom on focus */
+  }
+
+  /* Override desktop min-height to allow compact filter chips on mobile */
+  button,
+  select,
+  a {
+    min-height: unset;
   }
 
   /* ── KPI grid collapses to 2 columns ── */

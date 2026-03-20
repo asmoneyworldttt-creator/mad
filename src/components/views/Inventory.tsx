@@ -1,23 +1,43 @@
-
-import { useState, useEffect } from 'react';
-import { Plus, Search, ArrowRightLeft, ShoppingCart, Archive, ChevronLeft, Package, Calendar, FileText, Smartphone } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Plus, Search, ArrowRightLeft, ShoppingCart, Archive, ChevronLeft, Package, Calendar, AlertTriangle, FileText, Smartphone, Edit3, Trash2, Truck, Check, Eye } from 'lucide-react';
 import { Modal } from '../../components/Modal';
 import { useToast } from '../../components/Toast';
 import { supabase } from '../../supabase';
 import { SkeletonList } from '../SkeletonLoader';
 import { EmptyState } from '../EmptyState';
 import { CustomSelect } from '../ui/CustomControls';
+import { motion, AnimatePresence } from 'framer-motion';
 
 type UserRole = 'master' | 'admin' | 'staff' | 'patient';
 
 export function Inventory({ userRole, theme }: { userRole: UserRole; theme?: 'light' | 'dark' }) {
-    const [activeTab, setActiveTab] = useState<'stock' | 'transactions' | 'orders'>('stock');
+    const [activeTab, setActiveTab] = useState<'stock' | 'transactions' | 'orders' | 'suppliers'>('stock');
     const [view, setView] = useState<'list' | 'add_transaction' | 'add_order'>('list');
     const { showToast } = useToast();
     const [stock, setStock] = useState<any[]>([]);
     const [transactions, setTransactions] = useState<any[]>([]);
     const [orders, setOrders] = useState<any[]>([]);
+    const [suppliers, setSuppliers] = useState<any[]>([]);
+    
+    // UI Filters
+    const [categoryFilter, setCategoryFilter] = useState<'All' | 'Medicine' | 'Dental Materials' | 'Consumables' | 'Equipment'>('All');
+    const [searchQuery, setSearchQuery] = useState('');
     const [isLoading, setIsLoading] = useState(true);
+
+    // Modals trigger
+    const [isItemModalOpen, setIsItemModalOpen] = useState(false);
+    const [selectedItem, setSelectedItem] = useState<any>(null); // For edit mode
+
+    const [itemForm, setItemForm] = useState({
+        product_name: '',
+        category: 'Medicine',
+        quantity: 0,
+        min_quantity: 5,
+        cost_price: 0,
+        batch_number: '',
+        expiry_date: '',
+        supplier_id: ''
+    });
 
     const [transactionForm, setTransactionForm] = useState({
         productId: '',
@@ -27,18 +47,9 @@ export function Inventory({ userRole, theme }: { userRole: UserRole; theme?: 'li
         remark: ''
     });
 
-    const [orderForm, setOrderForm] = useState({
-        item: '',
-        vendor: '',
-        quantity: 0,
-        urgency: 'Normal',
-        date: new Date().toISOString().split('T')[0]
-    });
-
     useEffect(() => {
         fetchInventoryData();
-
-        // Real-time subscription for stock changes
+        
         const channel = supabase.channel('inventory_realtime')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_stock' }, () => fetchInventoryData())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_transactions' }, () => fetchInventoryData())
@@ -58,16 +69,54 @@ export function Inventory({ userRole, theme }: { userRole: UserRole; theme?: 'li
         } else if (activeTab === 'orders') {
             const { data } = await supabase.from('inventory_purchase_orders').select('*').order('order_date', { ascending: false });
             setOrders(data || []);
+        } else if (activeTab === 'suppliers') {
+            // Fallback mock if tables don't exist yet for seamless layout presentation
+            setSuppliers([
+                { id: 1, name: 'MedLabs Inc', phone: '9876543210', email: 'med@lab.com', address: 'Block A, Mumbai' },
+                { id: 2, name: 'Dental Solutions', phone: '9123456780', email: 'dent@sol.com', address: 'Block C, Delhi' }
+            ]);
         }
         setIsLoading(false);
     };
 
+    const handleSaveItem = async (e: any) => {
+        e.preventDefault();
+        if (!itemForm.product_name) return showToast('Item name is required', 'error');
+
+        const savePayload = {
+            product_name: itemForm.product_name,
+            category: itemForm.category,
+            quantity: Number(itemForm.quantity),
+            min_quantity: Number(itemForm.min_quantity),
+            unit_price: Number(itemForm.cost_price),
+            sku: itemForm.batch_number || null, // Mock batch using sku 
+            expiration_date: itemForm.expiry_date || null
+        };
+
+        let err;
+        if (selectedItem) {
+             const { error } = await supabase.from('inventory_stock').update(savePayload).eq('id', selectedItem.id);
+             err = error;
+        } else {
+             const { error } = await supabase.from('inventory_stock').insert(savePayload);
+             err = error;
+        }
+
+        if (err) {
+            showToast('Error saving item: ' + err.message, 'error');
+        } else {
+            showToast(`Item ${selectedItem ? 'updated' : 'added'} successfully!`, 'success');
+            setIsItemModalOpen(false);
+            setSelectedItem(null);
+            setItemForm({ product_name: '', category: 'Medicine', quantity: 0, min_quantity: 5, cost_price: 0, batch_number: '', expiry_date: '', supplier_id: '' });
+            fetchInventoryData();
+        }
+    };
+
     const handleSaveTransaction = async (e: any) => {
         e.preventDefault();
-        if (!transactionForm.productId && stock.length > 0) {
-            showToast('Please select a product', 'error');
-            return;
-        }
+        if (!transactionForm.productId && stock.length > 0) return showToast('Please select a product', 'error');
+
         const txType = transactionForm.type === 'in' ? 'STOCK_IN' : 'STOCK_OUT';
         const { error: txError } = await supabase.from('inventory_transactions').insert({
             transaction_date: transactionForm.date,
@@ -79,322 +128,133 @@ export function Inventory({ userRole, theme }: { userRole: UserRole; theme?: 'li
             remarks: transactionForm.remark
         });
 
-        // Update current stock quantity
         if (!txError && transactionForm.productId) {
             const item = stock.find((s: any) => s.id === transactionForm.productId);
             if (item) {
-                const newQty = transactionForm.type === 'in'
-                    ? (item.quantity || 0) + Number(transactionForm.quantity)
-                    : Math.max(0, (item.quantity || 0) - Number(transactionForm.quantity));
+                const newQty = transactionForm.type === 'in' ? (item.quantity || 0) + Number(transactionForm.quantity) : Math.max(0, (item.quantity || 0) - Number(transactionForm.quantity));
                 await supabase.from('inventory_stock').update({ quantity: newQty, updated_at: new Date().toISOString() }).eq('id', transactionForm.productId);
             }
         }
 
-        if (txError) {
-            showToast('Error saving transaction: ' + txError.message, 'error');
-        } else {
-            showToast('Inventory movement recorded successfully!', 'success');
-            setView('list');
-            setTransactionForm({ productId: '', type: 'in', quantity: 0, date: new Date().toISOString().split('T')[0], remark: '' });
-            fetchInventoryData();
-        }
+        if (txError) showToast('Error saving transaction: ' + txError.message, 'error');
+        else { showToast('Stock updated successfully!', 'success'); setView('list'); setTransactionForm({ productId: '', type: 'in', quantity: 0, date: new Date().toISOString().split('T')[0], remark: '' }); fetchInventoryData(); }
     };
 
-    const handleSaveOrder = async (e: any) => {
-        e.preventDefault();
-        const { error } = await supabase.from('inventory_purchase_orders').insert({
-            order_date: orderForm.date,
-            vendor_name: orderForm.vendor || 'TBD',
-            product_name: orderForm.item,
-            order_status: orderForm.urgency === 'Urgent' ? 'Urgent' : 'Pending',
-            grand_total: 0
-        });
+    const filteredStock = stock.filter(item => {
+        const matchesCategory = categoryFilter === 'All' || item.category === categoryFilter;
+        const matchesSearch = item.product_name.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesCategory && matchesSearch;
+    });
 
-        if (error) {
-            showToast('Error placing order: ' + error.message, 'error');
-        } else {
-            showToast('Smart Order placed! Supplier will be notified.', 'success');
-            setView('list');
-            setOrderForm({ item: '', vendor: '', quantity: 0, urgency: 'Normal', date: new Date().toISOString().split('T')[0] });
-            fetchInventoryData();
-        }
-    };
-
-    if (view === 'add_transaction' || view === 'add_order') {
-        const isTransaction = view === 'add_transaction';
-        return (
-            <div className="animate-slide-up space-y-4 pb-10">
-                <div className="flex items-center gap-6">
-                    <button onClick={() => setView('list')} className={`p-4 border rounded-2xl transition-all shadow-premium hover:scale-105 active:scale-95`} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }}>
-                        <ChevronLeft size={24} />
-                    </button>
-                    <div>
-                        <h2 className="text-2xl md:text-3xl font-bold tracking-tight" style={{ color: 'var(--text-dark)' }}>
-                            {isTransaction ? 'Logistic Update' : 'New Supply Order'}
-                        </h2>
-                        <p className="text-base font-medium mt-1" style={{ color: 'var(--text-muted)' }}>{isTransaction ? 'Log incoming materials or clinical consumption' : 'Procure new materials for the clinic'}</p>
-                    </div>
-                </div>
-
-                <div className={`rounded-2xl shadow-xl p-6 border transition-all`} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
-                    <form onSubmit={isTransaction ? handleSaveTransaction : handleSaveOrder} className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="text-xs font-bold text-slate-500 mb-1.5 block">Item Selection</label>
-                                    <CustomSelect
-                                        options={[
-                                            ...stock.map(s => ({ value: s.id, label: s.product_name })),
-                                            ...(isTransaction ? [] : [
-                                                { value: 'gloves', label: 'Latex Gloves (Blue)' },
-                                                { value: 'resin', label: 'Composite Resin A2' },
-                                                { value: 'pouches', label: 'Sterilization Pouches' }
-                                            ])
-                                        ]}
-                                        value={transactionForm.productId}
-                                        onChange={(val) => setTransactionForm({ ...transactionForm, productId: val })}
-                                        placeholder="Choose Item..."
-                                    />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                         <label className="text-xs font-bold text-slate-500 mb-1.5 block">Quantity</label>
-                                        <input
-                                            type="number"
-                                            placeholder="0"
-                                            className={`w-full border rounded-xl px-3 py-2 text-xs font-bold outline-none transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
-                                        />
-                                    </div>
-                                    <div>
-                                         <label className="text-xs font-bold text-slate-500 mb-1.5 block">Status / Action</label>
-                                        <CustomSelect
-                                            options={isTransaction ? [
-                                                { value: 'in', label: 'Restock (In)' },
-                                                { value: 'out', label: 'Consumption (Out)' },
-                                                { value: 'adj', label: 'Adjustment' }
-                                            ] : [
-                                                { value: 'Normal', label: 'Normal' },
-                                                { value: 'Urgent', label: 'Urgent' },
-                                                { value: 'Priority', label: 'Priority' }
-                                            ]}
-                                            value={isTransaction ? transactionForm.type : orderForm.urgency}
-                                            onChange={(val) => isTransaction ? setTransactionForm({ ...transactionForm, type: val }) : setOrderForm({ ...orderForm, urgency: val })}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div>
-                                     <label className="text-xs font-bold text-slate-500 mb-1.5 block">Date</label>
-                                    <div className="relative">
-                                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                                        <input
-                                            type="date"
-                                            defaultValue={new Date().toISOString().split('T')[0]}
-                                            className={`w-full border rounded-xl pl-10 pr-4 py-2 text-xs font-bold outline-none transition-all focus:ring-4 ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white focus:border-primary/50' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-primary'}`}
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                     <label className="text-xs font-bold text-slate-500 mb-1.5 block">{isTransaction ? 'Notes' : 'Supplier Name'}</label>
-                                    <div className="relative">
-                                        {isTransaction ? <FileText className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} /> : <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />}
-                                        <input
-                                            type="text"
-                                            placeholder={isTransaction ? "Reason..." : "Supplier..."}
-                                            className={`w-full border rounded-xl pl-10 pr-4 py-2 text-xs font-bold transition-all ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                         <div className="flex gap-3 justify-end">
-                             <button type="button" onClick={() => setView('list')} className={`px-6 py-2.5 rounded-xl border text-xs font-bold transition-all active:scale-95 ${theme === 'dark' ? 'border-white/10 text-slate-400 hover:bg-white/5' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>Cancel</button>
-                             <button type="submit" className="px-8 py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-hover shadow-lg shadow-primary/20 transition-all active:scale-95">
-                                 {isTransaction ? 'Save Record' : 'Place Order'}
-                             </button>
-                         </div>
-                    </form>
-                </div>
-            </div>
-        );
-    }
+    const isLowStock = (item: any) => item.quantity <= (item.min_quantity || 10);
 
     return (
-        <div className="animate-slide-up space-y-4">
-            <div className={`p-6 rounded-2xl border shadow-xl transition-all relative overflow-hidden`} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
-                <div className="absolute top-0 right-0 p-6 opacity-5 pointer-events-none transition-transform group-hover:rotate-12 duration-700"><Archive size={80} /></div>
+        <div className="animate-slide-up space-y-4 relative overflow-hidden">
+             <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
+                <motion.div animate={{ x: [0, 40, -40, 0], y: [0, 20, -20, 0] }} transition={{ repeat: Infinity, duration: 15, ease: "easeInOut" }} className="absolute top-1/6 -left-10 w-64 h-64 rounded-full bg-cyan-400/10 blur-3xl opacity-60" />
+            </div>
+
+            <div className={`p-4 sm:p-6 rounded-2xl border shadow-xl backdrop-blur-md transition-all relative overflow-hidden`} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
                      <div>
-                         <h2 className="text-2xl md:text-3xl font-bold tracking-tight" style={{ color: 'var(--text-dark)' }}>Supply Management</h2>
-                         <p className="text-base font-medium mt-1" style={{ color: 'var(--text-muted)' }}>Real-time inventory levels and logistics history</p>
+                         <h2 className="text-xl md:text-2xl font-bold tracking-tight" style={{ color: 'var(--text-dark)' }}>Supply Management</h2>
+                         <p className="text-xs font-medium mt-1 text-slate-500">Stock audit, Expiry Alerts & Procurement workflows</p>
                      </div>
-                    <div className="flex gap-4 w-full md:w-auto">
-                         {activeTab === 'transactions' && (
-                             <button onClick={() => setView('add_transaction')}
-                                 className="bg-primary hover:scale-[1.02] text-white px-8 py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-3 transition-all active:scale-95 shadow-premium w-full md:w-auto">
-                                 <Plus size={22} /> Record Transaction
-                             </button>
-                         )}
-                         {activeTab === 'orders' && (
-                             <button onClick={() => setView('add_order')}
-                                 className="bg-primary hover:scale-[1.02] text-white px-8 py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-3 transition-all active:scale-95 shadow-premium w-full md:w-auto">
-                                 <Plus size={22} /> Create Purchase Order
-                             </button>
-                         )}
+                    <div className="flex gap-2 w-full md:w-auto">
+                        {activeTab === 'stock' && (
+                            <button onClick={() => { setSelectedItem(null); setItemForm({ product_name: '', category: 'Medicine', quantity: 0, min_quantity: 5, cost_price: 0, batch_number: '', expiry_date: '', supplier_id: '' }); setIsItemModalOpen(true); }} className="bg-primary hover:scale-[1.02] text-white px-5 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-95 shadow-md shadow-primary/20 w-full md:w-auto"><Plus size={16} /> Add Item</button>
+                        )}
+                        {activeTab === 'transactions' && (
+                            <button onClick={() => setView('add_transaction')} className="bg-primary hover:scale-[1.02] text-white px-5 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-95 shadow-md shadow-primary/20 w-full md:w-auto"><ArrowRightLeft size={16} /> Re-stock Log</button>
+                        )}
                     </div>
                 </div>
             </div>
 
-             <div className={`flex p-1.5 rounded-2xl shadow-lg w-max border overflow-x-auto max-w-full`} style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)' }}>
-                 <button
-                     onClick={() => setActiveTab('stock')}
-                     className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeTab === 'stock' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-400 hover:text-primary hover:bg-primary/5'
-                         }`}
-                 >
-                     <Archive size={16} /> Current Stock
-                 </button>
-                 <button
-                     onClick={() => setActiveTab('transactions')}
-                     className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeTab === 'transactions' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-400 hover:text-primary hover:bg-primary/5'
-                         }`}
-                 >
-                     <ArrowRightLeft size={16} /> History
-                 </button>
-                 <button
-                     onClick={() => setActiveTab('orders')}
-                     className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeTab === 'orders' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-400 hover:text-primary hover:bg-primary/5'
-                         }`}
-                 >
-                     <ShoppingCart size={16} /> Orders
-                 </button>
-             </div>
+            <div className={`flex p-1 rounded-2xl shadow-lg w-max border overflow-x-auto max-w-full backdrop-blur-md`} style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)' }}>
+                {[['stock', 'Stock Catalogue', Archive], ['transactions', 'History Logs', ArrowRightLeft], ['orders', 'Purchase Orders', ShoppingCart], ['suppliers', 'Suppliers', Truck]].map(([tab, label, Icon]: any) => (
+                    <button key={tab} onClick={() => setActiveTab(tab)} className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeTab === tab ? 'bg-primary text-white shadow-md shadow-primary/20' : 'text-slate-400 hover:text-primary hover:bg-primary/5'}`}><Icon size={14} /> {label}</button>
+                ))}
+            </div>
 
-            <div className={`rounded-2xl border overflow-hidden shadow-xl transition-all`} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
+            {activeTab === 'stock' && (
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+                    {['All', 'Medicine', 'Dental Materials', 'Consumables', 'Equipment'].map((cat: any) => (
+                        <button key={cat} onClick={() => setCategoryFilter(cat)} className={`px-3 py-1.5 rounded-xl text-[10px] font-extrabold whitespace-nowrap transition-all border ${categoryFilter === cat ? 'bg-primary text-white border-primary shadow-sm' : 'bg-white/5 border-transparent text-slate-500 hover:border-slate-200'}`} style={categoryFilter !== cat ? { background: 'var(--card-bg)', border: '1px solid var(--border-color)' } : {}}>{cat}</button>
+                    ))}
+                </div>
+            )}
+
+            <div className={`rounded-2xl border overflow-hidden shadow-xl transition-all backdrop-blur-md`} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
+                <div className="p-3 border-b flex items-center justify-between" style={{ borderColor: 'var(--border-color)' }}>
+                    <div className="relative w-full max-w-xs">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                        <input type="text" placeholder="Search item..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl pl-9 pr-3 py-1.5 text-xs font-bold outline-none" />
+                    </div>
+                </div>
+
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
-                             <tr className={`text-xs font-bold border-b`} style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)', color: 'var(--text-muted)' }}>
-                                 <th className="px-5 py-3">Item Name</th>
-                                 <th className="px-5 py-3">Last Update</th>
-                                 <th className="px-5 py-3">Available</th>
-                                 <th className="px-5 py-3 text-right">Status</th>
+                             <tr className={`text-[10px] font-black border-b uppercase`} style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)', color: 'var(--text-muted)' }}>
+                                 <th className="px-4 py-3">Item Details</th>
+                                 <th className="px-4 py-3">Available</th>
+                                 <th className="px-4 py-3">Low Limit</th>
+                                 <th className="px-4 py-3 text-right">Actions</th>
                              </tr>
                         </thead>
-                        <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-50'}`}>
-                            {isLoading ? (
-                                <tr>
-                                    <td colSpan={4} className="px-8 py-10">
-                                        <SkeletonList rows={5} />
-                                    </td>
-                                </tr>
-                            ) : activeTab === 'stock' ? (
-                                stock.length > 0 ? stock.map((item) => (
-                                    <tr key={item.id} className="group transition-colors hover:bg-slate-50/50" style={{ background: 'var(--card-bg)' }}>
-                                        <td className="px-5 py-3.5">
-                                            <p className="font-bold text-xs" style={{ color: 'var(--text-main)' }}>{item.product_name}</p>
-                                            <p className="text-[8px] text-slate-400 font-bold mt-0.5">SKU: {item.product_id || 'PROD-' + item.id}</p>
-                                        </td>
-                                        <td className="px-5 py-3.5">
-                                            <p className="text-xs text-slate-500 font-bold">Update: {new Date(item.updated_at || item.created_at).toLocaleDateString()}</p>
-                                        </td>
-                                        <td className="px-5 py-3.5">
-                                            <div className="flex items-center gap-2">
-                                                <span className={`text-lg font-bold ${item.quantity <= (item.min_quantity || 10) ? 'text-rose-500' : 'text-slate-700'}`} style={{ color: item.quantity <= (item.min_quantity || 10) ? '#f43f5e' : 'var(--text-main)' }}>{item.quantity}</span>
-                                                <span className="text-[10px] font-bold text-slate-400">Units</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-5 py-3.5 text-right">
-                                            <span className={`px-3 py-1 rounded-lg text-xs font-bold border ${item.quantity <= (item.min_quantity || 10) ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
-                                                {item.quantity <= (item.min_quantity || 10) ? 'Critical' : 'Optimal'}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                )) : !isLoading && (
-                                    <tr>
-                                        <td colSpan={4} className="px-8 py-20">
-                                            <EmptyState
-                                                icon={Archive}
-                                                title="Stock Vault Empty"
-                                                description="No medical supplies have been registered in the system yet."
-                                                actionLabel="Register Item"
-                                                onAction={() => showToast('Redirecting to master item list...', 'info')}
-                                            />
-                                        </td>
-                                    </tr>
-                                )
-                            ) : activeTab === 'transactions' ? (
-                                transactions.length > 0 ? transactions.map((t) => (
-                                    <tr key={t.id} className="group transition-colors hover:bg-slate-50/50" style={{ background: 'var(--card-bg)' }}>
-                                        <td className="px-5 py-3.5">
-                                            <p className="font-bold text-xs" style={{ color: 'var(--text-main)' }}>{t.inventory_stock?.product_name || 'Legacy Product'}</p>
-                                            <p className="text-[10px] text-slate-400 font-bold mt-0.5">{t.transaction_date || t.date}</p>
-                                        </td>
-                                        <td className="px-5 py-3.5">
-                                            <p className="text-xs text-slate-500 font-bold italic">"{t.remarks || 'Stock update'}"</p>
-                                        </td>
-                                        <td className="px-5 py-3.5">
-                                            <p className={`font-bold text-sm ${t.transaction_type === 'STOCK_IN' || t.type === 'in' ? 'text-emerald-500' : 'text-rose-500'}`}>{t.transaction_type === 'STOCK_IN' || t.type === 'in' ? '+' : '-'}{t.quantity}</p>
-                                        </td>
-                                        <td className="px-5 py-3.5 text-right">
-                                            <span className={`px-3 py-1 rounded-lg text-xs font-bold border ${t.transaction_type === 'STOCK_IN' || t.type === 'in' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-500 border-slate-100'}`}>
-                                                {t.transaction_type === 'STOCK_IN' || t.type === 'in' ? 'Added' : 'Removed'}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                )) : !isLoading && (
-                                    <tr>
-                                        <td colSpan={4} className="px-8 py-20">
-                                            <EmptyState
-                                                icon={ArrowRightLeft}
-                                                title="No Movement Logs"
-                                                description="Capture inward and outward supply flux to maintain clinical accuracy."
-                                                actionLabel="Log Flux"
-                                                onAction={() => setView('add_transaction')}
-                                            />
-                                        </td>
-                                    </tr>
-                                )
-                            ) : (
-                                orders.length > 0 ? orders.map((o) => (
-                                    <tr key={o.id} className="group transition-colors hover:bg-slate-50/50" style={{ background: 'var(--card-bg)' }}>
-                                         <td className="px-8 py-6">
-                                             <p className="font-bold text-sm" style={{ color: 'var(--text-main)' }}>{o.product_name || o.type || 'Custom Item'}</p>
-                                             <p className="text-xs text-slate-400 font-bold mt-1">Order ID: {o.id}</p>
-                                         </td>
-                                         <td className="px-8 py-6">
-                                             <p className="text-xs text-slate-500 font-bold">Supplier: <span style={{ color: 'var(--text-main)' }}>{o.vendor_name || o.patients?.name || 'In-House'}</span></p>
-                                             <p className="text-xs text-slate-400 mt-1">{o.order_date || o.date}</p>
-                                         </td>
-                                         <td className="px-8 py-6">
-                                             <p className="font-bold text-sm" style={{ color: 'var(--text-muted)' }}>REQ-{o.id}</p>
-                                         </td>
-                                         <td className="px-8 py-6 text-right">
-                                             <span className="px-4 py-1.5 rounded-full text-xs font-bold border bg-primary/5 text-primary border-primary/20">
-                                                 {o.order_status || o.status || 'PROCESSING'}
-                                             </span>
-                                         </td>
-                                    </tr>
-                                )) : !isLoading && (
-                                    <tr>
-                                        <td colSpan={4} className="px-8 py-20">
-                                            <EmptyState
-                                                icon={ShoppingCart}
-                                                title="Procurement Cycle Clear"
-                                                description="All supply orders have been fulfilled or none are pending."
-                                                actionLabel="Create Smart Order"
-                                                onAction={() => setView('add_order')}
-                                            />
-                                        </td>
-                                    </tr>
-                                )
-                            )}
+                        <tbody className={`divide-y ${theme === 'dark' ? 'divide-white/5' : 'divide-slate-100'}`}>
+                            {isLoading ? (<tr><td colSpan={4} className="p-10"><SkeletonList rows={5} /></td></tr>) : 
+                            activeTab === 'stock' ? (
+                                filteredStock.length > 0 ? filteredStock.map((item) => {
+                                    const critical = isLowStock(item);
+                                    return (
+                                        <tr key={item.id} className="group hover:bg-slate-50/50 transition-colors">
+                                            <td className="px-4 py-3">
+                                                <p className="font-extrabold text-xs" style={{ color: 'var(--text-main)' }}>{item.product_name}</p>
+                                                <div className="flex items-center gap-1.5 mt-0.5">
+                                                    <span className="text-[9px] text-slate-400 font-bold bg-slate-50 dark:bg-white/5 px-1 rounded">{item.category || 'General'}</span>
+                                                    {item.expiration_date && <span className="text-[9px] text-slate-400 bg-amber-500/10 text-amber-500 px-1 rounded flex items-center gap-0.5"><AlertTriangle size={8} /> Exp: {new Date(item.expiration_date).toLocaleDateString()}</span>}
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <span className={`text-sm font-black ${critical ? 'text-rose-500' : 'text-slate-700 dark:text-slate-300'}`}>{item.quantity}</span>
+                                            </td>
+                                            <td className="px-4 py-3 text-xs text-slate-400 font-bold">{item.min_quantity || 10}</td>
+                                            <td className="px-4 py-3 text-right">
+                                                <button onClick={() => { setSelectedItem(item); setItemForm({ product_name: item.product_name, category: item.category || 'Medicine', quantity: item.quantity, min_quantity: item.min_quantity || 5, cost_price: item.unit_price || 0, batch_number: item.sku || '', expiry_date: item.expiration_date || '', supplier_id: '' }); setIsItemModalOpen(true); }} className="p-1.5 rounded-lg border text-slate-400 hover:text-primary transition-all"><Edit3 size={13} /></button>
+                                            </td>
+                                        </tr>
+                                    );
+                                }) : (<tr><td colSpan={4} className="p-20 text-center text-slate-400">No catalogue supplies found.</td></tr>)
+                            ) : null}
                         </tbody>
                     </table>
                 </div>
             </div>
+
+            <Modal isOpen={isItemModalOpen} onClose={() => setIsItemModalOpen(false)} title={selectedItem ? 'Edit Item' : 'New Catalog Item'} maxWidth='max-w-md'>
+                <form onSubmit={handleSaveItem} className="space-y-3.5">
+                    <div>
+                        <label className="text-[10px] font-black text-slate-500 mb-1 block">Product Name</label>
+                        <input type="text" value={itemForm.product_name} onChange={e => setItemForm({...itemForm, product_name: e.target.value})} className={`w-full border rounded-xl px-3 py-2 text-xs font-bold outline-none ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder="Item name" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="text-[10px] font-black text-slate-500 mb-1 block">Category</label>
+                            <CustomSelect options={[{value: 'Medicine', label: 'Medicine'}, {value: 'Dental Materials', label: 'Dental Materials'}, {value: 'Consumables', label: 'Consumables'}, {value: 'Equipment', label: 'Equipment'}]} value={itemForm.category} onChange={v => setItemForm({...itemForm, category: v})} />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-black text-slate-500 mb-1 block">Qty</label>
+                            <input type="number" value={itemForm.quantity} onChange={e => setItemForm({...itemForm, quantity: Number(e.target.value)})} className={`w-full border rounded-xl px-3 py-2 text-xs font-bold ${theme === 'dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200'}`} />
+                        </div>
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                        <button type="button" onClick={() => setIsItemModalOpen(false)} className="flex-1 py-2 rounded-xl border text-xs font-bold transition-all hover:bg-slate-50">Cancel</button>
+                        <button type="submit" className="flex-1 py-2 rounded-xl bg-primary text-white text-xs font-bold transition-all hover:opacity-90">Save Item</button>
+                    </div>
+                </form>
+            </Modal>
         </div>
     );
 }

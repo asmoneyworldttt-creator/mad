@@ -392,34 +392,27 @@ export function Appointments({ userRole, theme, setActiveTab, setGlobalPatient }
                     apt.status === 'Completed' ? 'bg-primary border-white dark:border-slate-900' :
                     apt.status === 'Cancelled' ? 'bg-rose-500 border-white dark:border-slate-900' : 'bg-slate-300 border-white dark:border-slate-900'
                 }`} />
-                <div 
+            <div 
                     onClick={() => { setSelectedAppointment(apt); setIsDetailsModalOpen(true); }}
                     className="p-2.5 sm:p-3 rounded-xl border cursor-pointer hover:shadow-sm transition-all active:scale-[0.99] backdrop-blur-md"
                     style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}
                 >
-                    <div className="flex justify-between items-center gap-3">
-                        <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
                             <div className="w-8 h-8 rounded-md bg-primary/5 flex items-center justify-center text-primary font-bold text-xs shrink-0">{apt.name?.charAt(0) || 'P'}</div>
-                            <div className="min-w-0">
-                                <h4 className={`text-xs sm:text-sm font-bold truncate ${isCancelled ? 'line-through opacity-50' : ''} ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>{apt.name}</h4>
-                                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-0.5">
-                                    <span className="text-[9px] sm:text-[10px] text-slate-500 flex items-center gap-1"><Stethoscope size={10} /> {apt.doctor_name || 'Assign Doctor'}</span>
-                                    <span className="text-[9px] text-slate-400 bg-slate-50 dark:bg-white/5 px-1 py-0.5 rounded">{apt.type || 'Consultation'}</span>
-                                    {/* Patient ID and Mobile support */}
-                                    {apt.patient_id && (
-                                        <span className="text-[9px] text-slate-500 font-medium">
-                                            ID: <span className="text-slate-700 dark:text-slate-300 font-bold">{apt.patient_id.slice(0, 8)}</span>
-                                            {patientMap[apt.patient_id]?.phone && <span> • <span className="text-primary font-bold">{patientMap[apt.patient_id].phone}</span></span>}
-                                        </span>
-                                    )}
-                                </div>
+                            <div className="min-w-0 flex-1">
+                                <h4 className={`text-xs font-bold truncate max-w-[130px] sm:max-w-none ${isCancelled ? 'line-through opacity-50' : ''} ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>{apt.name}</h4>
+                                <p className="text-[9px] text-slate-500 flex items-center gap-1 truncate">
+                                    <Stethoscope size={9} /> {apt.doctor_name || 'Assign Doctor'}
+                                </p>
+                                {apt.type && <p className="text-[9px] text-slate-400">{apt.type}</p>}
                             </div>
                         </div>
                         <select
                             onClick={(e) => e.stopPropagation()}
                             value={apt.status}
                             onChange={(e) => handleUpdateStatus(apt.id, e.target.value)}
-                            className={`text-[9px] font-extrabold px-2 py-1 rounded-lg border uppercase shrink-0 outline-none cursor-pointer transition-all ${
+                            className={`text-[9px] font-extrabold px-1.5 py-1 rounded-lg border shrink-0 outline-none cursor-pointer transition-all max-w-[80px] ${
                                 apt.status === 'Confirmed' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
                                 apt.status === 'Completed' ? 'bg-primary/10 text-primary border-primary/20' :
                                 apt.status === 'Cancelled' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 'bg-slate-500/10 text-slate-500 border-slate-500/20'

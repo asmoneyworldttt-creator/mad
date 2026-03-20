@@ -48,6 +48,7 @@ import {
     downloadClinicalNotesPDF,
     type TreatmentPlanData
 } from '../../utils/pdfExport';
+import { SmartTimelineTab } from './SmartTimeline';
 
 const ToothSelector = ({ selected, onSelect, patientAge }: { selected: string, onSelect: (tooth: string) => void, patientAge?: number }) => {
     const [chartType, setChartType] = useState<'adult' | 'pediatric'>('adult');
@@ -68,27 +69,31 @@ const ToothSelector = ({ selected, onSelect, patientAge }: { selected: string, o
     const row2 = chartType === 'adult' ? adultRow2 : pediaRow2;
 
     return (
-        <div className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-white/10 mt-2">
-            <div className="flex justify-between items-center mb-2 px-1">
-                <p className="text-[9px] font-black text-slate-400 uppercase">Select Tooth Number</p>
-                <div className="flex gap-1 border border-slate-200 dark:border-white/10 rounded-lg p-0.5 bg-white dark:bg-white/5">
+        <div className="mt-2 rounded-2xl border overflow-hidden" style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)' }}>
+            <div className="flex justify-between items-center p-3 pb-2">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Select Tooth Number</p>
+                <div className="flex gap-1 border border-slate-200 dark:border-white/10 rounded-lg p-0.5" style={{ background: 'var(--card-bg)' }}>
                     <button type="button" onClick={() => setChartType('adult')} className={`px-2 py-0.5 rounded-md text-[8px] font-bold transition-all ${chartType === 'adult' ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>Adult</button>
                     <button type="button" onClick={() => setChartType('pediatric')} className={`px-2 py-0.5 rounded-md text-[8px] font-bold transition-all ${chartType === 'pediatric' ? 'bg-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>Pediatric</button>
                 </div>
             </div>
-            <div className={`flex justify-center gap-1 mb-1 overflow-x-auto py-1 ${chartType === 'pediatric' ? 'px-4' : ''}`}>
-                {row1.map(t => (
-                    <button type="button" key={t} onClick={() => onSelect(t)} className={`w-7 h-9 text-[10px] font-bold rounded-lg border flex items-center justify-center flex-shrink-0 transition-all ${selected === t ? 'bg-primary text-white border-primary shadow-md scale-105' : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:border-primary/40'}`}>
-                        {t}
-                    </button>
-                ))}
+            <div className="overflow-x-auto no-scrollbar px-3 pb-1">
+                <div className="flex gap-1 py-1 min-w-max">
+                    {row1.map(t => (
+                        <button type="button" key={t} onClick={() => onSelect(t)} className={`w-7 h-9 text-[10px] font-bold rounded-lg border flex items-center justify-center flex-shrink-0 transition-all ${selected === t ? 'bg-primary text-white border-primary shadow-md scale-105' : 'border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-200 hover:border-primary/40'}`} style={selected !== t ? { background: 'var(--card-bg)' } : undefined}>
+                            {t}
+                        </button>
+                    ))}
+                </div>
             </div>
-            <div className={`flex justify-center gap-1 overflow-x-auto py-1 ${chartType === 'pediatric' ? 'px-4' : ''}`}>
-                {row2.map(t => (
-                    <button type="button" key={t} onClick={() => onSelect(t)} className={`w-7 h-9 text-[10px] font-bold rounded-lg border flex items-center justify-center flex-shrink-0 transition-all ${selected === t ? 'bg-primary text-white border-primary shadow-md scale-105' : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:border-primary/40'}`}>
-                        {t}
-                    </button>
-                ))}
+            <div className="overflow-x-auto no-scrollbar px-3 pb-3">
+                <div className="flex gap-1 py-1 min-w-max">
+                    {row2.map(t => (
+                        <button type="button" key={t} onClick={() => onSelect(t)} className={`w-7 h-9 text-[10px] font-bold rounded-lg border flex items-center justify-center flex-shrink-0 transition-all ${selected === t ? 'bg-primary text-white border-primary shadow-md scale-105' : 'border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-200 hover:border-primary/40'}`} style={selected !== t ? { background: 'var(--card-bg)' } : undefined}>
+                            {t}
+                        </button>
+                    ))}
+                </div>
             </div>
         </div>
     );
@@ -532,6 +537,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
 
     const tabs = [
         { id: 'home', label: 'Home', icon: Activity },
+        { id: 'timeline', label: 'Timeline', icon: History },
         { id: 'clinical', label: 'Clinical Notes', icon: ClipboardCheck },
         { id: 'followup', label: 'Follow-up', icon: Calendar },
         { id: 'billing', label: 'Invoices', icon: FileText },
@@ -768,6 +774,18 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
             </div>
 
             <main className="space-y-10 pb-20">
+                {activeTab === 'timeline' && (
+                    <SmartTimelineTab 
+                        patient={patient} 
+                        bills={patientBills} 
+                        plans={patientPlans} 
+                        vitals={patientNotes.filter((n: any) => n.vitals).map((n: any) => n.vitals)} 
+                        labOrders={patientLabOrders} 
+                        prescriptions={patientPrescriptions} 
+                        activeTab={activeTab} 
+                        theme={theme} 
+                    />
+                )}
                 {activeTab === 'home' && (
                     <div className="space-y-6">
                         {/* ── Treatment & Lab Status Matrix Category Row ── */}
@@ -1366,11 +1384,11 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
 
                 {activeTab === 'clinical' && (
                     <div className="space-y-8">
-                        <div className="flex items-center gap-3 p-1.5 bg-slate-100/50 dark:bg-white/5 rounded-2xl w-fit border border-slate-200 dark:border-white/10">
-                            <button onClick={() => setClinicalSubTab('soap')} className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${clinicalSubTab === 'soap' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-500 hover:text-primary'}`}>Clinical Notes</button>
-                            <button onClick={() => setClinicalSubTab('vitals')} className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${clinicalSubTab === 'vitals' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-500 hover:text-primary'}`}>Vital Signs</button>
-                            <button onClick={() => setClinicalSubTab('consents')} className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${clinicalSubTab === 'consents' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-500 hover:text-primary'}`}>Consent Forms</button>
-                            <button onClick={() => setClinicalSubTab('medical_clearance')} className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${clinicalSubTab === 'medical_clearance' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-500 hover:text-primary'}`}>Medical Clearance</button>
+                        <div className="flex items-center gap-1 p-1 bg-slate-100/50 dark:bg-white/5 rounded-2xl overflow-x-auto no-scrollbar border border-slate-200 dark:border-white/10">
+                            <button onClick={() => setClinicalSubTab('soap')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 ${clinicalSubTab === 'soap' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-500 hover:text-primary'}`}>Clinical Notes</button>
+                            <button onClick={() => setClinicalSubTab('vitals')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 ${clinicalSubTab === 'vitals' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-500 hover:text-primary'}`}>Vital Signs</button>
+                            <button onClick={() => setClinicalSubTab('consents')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 ${clinicalSubTab === 'consents' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-500 hover:text-primary'}`}>Consents</button>
+                            <button onClick={() => setClinicalSubTab('medical_clearance')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 ${clinicalSubTab === 'medical_clearance' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-500 hover:text-primary'}`}>Med. Clearance</button>
                         </div>
 
                         {clinicalSubTab === 'soap' && (
@@ -1381,13 +1399,13 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                     </button>
                                 </div>
                                 {patientNotes.length > 0 ? patientNotes.map(note => (
-                                    <div key={note.id} className="p-8 rounded-[2.5rem] border shadow-sm" style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
-                                        <div className="flex justify-between items-start mb-6">
+                                    <div key={note.id} className="p-4 sm:p-8 rounded-[2rem] border shadow-sm" style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
+                                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 mb-6">
                                             <div>
-                                                <h5 className="text-xl font-bold mb-1">Clinical Record: {new Date(note.created_at).toLocaleDateString()}</h5>
-                                                <p className="text-xs font-bold text-primary flex items-center gap-2 uppercase tracking-widest"><ClipboardCheck size={12} /> Dr. {note.doctor_name}</p>
+                                                <h5 className="text-base sm:text-xl font-bold mb-1">Clinical Record: {new Date(note.created_at).toLocaleDateString()}</h5>
+                                                <p className="text-xs font-bold text-primary flex items-center gap-2 uppercase tracking-widest"><ClipboardCheck size={12} /> {note.doctor_name}</p>
                                             </div>
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex flex-wrap items-center gap-2">
                                                 <button onClick={() => {
                                                     setIsEditingNote(true);
                                                     setEditingNoteId(note.id);
@@ -1403,18 +1421,18 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                                         setNewNote(prev => ({ ...prev, plan: parsed.text || '' }));
                                                         setAdvisedTreatments(parsed.advised || []);
                                                         setAdvisedLabOrders(parsed.advised_labs || []);
-                                                        setTreatmentsDone(parsed.treatments_done || []); // Load state flaws trigger!
+                                                        setTreatmentsDone(parsed.treatments_done || []);
                                                     } catch (e) {
                                                         setNewNote(prev => ({ ...prev, plan: note.plan || '' }));
                                                     }
                                                     setIsSoapModalOpen(true);
-                                                }} className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1 transition-all border dark:border-white/5 shadow-sm">
+                                                }} className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1 transition-all border dark:border-white/5 shadow-sm whitespace-nowrap">
                                                     Update
                                                 </button>
                                                 <button onClick={() => {
-                                                    let advised = [];
-                                                    let advisedLabs = [];
-                                                    let treatmentsDoneListed = [];
+                                                    let advised: any[] = [];
+                                                    let advisedLabs: any[] = [];
+                                                    let treatmentsDoneListed: any[] = [];
                                                     let description = note.plan;
                                                     try {
                                                          const parsed = JSON.parse(note.plan);
@@ -1442,10 +1460,10 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                                         advisedLabs: advisedLabs,
                                                         treatmentsDone: treatmentsDoneListed
                                                     });
-                                                }} className="px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1 transition-all border border-primary/20 shadow-sm">
+                                                }} className="px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl text-[10px] font-black uppercase flex items-center gap-1 transition-all border border-primary/20 shadow-sm whitespace-nowrap">
                                                      <Download size={12} /> PDF
                                                 </button>
-                                                <span className="px-4 py-1.5 bg-primary/10 text-primary rounded-full text-[10px] font-black uppercase tracking-widest">Permanent Record</span>
+                                                <span className="px-3 py-1.5 bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 rounded-xl text-[9px] font-black uppercase whitespace-nowrap">Permanent</span>
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

@@ -82,13 +82,13 @@ function DateFilterTabs({ active, onChange, customStart, setCustomStart, customE
         { id: 'custom', label: 'Custom' },
     ];
     return (
-        <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center p-1 rounded-xl backdrop-blur-md" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-0.5">
+            <div className="flex items-center p-1 rounded-xl shrink-0" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
                 {tabs.map(t => {
                     const isActive = active === t.id;
                     return (
                         <button key={t.id} onClick={() => onChange(t.id)}
-                            className="relative px-3 sm:px-4 py-1.5 rounded-lg text-xs font-bold transition-all outline-none"
+                            className="relative px-3 py-1.5 rounded-lg text-xs font-bold transition-all outline-none whitespace-nowrap"
                             style={{
                                 color: isActive ? 'white' : 'var(--text-muted)',
                             }}>
@@ -105,7 +105,7 @@ function DateFilterTabs({ active, onChange, customStart, setCustomStart, customE
                 })}
             </div>
             {active === 'custom' && setCustomStart && setCustomEnd && (
-                <div className="flex items-center gap-2 p-1.5 rounded-xl border backdrop-blur-md" style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
+                <div className="flex items-center gap-2 p-1.5 rounded-xl border backdrop-blur-md shrink-0" style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
                     <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="bg-transparent border-none text-[10px] font-bold px-1 outline-none text-slate-400" />
                     <span className="text-[9px] font-bold text-slate-500">to</span>
                     <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="bg-transparent border-none text-[10px] font-bold px-1 outline-none text-slate-400" />

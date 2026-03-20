@@ -53,6 +53,7 @@ const LockOutScreen = lazy(() => import('./components/views/LockOutScreen').then
 const ClinicalNotes = lazy(() => import('./components/views/ClinicalNotes').then(m => ({ default: m.ClinicalNotes })));
 const VitalSignsPanel = lazy(() => import('./components/views/VitalSignsPanel').then(m => ({ default: m.VitalSignsPanel })));
 const Reminder = lazy(() => import('./components/views/Reminder').then(m => ({ default: m.Reminder })));
+const InsuranceManagement = lazy(() => import('./components/views/InsuranceManagement').then(m => ({ default: m.InsuranceManagement })));
 const VoidField = lazy(() => import('./components/VoidField'));
 
 type UserRole = 'master' | 'admin' | 'staff' | 'patient';
@@ -285,7 +286,7 @@ function App() {
       loyalty: 'Loyalty Hub', resources: 'Resources', 'treatment-plans': 'Treatment Plans',
       teledentistry: 'TeleDentistry', 'perio-charting': 'Perio Charting', 'doctor-calendar': 'Doctor Schedule', suppliers: 'Suppliers',
       'clinical-notes': 'SOAP Notes', 'vital-signs': 'Vital Signs',
-      reminder: 'Reminder Desk'
+      reminder: 'Reminder Desk', 'insurance-management': 'Insurance Management'
     };
     document.title = `Dentora — ${titles[activeTab] || 'Dental Management'}`;
   }, [activeTab]);
@@ -363,6 +364,8 @@ function App() {
         return <NotificationModal isOpen={true} onClose={() => setActiveTab('dashboard')} theme={theme} />;
       case 'reminder':
         return <Reminder userRole={userRole} theme={theme} />;
+      case 'insurance-management':
+        return <InsuranceManagement theme={theme} />;
       case 'patient-registration':
         return <PatientRegistrationModal isPage={true} isOpen={true} onClose={() => setActiveTab('patients')} onSuccess={(id) => { setGlobalPatient({ id }); setActiveTab('patient-overview'); }} onNavigate={setActiveTab} theme={theme} />;
       default:

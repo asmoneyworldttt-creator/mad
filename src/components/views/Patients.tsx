@@ -9,6 +9,7 @@ import { PatientRegistrationModal } from './PatientRegistrationModal';
 import { SkeletonList } from '../SkeletonLoader';
 import { useAuditLog } from '../../hooks/useAuditLog';
 import { Modal } from '../Modal';
+import { MasterTimeline } from './MasterTimeline';
 
 type UserRole = 'master' | 'admin' | 'staff' | 'patient';
 
@@ -136,7 +137,7 @@ export function Patients({ userRole, setActiveTab, theme }: { userRole: UserRole
     const [selectedPatient, setSelectedPatient] = useState<any>(null);
     const [patientsData, setPatientsData] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [view, setView] = useState<'list' | 'register'>('list');
+    const [view, setView] = useState<'list' | 'register' | 'timeline'>('list');
     const [dateFilter, setDateFilter] = useState<'All' | 'Today' | 'Yesterday' | 'Last Month' | 'Custom'>('All');
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');
@@ -349,6 +350,10 @@ export function Patients({ userRole, setActiveTab, theme }: { userRole: UserRole
         return true;
     });
 
+    if (view === 'timeline') {
+        return <MasterTimeline patients={patientsData} theme={theme} onBack={() => setView('list')} onSelectPatient={(p: any) => { setView('list'); setSelectedPatient(p); }} />;
+    }
+
     if (selectedPatient) {
         return <PatientOverview patient={selectedPatient} onBack={() => setSelectedPatient(null)} theme={theme} setActiveTab={setActiveTab} />;
     }
@@ -375,7 +380,13 @@ export function Patients({ userRole, setActiveTab, theme }: { userRole: UserRole
                             <Users size={18} />
                         </div>
                         <div>
-                            <h2 className="text-sm font-bold uppercase tracking-tight">Patient Directory</h2>
+                            <div className="flex items-center gap-2">
+                                <h2 className="text-sm font-bold uppercase tracking-tight">Patient Directory</h2>
+                                <div className="flex items-center gap-1 bg-slate-100 dark:bg-white/5 p-0.5 rounded-lg border border-black/5">
+                                    <button onClick={() => setView('list')} className={`px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest whitespace-nowrap ${(view as string) === 'list' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary' : 'text-slate-400'}`}>Directory</button>
+                                    <button onClick={() => setView('timeline')} className={`px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest whitespace-nowrap ${(view as string) === 'timeline' ? 'bg-white dark:bg-slate-800 shadow-sm text-primary' : 'text-slate-400'}`}>Timeline</button>
+                                </div>
+                            </div>
                             <p className="text-[9px] font-medium text-slate-500">{filteredPatients.length} Active Records</p>
                         </div>
                     </div>
@@ -398,17 +409,19 @@ export function Patients({ userRole, setActiveTab, theme }: { userRole: UserRole
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t dark:border-white/5">
-                    <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+                    <div className="overflow-x-auto no-scrollbar pb-0.5">
+                    <div className="flex items-center gap-1.5 min-w-max">
                         {['All', 'Today', 'Yesterday', 'Last Month', 'Custom'].map(f => (
                             <button 
                                 key={f} 
                                 onClick={() => setDateFilter(f as any)} 
-                                className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${dateFilter === f ? 'bg-primary text-white shadow-sm' : 'bg-slate-50 dark:bg-white/5 text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10'}`}
+                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap ${dateFilter === f ? 'bg-primary text-white shadow-sm' : 'bg-slate-50 dark:bg-white/5 text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10'}`}
                             >
                                 {f}
                             </button>
                         ))}
                     </div>
+                </div>
 
                     {dateFilter === 'Custom' && (
                         <div className="flex items-center gap-1 px-1.5">
