@@ -76,71 +76,91 @@
 
 
   /* ═══════════════════════════════════════════════════
-     DARK MODE — Applied when body has .dark-theme class
+     DARK MODE — AxoDental Theme (Cyan · Violet · Coral)
+     Applied ONLY when body has .dark-theme class
   ═══════════════════════════════════════════════════ */
   .dark-theme {
     color-scheme: dark !important;
-    /* Surfaces — Void & Abyss inspired by new-main definitions setups securely */
-    --void: #000000;
 
-    --bg-page: #000000;
-    --bg-deep: #030308;
-    --surface: #0D0B1A;
-    --surface-raised: #141228;
-    --surface-glass: rgba(13, 11, 26, 0.65);
+    /* ── Deep Space Background Surfaces ── */
+    --void: #040410;
+    --bg-page: #060614;
+    --bg-deep: #080820;
+    --surface: #0C0C24;
+    --surface-raised: #111130;
+    --surface-glass: rgba(12, 12, 36, 0.7);
 
-    /* Gradients / glowing variables setups frames solutions */
-    --pulse-cyan: #00C8FF;
-    --pulse-violet: #7B2FE8;
+    /* ── AxoDental Brand Colors (from logo) ── */
+    --pulse-cyan: #00CFFF;
+    --pulse-violet: #7C3AED;
     --pulse-orange: #FF6B35;
 
-    /* Primary configurations overlays setups cleanly sets */
-    --primary: #00C8FF;
-    --primary-hover: #3B6EFF;
-    --primary-soft: rgba(0, 200, 255, 0.1);
-    --primary-glow: rgba(0, 200, 255, 0.35);
+    /* ── Primary: Logo Cyan ── */
+    --primary: #00CFFF;
+    --primary-hover: #00AADD;
+    --primary-soft: rgba(0, 207, 255, 0.12);
+    --primary-glow: rgba(0, 207, 255, 0.3);
 
-    /* Secondary framing setups */
-    --secondary: #7B2FE8;
-    --secondary-soft: rgba(123, 47, 232, 0.1);
+    /* ── Secondary: Logo Violet ── */
+    --secondary: #7C3AED;
+    --secondary-soft: rgba(124, 58, 237, 0.12);
+    --secondary-glow: rgba(124, 58, 237, 0.3);
 
-    /* Statuses setups overlays nicely */
-    --success: #00E676;
-    --success-soft: rgba(0, 230, 118, 0.1);
-    --warning: #FFAB00;
-    --warning-soft: rgba(255, 171, 0, 0.1);
-    --error: #FF1744;
-    --error-soft: rgba(255, 23, 68, 0.1);
+    /* ── Accent: Logo Coral/Orange ── */
+    --accent: #FF6B35;
+    --accent-soft: rgba(255, 107, 53, 0.12);
 
-    /* Typography — Cleaned & crisp solutions index overlays setups nicely */
-    --text-dark: #F0EEFF;
-    --text-main: #F0EEFF;
-    --text-muted: #8B88A8;
-    --text-light: #4A4868;
+    /* ── Status Colors ── */
+    --success: #06D6A0;
+    --success-soft: rgba(6, 214, 160, 0.12);
+    --warning: #FFB703;
+    --warning-soft: rgba(255, 183, 3, 0.12);
+    --error: #EF4444;
+    --error-soft: rgba(239, 68, 68, 0.12);
+    --alert: #EF4444;
 
-    /* Card & Interface layers setups */
-    --card-bg: rgba(13, 11, 26, 0.75);
-    --card-bg-alt: rgba(20, 18, 40, 0.6);
+    /* ── Typography: readable on deep backgrounds ── */
+    --text-dark: #EEE8FF;
+    --text-main: #D8D2F5;
+    --text-muted: #7A74A0;
+    --text-light: #4A4670;
 
-    /* Sidebar layouts overlays framing securely setup */
-    --sidebar-bg: rgba(7, 6, 15, 0.95);
-    --sidebar-text: #F0EEFF;
-    --sidebar-muted: #8B88A8;
-    --sidebar-active: #00C8FF;
-    --sidebar-border: rgba(123, 47, 232, 0.12);
+    /* ── Card & Interface Surfaces ── */
+    --card-bg: rgba(12, 12, 36, 0.8);
+    --card-bg-alt: rgba(17, 17, 48, 0.65);
 
-    /* Custom Glassmorphism configs */
-    --glass-bg: rgba(13, 11, 26, 0.6);
-    --glass-border: rgba(0, 200, 255, 0.15);
-    --glass-shadow: rgba(0, 0, 0, 0.82);
+    /* ── Sidebar ── */
+    --sidebar-bg: #07071A;
+    --sidebar-text: #EEE8FF;
+    --sidebar-muted: #6A6490;
+    --sidebar-active: #00CFFF;
+    --sidebar-border: rgba(124, 58, 237, 0.15);
 
-    --border-color: rgba(123, 47, 232, 0.14);
-    --border-subtle: rgba(123, 47, 232, 0.08);
+    /* ── Glassmorphism ── */
+    --glass-bg: rgba(12, 12, 36, 0.65);
+    --glass-border: rgba(0, 207, 255, 0.18);
+    --glass-shadow: rgba(0, 0, 0, 0.85);
 
+    /* ── Borders ── */
+    --border-color: rgba(124, 58, 237, 0.18);
+    --border-subtle: rgba(124, 58, 237, 0.09);
+
+    /* ── Glow Shadows (new) ── */
+    --glow-cyan: 0 0 24px rgba(0, 207, 255, 0.25), 0 4px 32px rgba(0, 0, 0, 0.6);
+    --glow-violet: 0 0 24px rgba(124, 58, 237, 0.25), 0 4px 32px rgba(0, 0, 0, 0.6);
+    --card-shadow-dark: 0 4px 24px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(124, 58, 237, 0.08) inset;
+    --card-border-dark: rgba(124, 58, 237, 0.16);
+
+    /* ── Brand Gradient (used on buttons/highlights) ── */
+    --gradient-brand: linear-gradient(135deg, #00CFFF 0%, #7C3AED 60%, #FF6B35 100%);
+    --gradient-brand-soft: linear-gradient(135deg, rgba(0,207,255,0.15) 0%, rgba(124,58,237,0.15) 100%);
+
+    /* ── Radius ── */
     --radius-premium: 20px;
     --radius-bento: 24px;
     --radius-card: 16px;
   }
+
 
   * {
     min-width: 0; /* Prevents flex-children stretching outside parent bounds triggers layouts */
@@ -334,6 +354,119 @@
 .dark-theme .hover\:bg-slate-50\/80:hover {
   background: var(--primary-soft) !important;
 }
+
+/* ══════════════════════════════════════════════════════
+   AXODENTAL DARK THEME — Premium UI Component Upgrades
+   Applies to ALL 48 views via .dark-theme class cascade
+   ══════════════════════════════════════════════════════ */
+
+/* ── DM Sans Font for Dark Mode: clean, healthcare-grade ── */
+.dark-theme,
+.dark-theme body,
+.dark-theme * {
+  font-family: 'DM Sans', 'Plus Jakarta Sans', system-ui, sans-serif !important;
+  letter-spacing: -0.01em;
+}
+
+/* ── Card: premium deep surface with hover lift ── */
+.dark-theme [class*="rounded-\[2rem\]"],
+.dark-theme [class*="rounded-\[2\.5rem\]"],
+.dark-theme [class*="rounded-\[3rem\]"] {
+  box-shadow: var(--card-shadow-dark) !important;
+  border-color: var(--card-border-dark) !important;
+  transition: box-shadow 0.3s ease, border-color 0.3s ease, transform 0.25s ease !important;
+  will-change: transform;
+}
+
+.dark-theme [class*="rounded-\[2rem\]"]:hover,
+.dark-theme [class*="rounded-\[2\.5rem\]"]:hover {
+  box-shadow: var(--glow-violet) !important;
+  border-color: rgba(0, 207, 255, 0.22) !important;
+  transform: translateY(-2px);
+}
+
+/* ── Primary Buttons: brand gradient glow ── */
+.dark-theme .bg-primary,
+.dark-theme [class*="bg-primary"] {
+  background: linear-gradient(135deg, #00CFFF, #7C3AED) !important;
+  box-shadow: 0 0 18px rgba(0, 207, 255, 0.28), 0 4px 12px rgba(0,0,0,0.4) !important;
+  border: none !important;
+}
+
+.dark-theme .bg-primary:hover,
+.dark-theme [class*="bg-primary"]:hover {
+  background: linear-gradient(135deg, #00AADD, #6D28D9) !important;
+  box-shadow: 0 0 28px rgba(0, 207, 255, 0.4), 0 6px 20px rgba(0,0,0,0.5) !important;
+  transform: translateY(-1px);
+}
+
+/* ── Sidebar Active Item: cyan left-border glow ── */
+.dark-theme .bg-primary\/10,
+.dark-theme [class*="bg-primary\/10"] {
+  background: rgba(0, 207, 255, 0.08) !important;
+  border-left: 2px solid var(--primary) !important;
+  box-shadow: inset 3px 0 12px rgba(0, 207, 255, 0.1) !important;
+}
+
+/* ── Emerald green accent: re-map to teal in dark mode ── */
+.dark-theme .bg-emerald-500,
+.dark-theme .hover\:bg-emerald-600:hover {
+  background: #06D6A0 !important;
+}
+.dark-theme .text-emerald-500 {
+  color: #06D6A0 !important;
+}
+.dark-theme .bg-emerald-500\/10,
+.dark-theme [class*="bg-emerald-500\/"] {
+  background: rgba(6, 214, 160, 0.12) !important;
+}
+
+/* ── Stat/KPI badge glow ── */
+.dark-theme [class*="bg-primary\/5"],
+.dark-theme [class*="bg-primary\/10"] {
+  background: var(--gradient-brand-soft) !important;
+}
+
+/* ── Page transition: fade for seamless navigation ── */
+.dark-theme .animate-slide-up {
+  animation: darkSlideUp 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards !important;
+}
+
+@keyframes darkSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.99);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+/* ── Scrollbar: brand-colored in dark mode ── */
+.dark-theme ::-webkit-scrollbar-thumb {
+  background: rgba(124, 58, 237, 0.35) !important;
+}
+.dark-theme ::-webkit-scrollbar-thumb:hover {
+  background: var(--primary) !important;
+}
+
+/* ── Mobile: button text overflow protection ── */
+@media (max-width: 480px) {
+  .dark-theme button {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  .dark-theme [class*="rounded-\[2rem\]"],
+  .dark-theme [class*="rounded-\[2\.5rem\]"] {
+    padding: 1rem !important;
+  }
+}
+
 
 @layer components {
 
