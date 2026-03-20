@@ -69,12 +69,13 @@ export function MobileBottomNav({ activeTab, setActiveTab, toggleMore, theme, us
                 <div className="fixed inset-0 z-[60]" onClick={() => setShowAllMenu(false)}>
                     <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
                     <div
-                        className={`absolute bottom-24 left-4 right-4 rounded-[3rem] p-6 shadow-2xl border flex flex-col max-h-[80vh] ${isDark ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'}`}
+                        className="absolute bottom-24 left-4 right-4 rounded-[3rem] p-6 shadow-2xl backdrop-blur-2xl flex flex-col max-h-[80vh]"
+                        style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}
                         onClick={e => e.stopPropagation()}
                     >
                         <div className="flex items-center justify-between mb-6 px-2">
-                            <h3 className={`font-bold text-lg ${isDark ? 'text-white' : 'text-slate-800'}`}>Navigation</h3>
-                            <button onClick={() => setShowAllMenu(false)} className={`p-2 rounded-xl transition-all active:scale-95 ${isDark ? 'bg-white/10 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>
+                            <h3 className="font-bold text-lg" style={{ color: 'var(--text-dark)' }}>Navigation</h3>
+                            <button onClick={() => setShowAllMenu(false)} className="p-2 rounded-xl transition-all active:scale-95 bg-slate-500/10" style={{ color: 'var(--text-muted)' }}>
                                 <X size={20} />
                             </button>
                         </div>
@@ -86,9 +87,11 @@ export function MobileBottomNav({ activeTab, setActiveTab, toggleMore, theme, us
                                     onClick={() => { setActiveTab(link.id); setShowAllMenu(false); }}
                                     className={`flex flex-col items-center justify-center gap-2 p-3 min-h-[100px] rounded-3xl transition-all active:scale-95 border ${activeTab === link.id
                                         ? 'bg-primary text-white shadow-xl shadow-primary/30 border-primary'
-                                        : isDark
-                                            ? 'bg-white/5 text-slate-300 border-white/5 hover:bg-white/10'
-                                            : 'bg-slate-50 text-slate-600 border-slate-100 shadow-sm'}`}
+                                        : 'bg-slate-500/5 hover:bg-slate-500/10'}`}
+                                    style={{ 
+                                        color: activeTab === link.id ? 'white' : 'var(--text-dark)', 
+                                        borderColor: activeTab === link.id ? 'transparent' : 'var(--border-color)' 
+                                    }}
                                 >
                                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${activeTab === link.id ? 'bg-white/20' : 'bg-primary/10 text-primary'}`}>
                                         <link.icon size={22} />
@@ -112,21 +115,19 @@ export function MobileBottomNav({ activeTab, setActiveTab, toggleMore, theme, us
                 </div>
             )}
 
-            <nav className={`fixed bottom-6 left-1/2 -translate-x-1/2 w-[94%] max-w-sm rounded-[2.5rem] px-6 py-3 z-50 transition-all duration-500 shadow-2xl border ${isDark
-                ? 'bg-slate-900/95 border-slate-800 backdrop-blur-xl'
-                : 'bg-white/95 border-slate-200 backdrop-blur-xl shadow-slate-200/50'
-                }`}>
+            <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[94%] max-w-sm rounded-[2.5rem] px-6 py-3 z-50 transition-all duration-500 shadow-2xl backdrop-blur-xl"
+                style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
                 <div className="flex items-center justify-between">
                     <button
                         onClick={() => setActiveTab('dashboard')}
-                        className={`flex flex-col items-center gap-1 transition-all duration-300 p-2 rounded-xl ${activeTab === 'dashboard' ? 'text-primary' : isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}>
+                        className={`flex flex-col items-center gap-1 transition-all duration-300 p-2 rounded-xl ${activeTab === 'dashboard' ? 'text-primary' : 'text-slate-400 hover:text-slate-600'}`}>
                         <Home size={24} fill={activeTab === 'dashboard' ? 'currentColor' : 'none'} />
                         <span className="text-[10px] font-bold">Home</span>
                     </button>
 
                     <button
                         onClick={() => setActiveTab('appointments')}
-                        className={`flex flex-col items-center gap-1 transition-all duration-300 p-2 rounded-xl ${activeTab === 'appointments' ? 'text-primary' : isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}>
+                        className={`flex flex-col items-center gap-1 transition-all duration-300 p-2 rounded-xl ${activeTab === 'appointments' ? 'text-primary' : 'text-slate-400 hover:text-slate-600'}`}>
                         <Calendar size={24} />
                         <span className="text-[10px] font-bold">Schedule</span>
                     </button>
@@ -135,7 +136,7 @@ export function MobileBottomNav({ activeTab, setActiveTab, toggleMore, theme, us
                     <div className="flex flex-col items-center">
                         <button
                             onClick={() => setActiveTab('patient-registration')}
-                            className={`w-14 h-14 rounded-2xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/30 active:scale-95 hover:scale-105 transition-all duration-300 -mt-8 mb-1 border-4 ${isDark ? 'border-slate-900' : 'border-white'}`}
+                            className="w-14 h-14 rounded-2xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/30 active:scale-95 hover:scale-105 transition-all duration-300 -mt-8 mb-1 border-4 border-[var(--background)]"
                             style={{ background: 'linear-gradient(135deg, var(--primary), #8B5CF6)' }}
                         >
                             <Plus size={28} strokeWidth={2.5} />
@@ -145,14 +146,14 @@ export function MobileBottomNav({ activeTab, setActiveTab, toggleMore, theme, us
 
                     <button
                         onClick={() => setActiveTab('patients')}
-                        className={`flex flex-col items-center gap-1 transition-all duration-300 p-2 rounded-xl ${activeTab === 'patients' ? 'text-primary' : isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}>
+                        className={`flex flex-col items-center gap-1 transition-all duration-300 p-2 rounded-xl ${activeTab === 'patients' ? 'text-primary' : 'text-slate-400 hover:text-slate-600'}`}>
                         <Users size={24} />
                         <span className="text-[10px] font-bold">Patients</span>
                     </button>
 
                     <button
                         onClick={() => setShowAllMenu(true)}
-                        className={`flex flex-col items-center gap-1 transition-all duration-300 p-2 rounded-xl ${showAllMenu ? 'text-primary' : isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}>
+                        className={`flex flex-col items-center gap-1 transition-all duration-300 p-2 rounded-xl ${showAllMenu ? 'text-primary' : 'text-slate-400 hover:text-slate-600'}`}>
                         <Grid3X3 size={24} />
                         <span className="text-[10px] font-bold">More</span>
                     </button>

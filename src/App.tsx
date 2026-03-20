@@ -1,7 +1,8 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
+import { motion } from 'framer-motion';
 import { supabase } from './supabase';
 import { Capacitor } from '@capacitor/core';
-import { Bell, Sun, Moon, Search } from 'lucide-react';
+import { Bell, Sun, Moon, Search, Activity } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { MobileBottomNav } from './components/MobileBottomNav';
@@ -52,6 +53,7 @@ const LockOutScreen = lazy(() => import('./components/views/LockOutScreen').then
 const ClinicalNotes = lazy(() => import('./components/views/ClinicalNotes').then(m => ({ default: m.ClinicalNotes })));
 const VitalSignsPanel = lazy(() => import('./components/views/VitalSignsPanel').then(m => ({ default: m.VitalSignsPanel })));
 const Reminder = lazy(() => import('./components/views/Reminder').then(m => ({ default: m.Reminder })));
+const VoidField = lazy(() => import('./components/VoidField'));
 
 type UserRole = 'master' | 'admin' | 'staff' | 'patient';
 
@@ -293,12 +295,12 @@ function App() {
     switch (activeTab) {
       case 'dashboard':
         if (userRole === 'master') return <MasterPanel theme={theme} />;
-        if (userRole === 'admin') return <Dashboard setActiveTab={setActiveTab} userRole={userRole} theme={theme} />;
+        if (userRole === 'admin') return <Dashboard setActiveTab={setActiveTab} userRole={userRole} theme={theme} session={session} staffData={staffData} />;
         if (userRole === 'staff') return <DoctorPanel theme={theme} setActiveTab={setActiveTab} />;
         if (userRole === 'patient') return <PatientPortal theme={theme} />;
-        return <Dashboard setActiveTab={setActiveTab} userRole={userRole} theme={theme} />;
+        return <Dashboard setActiveTab={setActiveTab} userRole={userRole} theme={theme} session={session} staffData={staffData} />;
       case 'appointments':
-        return <Appointments userRole={userRole} setActiveTab={setActiveTab} theme={theme} />;
+        return <Appointments userRole={userRole} setActiveTab={setActiveTab} theme={theme} setGlobalPatient={setGlobalPatient} />;
       case 'patient-overview':
         return <PatientOverview patient={globalPatient} onBack={() => setActiveTab('patients')} theme={theme} />;
       case 'patients':
@@ -362,7 +364,7 @@ function App() {
       case 'reminder':
         return <Reminder userRole={userRole} theme={theme} />;
       case 'patient-registration':
-        return <PatientRegistrationModal isOpen={true} onClose={() => setActiveTab('patients')} onSuccess={(id) => { setGlobalPatient({ id }); setActiveTab('patient-overview'); }} onNavigate={setActiveTab} theme={theme} />;
+        return <PatientRegistrationModal isPage={true} isOpen={true} onClose={() => setActiveTab('patients')} onSuccess={(id) => { setGlobalPatient({ id }); setActiveTab('patient-overview'); }} onNavigate={setActiveTab} theme={theme} />;
       default:
         return <Dashboard setActiveTab={setActiveTab} userRole={userRole} theme={theme} />;
     }
@@ -423,7 +425,7 @@ function App() {
       <div className="corner-glow" />
 
       {theme === 'dark' && (
-        <div className="fixed top-[-10%] left-[-10%] w-[100%] h-[100%] opacity-[0.05] blur-[150px] rounded-full pointer-events-none" style={{ background: 'var(--primary)' }} />
+        <Suspense fallback={null}><VoidField /></Suspense>
       )}
 
       <Sidebar
@@ -453,15 +455,18 @@ function App() {
         )}
 
         {isMobile && !isMobileMenuOpen && (
-          <header className={`sticky top-0 z-40 px-5 py-3 transition-all duration-300 ${theme === 'dark' ? 'bg-slate-900 shadow-lg border-b border-white/5' : 'bg-white shadow-sm border-b border-slate-100'}`}>
+          <header className={`sticky top-0 z-40 px-5 py-3 transition-all backdrop-blur-md duration-300 border-b ${theme === 'dark' ? 'bg-slate-900/80 shadow-lg border-white/5' : 'bg-white/80 shadow-sm border-slate-100'}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className={`w-10 h-10 rounded-xl overflow-hidden shadow-sm border transition-colors ${theme === 'dark' ? 'border-slate-800' : 'border-slate-200'}`} onClick={() => setActiveTab('profile')}>
-                  <img alt="User avatar" className="w-full h-full object-cover" src={staffData?.profile_photo_url || (userRole === 'patient' ? "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150" : "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=150")} />
+                <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center p-2 shadow-lg shadow-primary/30 flex-shrink-0">
+                  <Activity className="text-white w-full h-full" />
                 </div>
-                <div>
-                  <p className={`text-[10px] font-bold uppercase tracking-wider leading-none mb-1 ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>Welcome</p>
-                  <h1 className={`text-base font-bold leading-none ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>{session?.user?.user_metadata?.full_name || session?.user?.email?.split('@')[0] || 'User'}</h1>
+                <div className="flex flex-col">
+                  <h1 className={`font-bold text-lg tracking-tight leading-none ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>Dentora</h1>
+                  <div className="flex items-center gap-1 mt-1 opacity-80">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)]" />
+                    <p className={`text-[10px] font-bold ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>Clinic Manager</p>
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -490,7 +495,20 @@ function App() {
         )}
 
         <main id="main-content" className={`flex-1 overflow-y-auto ${isMobile ? 'px-4 py-6' : 'p-6 md:p-8'} custom-scrollbar bg-transparent relative z-0`} role="main">
-          <div className="max-w-[1400px] mx-auto pb-24 md:pb-12">
+            {/* Ambient dynamic background orbs - GLOBAL */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
+                <motion.div 
+                    animate={{ x: [0, 40, -40, 0], y: [0, 20, -20, 0] }}
+                    transition={{ repeat: Infinity, duration: 15, ease: "easeInOut" }}
+                    className="absolute top-1/6 -left-10 w-72 h-72 rounded-full bg-cyan-400/10 blur-3xl opacity-60"
+                />
+                <motion.div 
+                    animate={{ x: [0, -30, 30, 0], y: [0, -40, 40, 0] }}
+                    transition={{ repeat: Infinity, duration: 18, ease: "easeInOut" }}
+                    className="absolute bottom-1/3 -right-10 w-80 h-80 rounded-full bg-violet-400/10 blur-3xl opacity-60"
+                />
+            </div>
+            <div className="max-w-[1400px] mx-auto pb-24 md:pb-12">
             <Suspense fallback={<ViewFallback />}>
               {renderContent()}
             </Suspense>
@@ -510,6 +528,14 @@ function App() {
       <style>{`
         .pt-safe-top { padding-top: env(safe-area-inset-top); }
         .pb-safe     { padding-bottom: env(safe-area-inset-bottom, 20px); }
+        input[type="checkbox"] {
+          width: 0.75rem !important;
+          height: 0.75rem !important;
+          border-radius: 0.25rem !important;
+          border-color: var(--border-color) !important;
+          cursor: pointer !important;
+          accent-color: var(--primary) !important;
+        }
       `}</style>
     </div>
   );

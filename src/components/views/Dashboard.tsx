@@ -83,21 +83,29 @@ function DateFilterTabs({ active, onChange, customStart, setCustomStart, customE
     ];
     return (
         <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1 p-1 rounded-xl" style={{ background: 'var(--card-bg-alt)', border: '1px solid var(--border-color)' }}>
-                {tabs.map(t => (
-                    <button key={t.id} onClick={() => onChange(t.id)}
-                        className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
-                        style={{
-                            background: active === t.id ? 'var(--primary)' : 'transparent',
-                            color: active === t.id ? 'white' : 'var(--text-muted)',
-                            boxShadow: active === t.id ? '0 2px 8px var(--primary-glow)' : 'none',
-                        }}>
-                        {t.label}
-                    </button>
-                ))}
+            <div className="flex items-center p-1 rounded-xl backdrop-blur-md" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
+                {tabs.map(t => {
+                    const isActive = active === t.id;
+                    return (
+                        <button key={t.id} onClick={() => onChange(t.id)}
+                            className="relative px-3 sm:px-4 py-1.5 rounded-lg text-xs font-bold transition-all outline-none"
+                            style={{
+                                color: isActive ? 'white' : 'var(--text-muted)',
+                            }}>
+                            {isActive && (
+                                <motion.div 
+                                    layoutId="activeFilterTab"
+                                    className="absolute inset-0 bg-primary rounded-xl -z-10 shadow-md shadow-primary/20"
+                                    transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
+                                />
+                            )}
+                            <span className="relative z-10">{t.label}</span>
+                        </button>
+                    );
+                })}
             </div>
             {active === 'custom' && setCustomStart && setCustomEnd && (
-                <div className="flex items-center gap-2 p-1.5 rounded-xl border" style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)' }}>
+                <div className="flex items-center gap-2 p-1.5 rounded-xl border backdrop-blur-md" style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
                     <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="bg-transparent border-none text-[10px] font-bold px-1 outline-none text-slate-400" />
                     <span className="text-[9px] font-bold text-slate-500">to</span>
                     <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="bg-transparent border-none text-[10px] font-bold px-1 outline-none text-slate-400" />
@@ -109,7 +117,7 @@ function DateFilterTabs({ active, onChange, customStart, setCustomStart, customE
 
 /* ─────────────────────── MAIN DASHBOARD ─────────────────────── */
 
-export function Dashboard({ setActiveTab, userRole, theme }: { setActiveTab?: (t: string) => void, userRole: UserRole, theme?: 'light' | 'dark' }) {
+export function Dashboard({ setActiveTab, userRole, theme, session, staffData }: { setActiveTab?: (t: string) => void, userRole: UserRole, theme?: 'light' | 'dark', session?: any, staffData?: any }) {
     const { showToast } = useToast();
     const isDark = theme === 'dark';
     const [stats, setStats] = useState({
@@ -127,6 +135,14 @@ export function Dashboard({ setActiveTab, userRole, theme }: { setActiveTab?: (t
     const [customStart, setCustomStart] = useState('');
     const [customEnd, setCustomEnd] = useState('');
     const [isLoading, setIsLoading] = useState(true);
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 768);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     const getDateRange = useCallback((filter: DateFilter) => {
         const now = new Date();
@@ -322,6 +338,258 @@ export function Dashboard({ setActiveTab, userRole, theme }: { setActiveTab?: (t
         boxShadow: '0 10px 40px var(--glass-shadow)', fontSize: 12, fontWeight: 700
     };
 
+    const renderMobileView = () => {
+        return (
+            <div className="space-y-5 pb-20 relative overflow-hidden font-sans antialiased" style={{ minHeight: '100vh', background: 'var(--background)' }}>
+                {/* Ambient dynamic background orbs only visible on mobile app feels */}
+                <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
+                    <motion.div 
+                        animate={{ x: [0, 40, 40, 0], y: [0, 20, -20, 0] }}
+                        transition={{ repeat: Infinity, duration: 15, ease: "easeInOut" }}
+                        className="absolute top-1/6 -left-10 w-72 h-72 rounded-full bg-cyan-400/10 blur-3xl opacity-60"
+                    />
+                    <motion.div 
+                        animate={{ x: [0, -30, 30, 0], y: [0, -40, 40, 0] }}
+                        transition={{ repeat: Infinity, duration: 18, ease: "easeInOut" }}
+                        className="absolute bottom-1/3 -right-10 w-80 h-80 rounded-full bg-violet-400/10 blur-3xl opacity-60"
+                    />
+                </div>
+
+                {/* Mobile App Bar Header: Profile photo first, then welcome message */}
+                <div className="px-4 pt-1 pb-3 flex flex-col gap-1">
+                    <div className="flex items-center gap-2 mb-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                        <span className="text-[10px] font-bold text-slate-500">
+                            {new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab?.('profile')}>
+                        <div className="w-11 h-11 rounded-xl overflow-hidden shadow-lg border border-slate-200 flex-shrink-0">
+                            <img alt="User avatar" className="w-full h-full object-cover" src={staffData?.profile_photo_url || ((userRole as string) === 'patient' ? "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150" : "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=150")} />
+                        </div>
+                        <div>
+                            <p className="text-[11px] font-bold uppercase tracking-wider leading-none mb-1 text-slate-500">Welcome back,</p>
+                            <h2 className="text-lg font-black tracking-tight" style={{ color: 'var(--text-dark)' }}>{session?.user?.user_metadata?.full_name || 'User'}</h2>
+                            <p className="text-[9px] font-bold opacity-70" style={{ color: 'var(--text-muted)' }}>ID: {staffData?.id?.slice(0,8) || '...'}</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Adding DateFilter Tabs on top of Mobile View */}
+                <div className="px-4 bg-transparent scale-90 origin-left">
+                    <DateFilterTabs 
+                        active={dateFilter} 
+                        onChange={setDateFilter} 
+                        customStart={customStart} 
+                        setCustomStart={setCustomStart} 
+                        customEnd={customEnd} 
+                        setCustomEnd={setCustomEnd} 
+                    />
+                </div>
+
+                {/* Quick actions row */}
+                <div className="px-4 flex items-center gap-2 mb-3">
+                    <button onClick={() => {
+                        window.open('https://github.com/asmoneyworldttt-creator/mad/releases/latest/download/DentiSphere-Android-APK.apk', '_blank');
+                        showToast('Starting Download...', 'success');
+                    }}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl text-xs font-black transition-all bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 hover:bg-emerald-500/20 shadow-sm active:scale-95"
+                    >
+                        <Download size={14} className="stroke-[2.5px]" /> App Download
+                    </button>
+                    <button onClick={() => setActiveTab?.('appointments')}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl text-xs font-black text-white bg-primary hover:bg-primary/90 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-primary/10"
+                    >
+                        <Plus size={14} className="stroke-[2.5px]" /> Appointment Book
+                    </button>
+                </div>
+
+                <div className="px-4 space-y-4">
+                     {/* 1. Schedule Card */}
+                     <div className="p-4 rounded-2xl relative overflow-hidden backdrop-blur-2xl shadow-md cursor-pointer"
+                         onClick={() => setActiveTab?.('appointments')}
+                         style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
+                         <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/5 blur-xl pointer-events-none" />
+                         <div className="flex justify-between items-center mb-4">
+                             <div>
+                                 <p className="text-[10px] font-bold tracking-widest uppercase text-cyan-450">Clinic Pulse</p>
+                                 <h3 className="text-xl font-black mt-0.5" style={{ color: 'var(--text-dark)' }}>Active Schedule</h3>
+                             </div>
+                             <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-cyan-500/10 border border-cyan-500/20">
+                                 <Calendar size={18} className="text-cyan-500" />
+                             </div>
+                         </div>
+                         <div className="grid grid-cols-2 gap-3 mt-4">
+                             <div className="p-3 bg-slate-500/5 rounded-xl border border-black/[0.02]">
+                                 <p className="text-[9px] font-bold text-slate-400">Appointments</p>
+                                 <h4 className="text-xl font-black mt-0.5" style={{ color: 'var(--text-dark)' }}>{stats.todayAppointments}</h4>
+                             </div>
+                             <div className="p-3 bg-slate-500/5 rounded-xl border border-black/[0.02]">
+                                 <p className="text-[9px] font-bold text-slate-400">Completed</p>
+                                 <h4 className="text-xl font-black mt-0.5 text-emerald-600">{stats.completedApts}</h4>
+                             </div>
+                             <div className="p-3 bg-slate-500/5 rounded-xl border border-black/[0.02]">
+                                 <p className="text-[9px] font-bold text-slate-400">Total Visits</p>
+                                 <h4 className="text-xl font-black mt-0.5" style={{ color: 'var(--text-dark)' }}>{stats.totalVisits}</h4>
+                             </div>
+                             <div className="p-3 bg-slate-500/5 rounded-xl border border-black/[0.02]">
+                                 <p className="text-[9px] font-bold text-slate-400">Missed</p>
+                                 <h4 className="text-xl font-black mt-0.5 text-rose-500">{stats.missedApts}</h4>
+                             </div>
+                         </div>
+                     </div>
+
+                     {/* 2. Patient Demographics Subpanel */}
+                     <div className="p-4 rounded-2xl relative overflow-hidden backdrop-blur-2xl shadow-md cursor-pointer"
+                         onClick={() => setActiveTab?.('patients')}
+                         style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
+                         <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 blur-xl pointer-events-none" />
+                         <div className="flex justify-between items-center mb-4">
+                             <div>
+                                 <p className="text-[10px] font-bold tracking-widest uppercase text-emerald-500">Demographics</p>
+                                 <h3 className="text-xl font-black mt-0.5" style={{ color: 'var(--text-dark)' }}>Patient Insight</h3>
+                             </div>
+                             <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-emerald-500/10 border border-emerald-500/20">
+                                 <Users size={18} className="text-emerald-500" />
+                             </div>
+                         </div>
+                         <div className="grid grid-cols-2 gap-3 mt-4">
+                             <div className="p-3 bg-slate-500/5 rounded-xl border border-black/[0.02]">
+                                 <p className="text-[9px] font-bold text-slate-400">Total Patients</p>
+                                 <h4 className="text-xl font-black mt-0.5" style={{ color: 'var(--text-dark)' }}>{stats.totalPatients}</h4>
+                             </div>
+                             <div className="p-3 bg-slate-500/5 rounded-xl border border-black/[0.02]">
+                                 <p className="text-[9px] font-bold text-slate-400">New Patients</p>
+                                 <h4 className="text-xl font-black mt-0.5 text-emerald-600">{stats.newPatients}</h4>
+                             </div>
+                             <div className="p-3 bg-slate-500/5 rounded-xl border border-black/[0.02]">
+                                 <p className="text-[9px] font-bold text-slate-400">Returning</p>
+                                 <h4 className="text-xl font-black mt-0.5 text-cyan-500">{stats.oldPatients}</h4>
+                             </div>
+                             <div className="p-3 bg-slate-500/5 rounded-xl border border-black/[0.02]">
+                                 <p className="text-[9px] font-bold text-slate-400">Today Visitors</p>
+                                 <h4 className="text-xl font-black mt-0.5" style={{ color: 'var(--text-dark)' }}>{stats.totalVisits}</h4>
+                             </div>
+                         </div>
+                     </div>
+
+                     {/* 3. Financial Card with Clinical Expenses & Salary */}
+                     <div className="p-4 rounded-2xl relative overflow-hidden backdrop-blur-2xl shadow-md cursor-pointer"
+                         onClick={() => setActiveTab?.('earnings')}
+                         style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
+                         <div className="absolute bottom-0 right-0 w-24 h-24 bg-violet-500/5 blur-xl pointer-events-none" />
+                         <div className="flex justify-between items-center mb-4">
+                             <div>
+                                 <p className="text-[10px] font-bold tracking-widest uppercase text-violet-500">Financial Pulse</p>
+                                 <h3 className="text-xl font-black mt-0.5" style={{ color: 'var(--text-dark)' }}>Earnings Overview</h3>
+                             </div>
+                             <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-violet-500/10 border border-violet-500/20">
+                                 <Wallet size={18} className="text-violet-500" />
+                             </div>
+                         </div>
+                         <div className="p-4 bg-slate-500/5 rounded-xl border border-black/[0.02] relative overflow-hidden mb-3">
+                             <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 to-transparent pointer-events-none" />
+                             <p className="text-xs font-bold text-slate-400">Total Revenue</p>
+                             <h4 className="text-2xl font-black mt-1 text-emerald-600">{formatINR(stats.totalRevenue)}</h4>
+                         </div>
+                         <div className="grid grid-cols-2 gap-3 mb-3">
+                             <div className="p-3 bg-slate-500/5 rounded-xl border border-black/[0.02]">
+                                 <p className="text-[9px] font-bold text-slate-400">Clinical Expenses</p>
+                                 <h4 className="text-sm font-black mt-0.5 text-rose-500">{formatINR(stats.totalExpenses)}</h4>
+                             </div>
+                             <div className="p-3 bg-slate-500/5 rounded-xl border border-black/[0.02]">
+                                 <p className="text-[9px] font-bold text-slate-400">Net Profit</p>
+                                 <h4 className="text-sm font-black mt-0.5 text-cyan-600">{formatINR(stats.netProfit)}</h4>
+                             </div>
+                         </div>
+                         <div className="p-3 bg-slate-500/5 rounded-xl border border-black/[0.02] flex justify-between items-baseline">
+                             <p className="text-[10px] font-bold text-slate-400">Staff Payroll</p>
+                             <h4 className="text-md font-black text-rose-500">{formatINR(stats.totalSalaries || 0)}</h4>
+                         </div>
+                     </div>
+
+                     {/* 4. Labs Panel */}
+                     {stats.pendingLabs > 0 && (
+                         <div className="p-4 rounded-2xl relative overflow-hidden backdrop-blur-2xl shadow-md cursor-pointer"
+                             onClick={() => setActiveTab?.('labwork')}
+                             style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
+                             <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-transparent pointer-events-none" />
+                             <div className="flex justify-between items-start">
+                                 <div>
+                                     <p className="text-[9px] font-bold text-amber-500 tracking-wider">PENDING LABS</p>
+                                     <h4 className="text-2xl font-black mt-1" style={{ color: 'var(--text-dark)' }}>{stats.pendingLabs}</h4>
+                                 </div>
+                                 <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-amber-500/10 border border-amber-500/20"><Layers size={14} className="text-amber-400" /></div>
+                             </div>
+                         </div>
+                     )}
+
+                     {/* 5. Mobile Analytics Chart */}
+                     <div className="p-4 rounded-2xl relative overflow-hidden backdrop-blur-2xl shadow-md"
+                         style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
+                         <div>
+                             <p className="text-[10px] font-bold tracking-widest uppercase text-cyan-500">Analytics</p>
+                             <h3 className="text-xl font-black mt-0.5 mb-3" style={{ color: 'var(--text-dark)' }}>Visit Statistics</h3>
+                         </div>
+                         <div className="h-32">
+                             <ResponsiveContainer width="100%" height="100%" className="recharts-wrapper-fix">
+                                 <AreaChart data={patientChartData}>
+                                     <defs>
+                                         <linearGradient id="gVisitsMob" x1="0" y1="0" x2="0" y2="1">
+                                             <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.25} />
+                                             <stop offset="95%" stopColor="var(--primary)" stopOpacity={0} />
+                                         </linearGradient>
+                                     </defs>
+                                     <XAxis dataKey="name" hide />
+                                     <YAxis hide />
+                                     <Tooltip contentStyle={{ ...tooltipStyle, padding: '4px 8px', borderRadius: '8px', fontSize: 10 }} />
+                                     <Area type="monotone" dataKey="Total Visits" stroke="var(--primary)" strokeWidth={2.5} fillOpacity={1} fill="url(#gVisitsMob)" />
+                                 </AreaChart>
+                             </ResponsiveContainer>
+                         </div>
+                     </div>
+
+                     {/* Growth Tracker & Earnings Breakdown Cards */}
+                     <div className="p-4 rounded-2xl relative overflow-hidden backdrop-blur-2xl shadow-md"
+                         style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
+                         <div>
+                             <p className="text-[10px] font-bold tracking-widest uppercase text-violet-500">Earnings Breakdown</p>
+                             <h3 className="text-xl font-black mt-0.5 mb-3" style={{ color: 'var(--text-dark)' }}>Financial Status</h3>
+                         </div>
+                         <div className="h-28">
+                             <ResponsiveContainer width="100%" height="100%" className="recharts-wrapper-fix">
+                                 <BarChart data={revenueChartData}>
+                                     <XAxis dataKey="name" hide />
+                                     <YAxis hide />
+                                     <Tooltip contentStyle={{ ...tooltipStyle, padding: '4px 8px', borderRadius: '8px', fontSize: 10 }} />
+                                     <Bar dataKey="Revenue" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+                                     <Bar dataKey="Profit" fill="#14b8a6" radius={[4, 4, 0, 0]} />
+                                 </BarChart>
+                             </ResponsiveContainer>
+                         </div>
+                         <div className="flex gap-4 mt-2 justify-center">
+                             <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-primary" /> <span className="text-[10px] text-slate-500 font-bold">Revenue</span></div>
+                             <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-teal-500" /> <span className="text-[10px] text-slate-500 font-bold">Profit</span></div>
+                         </div>
+                     </div>
+
+                     {/* 6. Queue with seamless App UI feel */}
+                     <div className="rounded-2xl backdrop-blur-2xl" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
+                         <TodayQueue theme={theme} setActiveTab={setActiveTab} />
+                     </div>
+                </div>
+                <style>{`
+                    .recharts-wrapper-fix { outline: none !important; }
+                    .recharts-default-tooltip { outline: none !important; }
+                `}</style>
+            </div>
+        );
+    };
+
+    if (isMobile) {
+        return renderMobileView();
+    }
+
     return (
         <div className="animate-slide-up space-y-6 pb-12">
 
@@ -377,9 +645,9 @@ export function Dashboard({ setActiveTab, userRole, theme }: { setActiveTab?: (t
                 <SectionHeader title="Active Schedule" subtitle="Live tracking" />
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                     <StatCard title="Today's Appointments" value={isLoading ? '...' : stats.todayAppointments} icon={Calendar} color="var(--primary)" delay={0.05} onClick={() => setActiveTab?.('appointments')} />
-                    <StatCard title="Total Visits" value={isLoading ? '...' : stats.totalVisits} icon={Activity} color="#10b981" delay={0.1} />
-                    <StatCard title="Fulfilled" value={isLoading ? '...' : stats.completedApts} sub="Total" trend="up" icon={CheckCircle2} color="#10b981" delay={0.15} />
-                    <StatCard title="No-Show" value={isLoading ? '...' : stats.missedApts} sub="Total" trend="down" icon={XCircle} color="#f43f5e" delay={0.2} />
+                    <StatCard title="Total Visits" value={isLoading ? '...' : stats.totalVisits} icon={Activity} color="#10b981" delay={0.1} onClick={() => setActiveTab?.('appointments')} />
+                    <StatCard title="Fulfilled" value={isLoading ? '...' : stats.completedApts} sub="Total" trend="up" icon={CheckCircle2} color="#10b981" delay={0.15} onClick={() => setActiveTab?.('appointments')} />
+                    <StatCard title="No-Show" value={isLoading ? '...' : stats.missedApts} sub="Total" trend="down" icon={XCircle} color="#f43f5e" delay={0.2} onClick={() => setActiveTab?.('appointments')} />
                     <StatCard title="Pending Labs" value={isLoading ? '...' : stats.pendingLabs} sub="Updates" trend="down" icon={FlaskConical} color="#f59e0b" delay={0.25} onClick={() => setActiveTab?.('labwork')} />
                 </div>
             </div>
@@ -388,8 +656,8 @@ export function Dashboard({ setActiveTab, userRole, theme }: { setActiveTab?: (t
             <div>
                 <SectionHeader title="Patients" subtitle="Registration & return" />
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                    <StatCard title="New Patients" value={isLoading ? '...' : stats.newPatients} sub="Monthly" trend="up" icon={UserPlus} color="#8b5cf6" delay={0.05} />
-                    <StatCard title="Returning" value={isLoading ? '...' : stats.oldPatients} sub="Regulars" trend="up" icon={UserCheck} color="#0d9488" delay={0.1} />
+                    <StatCard title="New Patients" value={isLoading ? '...' : stats.newPatients} sub="Monthly" trend="up" icon={UserPlus} color="#8b5cf6" delay={0.05} onClick={() => setActiveTab?.('patients')} />
+                    <StatCard title="Returning" value={isLoading ? '...' : stats.oldPatients} sub="Regulars" trend="up" icon={UserCheck} color="#0d9488" delay={0.1} onClick={() => setActiveTab?.('patients')} />
                     <StatCard title="Total Patients" value={isLoading ? '...' : stats.totalPatients} icon={Users} color="var(--primary)" delay={0.15} onClick={() => setActiveTab?.('patients')} />
                     <StatCard title="Medical Staff" value={isLoading ? '...' : stats.totalDoctors} sub={`₹${(stats.totalSalaries / 1000).toFixed(1)}k pay`} icon={Stethoscope} color="#f59e0b" delay={0.2} onClick={() => setActiveTab?.('team-hub')} />
                 </div>
@@ -400,9 +668,9 @@ export function Dashboard({ setActiveTab, userRole, theme }: { setActiveTab?: (t
                 <SectionHeader title="Financial Health" subtitle="Revenue & profit" />
                 <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3">
                     <StatCard title="Total Revenue" value={isLoading ? '...' : formatINR(stats.totalRevenue)} sub="Total" trend="up" icon={Wallet} color="#10b981" delay={0.05} onClick={() => setActiveTab?.('earnings')} />
-                    <StatCard title="Average Bill" value={isLoading ? '...' : formatINR(stats.avgTicket)} sub="Per Unit" icon={DollarSign} color="var(--primary)" delay={0.1} />
+                    <StatCard title="Average Bill" value={isLoading ? '...' : formatINR(stats.avgTicket)} sub="Per Unit" icon={DollarSign} color="var(--primary)" delay={0.1} onClick={() => setActiveTab?.('earnings')} />
                     <StatCard title="Clinic Expenses" value={isLoading ? '...' : formatINR(stats.totalExpenses)} sub="Outflow" trend="down" icon={TrendingDown} color="#f43f5e" delay={0.15} onClick={() => setActiveTab?.('accounts')} />
-                    <StatCard title="Net Profit" value={isLoading ? '...' : formatINR(stats.netProfit)} sub={stats.totalRevenue > 0 ? `${((stats.netProfit / stats.totalRevenue) * 100).toFixed(0)}% margin` : '—'} trend={stats.netProfit >= 0 ? 'up' : 'down'} icon={Target} color={stats.netProfit >= 0 ? '#10b981' : '#f43f5e'} delay={0.2} />
+                    <StatCard title="Net Profit" value={isLoading ? '...' : formatINR(stats.netProfit)} sub={stats.totalRevenue > 0 ? `${((stats.netProfit / stats.totalRevenue) * 100).toFixed(0)}% margin` : '—'} trend={stats.netProfit >= 0 ? 'up' : 'down'} icon={Target} color={stats.netProfit >= 0 ? '#10b981' : '#f43f5e'} delay={0.2} onClick={() => setActiveTab?.('earnings')} />
                 </div>
             </div>
 

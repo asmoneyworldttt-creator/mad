@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useCallback, memo } from 'react';
 import { Search, Filter, Plus, ChevronRight, Calendar, Users, Phone, Mail, IndianRupee } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useToast } from '../Toast';
 import { supabase } from '../../supabase';
 import { PatientOverview } from './PatientOverview';
@@ -353,7 +354,20 @@ export function Patients({ userRole, setActiveTab, theme }: { userRole: UserRole
     }
 
     return (
-        <div className="animate-slide-up space-y-3 px-1 sm:px-0">
+        <div className="animate-slide-up space-y-3 px-1 sm:px-0 relative overflow-hidden">
+            {/* Ambient dynamic background orbs */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
+                <motion.div 
+                    animate={{ x: [0, 40, 40, 0], y: [0, 20, -20, 0] }}
+                    transition={{ repeat: Infinity, duration: 15, ease: "easeInOut" }}
+                    className="absolute top-1/6 -left-10 w-72 h-72 rounded-full bg-cyan-400/10 blur-3xl opacity-60"
+                />
+                <motion.div 
+                    animate={{ x: [0, -30, 30, 0], y: [0, -40, 40, 0] }}
+                    transition={{ repeat: Infinity, duration: 18, ease: "easeInOut" }}
+                    className="absolute bottom-1/3 -right-10 w-80 h-80 rounded-full bg-violet-400/10 blur-3xl opacity-60"
+                />
+            </div>
             <div className={`p-3 md:p-4 rounded-xl border shadow-sm transition-all`} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
                 <div className="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
                     <div className="flex items-center gap-3">

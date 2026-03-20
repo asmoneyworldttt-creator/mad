@@ -8,6 +8,7 @@ import {
     Calendar as CalendarIcon,
     Plus,
     ChevronLeft,
+    ChevronRight,
     Clock,
     User,
     Search,
@@ -122,7 +123,7 @@ function CustomScrollableCalendar({ selectedDate, onSelect, onClose, theme }: an
     );
 }
 
-export function Appointments({ userRole, theme, setActiveTab }: { userRole: UserRole; theme?: 'light' | 'dark'; setActiveTab?: (tab: string) => void }) {
+export function Appointments({ userRole, theme, setActiveTab, setGlobalPatient }: { userRole: UserRole; theme?: 'light' | 'dark'; setActiveTab?: (tab: string) => void; setGlobalPatient?: (p: any) => void }) {
     const today = new Date().toISOString().split('T')[0];
     const [view, setView] = useState<'list' | 'add' | 'edit'>('list');
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
@@ -360,14 +361,15 @@ export function Appointments({ userRole, theme, setActiveTab }: { userRole: User
                         <button
                             key={idx}
                             onClick={() => setSelectedDate(dateStr)}
-                            className={`flex flex-col items-center min-w-[48px] p-1.5 rounded-lg transition-all border snap-center ${
+                            className={`flex flex-col items-center min-w-[48px] p-2 rounded-xl transition-all border snap-center backdrop-blur-md ${
                                 isSelected 
-                                ? 'bg-primary border-primary text-white shadow-sm' 
-                                : `bg-slate-50 dark:bg-white/5 border-transparent text-slate-500`
+                                ? 'bg-primary/95 text-white shadow-md shadow-primary/20 scale-105 border-primary' 
+                                : `text-slate-500 hover:border-primary/30`
                             }`}
+                            style={!isSelected ? { background: 'var(--card-bg)', border: '1px solid var(--border-color)' } : {}}
                         >
-                            <span className="text-[8px] font-bold uppercase">{date.toLocaleDateString('en-US', { weekday: 'short' })}</span>
-                            <span className="text-sm font-bold">{date.getDate()}</span>
+                            <span className={`text-[8px] font-bold uppercase ${isSelected ? 'text-white/80' : 'text-slate-400'}`}>{date.toLocaleDateString('en-US', { weekday: 'short' })}</span>
+                            <span className="text-sm font-black mt-0.5">{date.getDate()}</span>
                             {isToday && !isSelected && <div className="w-1 h-1 bg-primary rounded-full mt-0.5" />}
                         </button>
                     );
@@ -392,9 +394,8 @@ export function Appointments({ userRole, theme, setActiveTab }: { userRole: User
                 }`} />
                 <div 
                     onClick={() => { setSelectedAppointment(apt); setIsDetailsModalOpen(true); }}
-                    className={`p-2.5 sm:p-3 rounded-lg border cursor-pointer hover:shadow-sm transition-all active:scale-[0.99] ${
-                        theme === 'dark' ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100'
-                    }`}
+                    className="p-2.5 sm:p-3 rounded-xl border cursor-pointer hover:shadow-sm transition-all active:scale-[0.99] backdrop-blur-md"
+                    style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}
                 >
                     <div className="flex justify-between items-center gap-3">
                         <div className="flex items-center gap-2.5 min-w-0">
@@ -418,13 +419,13 @@ export function Appointments({ userRole, theme, setActiveTab }: { userRole: User
                             onClick={(e) => e.stopPropagation()}
                             value={apt.status}
                             onChange={(e) => handleUpdateStatus(apt.id, e.target.value)}
-                            className={`text-[8px] font-bold px-1 py-0.5 rounded border uppercase shrink-0 outline-none cursor-pointer transition-all ${
-                                apt.status === 'Confirmed' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                                apt.status === 'Completed' ? 'bg-primary/5 text-primary border-primary/10' :
-                                apt.status === 'Cancelled' ? 'bg-rose-50 text-rose-500 border-rose-100' : 'bg-slate-50 text-slate-500'
+                            className={`text-[9px] font-extrabold px-2 py-1 rounded-lg border uppercase shrink-0 outline-none cursor-pointer transition-all ${
+                                apt.status === 'Confirmed' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                                apt.status === 'Completed' ? 'bg-primary/10 text-primary border-primary/20' :
+                                apt.status === 'Cancelled' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 'bg-slate-500/10 text-slate-500 border-slate-500/20'
                             }`}
                         >
-                            {['Confirmed', 'Completed', 'Missed'].map(s => (
+                            {['Confirmed', 'Completed', 'Missed', 'Cancelled'].map(s => (
                                 <option key={s} value={s} className="text-black bg-white">{s}</option>
                             ))}
                         </select>
@@ -509,9 +510,23 @@ export function Appointments({ userRole, theme, setActiveTab }: { userRole: User
     }
 
     return (
-        <div className="animate-slide-up space-y-3 px-1 sm:px-0">
+        <div className="animate-slide-up space-y-3 px-1 sm:px-0 relative overflow-hidden">
+            {/* Ambient dynamic background orbs */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
+                <motion.div 
+                    animate={{ x: [0, 40, 40, 0], y: [0, 20, -20, 0] }}
+                    transition={{ repeat: Infinity, duration: 15, ease: "easeInOut" }}
+                    className="absolute top-1/6 -left-10 w-72 h-72 rounded-full bg-cyan-400/10 blur-3xl opacity-60"
+                />
+                <motion.div 
+                    animate={{ x: [0, -30, 30, 0], y: [0, -40, 40, 0] }}
+                    transition={{ repeat: Infinity, duration: 18, ease: "easeInOut" }}
+                    className="absolute bottom-1/3 -right-10 w-80 h-80 rounded-full bg-violet-400/10 blur-3xl opacity-60"
+                />
+            </div>
+
             {/* Header */}
-            <div className={`p-3 sm:p-4 rounded-xl border ${theme === 'dark' ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
+            <div className="p-3 sm:p-4 rounded-xl border backdrop-blur-md" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                     <div className="flex items-center gap-3">
                         <div onClick={() => setIsCalendarOpen(!isCalendarOpen)} className="p-1.5 rounded-lg bg-primary/10 text-primary cursor-pointer hover:bg-primary/20 transition-all">
@@ -554,35 +569,34 @@ export function Appointments({ userRole, theme, setActiveTab }: { userRole: User
             {/* List */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                 <div className="md:col-span-1 space-y-2">
-                    <div className={`p-2.5 rounded-xl border ${theme === 'dark' ? 'bg-slate-900 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
+                    <div className="p-2.5 rounded-xl border backdrop-blur-md" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
                         <div className="relative mb-2">
                             <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                             <input type="text" placeholder="Quick find..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-slate-50 dark:bg-white/5 border-none rounded-lg pl-8 pr-3 py-1.5 text-[11px] outline-none" />
                         </div>
                         <div className="flex flex-col gap-0.5">
                             <div className="border-b dark:border-white/5 pb-2 mb-1.5 px-0.5">
-                                <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Date Range</p>
-                                <label className="flex items-center gap-1.5 mb-1.5 cursor-pointer">
-                                    <input type="checkbox" checked={useDateRange} onChange={e => setUseDateRange(e.target.checked)} className="rounded text-primary focus:ring-primary/20 w-3 h-3" />
-                                    <span className="text-[10px] font-medium">Use Range</span>
-                                </label>
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase">Date Range</p>
+                                    <label className="flex items-center gap-1 cursor-pointer">
+                                        <input type="checkbox" checked={useDateRange} onChange={e => setUseDateRange(e.target.checked)} className="rounded text-primary focus:ring-primary/20 w-3 h-3" />
+                                        <span className="text-[9px] font-medium text-slate-500">Enable</span>
+                                    </label>
+                                </div>
                                 {useDateRange && (
-                                    <div className="space-y-1.5 mt-1">
-                                        <div className="grid grid-cols-2 gap-1">
-                                            <div className="relative">
-                                                <p className="text-[8px] font-bold text-slate-400 mb-0.5">Start</p>
-                                                <p onClick={() => { setIsStartOpen(!isStartOpen); setIsEndOpen(false); }} className="bg-slate-50 dark:bg-white/5 rounded-md px-1.5 py-1 text-[9px] font-bold cursor-pointer truncate hover:bg-slate-100">
-                                                    {new Date(startDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                                                </p>
-                                                {isStartOpen && ( <CustomScrollableCalendar selectedDate={startDate} onSelect={(d: string) => { setStartDate(d); setIsStartOpen(false); }} onClose={() => setIsStartOpen(false)} theme={theme} /> )}
-                                            </div>
-                                            <div className="relative">
-                                                <p className="text-[8px] font-bold text-slate-400 mb-0.5">End</p>
-                                                <p onClick={() => { setIsEndOpen(!isEndOpen); setIsStartOpen(false); }} className="bg-slate-50 dark:bg-white/5 rounded-md px-1.5 py-1 text-[9px] font-bold cursor-pointer truncate hover:bg-slate-100">
-                                                    {new Date(endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                                                </p>
-                                                {isEndOpen && ( <div className="absolute right-0 top-full mt-1 z-50"><CustomScrollableCalendar selectedDate={endDate} onSelect={(d: string) => { setEndDate(d); setIsEndOpen(false); }} onClose={() => setIsEndOpen(false)} theme={theme} /></div> )}
-                                            </div>
+                                    <div className="flex gap-1 items-center mt-1">
+                                        <div className="relative flex-1">
+                                            <p onClick={() => { setIsStartOpen(!isStartOpen); setIsEndOpen(false); }} className="bg-slate-50 dark:bg-white/5 rounded-lg px-2 py-1.5 text-[10px] font-bold cursor-pointer truncate border border-transparent hover:border-primary/20 text-center">
+                                                {new Date(startDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                                            </p>
+                                            {isStartOpen && ( <CustomScrollableCalendar selectedDate={startDate} onSelect={(d: string) => { setStartDate(d); setIsStartOpen(false); }} onClose={() => setIsStartOpen(false)} theme={theme} /> )}
+                                        </div>
+                                        <span className="text-slate-400 text-xs">-</span>
+                                        <div className="relative flex-1">
+                                            <p onClick={() => { setIsEndOpen(!isEndOpen); setIsStartOpen(false); }} className="bg-slate-50 dark:bg-white/5 rounded-lg px-2 py-2 text-[10px] font-bold cursor-pointer truncate border border-transparent hover:border-primary/20 text-center">
+                                                {new Date(endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                                            </p>
+                                            {isEndOpen && ( <div className="absolute right-0 top-full mt-1 z-50"><CustomScrollableCalendar selectedDate={endDate} onSelect={(d: string) => { setEndDate(d); setIsEndOpen(false); }} onClose={() => setIsEndOpen(false)} theme={theme} /></div> )}
                                         </div>
                                     </div>
                                 )}
@@ -605,19 +619,34 @@ export function Appointments({ userRole, theme, setActiveTab }: { userRole: User
                 </div>
             </div>
 
-            <Modal isOpen={isDetailsModalOpen} onClose={() => setIsDetailsModalOpen(false)} title="Appointment Details" maxWidth="max-w-xs">
+            <Modal isOpen={isDetailsModalOpen} onClose={() => setIsDetailsModalOpen(false)} title="Appointment Details" maxWidth="max-w-md">
                 {selectedAppointment && (
                     <div className="space-y-4 pt-1">
-                        <div className="flex items-center gap-3 pb-3 border-b dark:border-white/5">
-                            <div className="w-12 h-12 rounded-lg bg-primary text-white flex items-center justify-center text-xl font-bold italic shadow-sm">{selectedAppointment.name.charAt(0)}</div>
-                            <div className="min-w-0">
-                                <h3 className="font-bold text-sm truncate">{selectedAppointment.name}</h3>
-                                <div className="flex items-center gap-1.5 text-[10px] text-slate-500 mt-0.5">
-                                    <Clock size={10} /> {formatTime(selectedAppointment.time)}
-                                    <span className="opacity-50">•</span>
-                                    <span className={`px-1 rounded bg-slate-100 dark:bg-white/10 text-[9px] font-bold`}>{selectedAppointment.status}</span>
+                        <div className="flex items-center justify-between pb-3 border-b dark:border-white/5">
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 rounded-lg bg-primary text-white flex items-center justify-center text-xl font-bold italic shadow-sm">{selectedAppointment.name.charAt(0)}</div>
+                                <div className="min-w-0">
+                                    <h3 className="font-bold text-sm truncate">{selectedAppointment.name}</h3>
+                                    <div className="flex items-center gap-1.5 text-[10px] text-slate-500 mt-0.5">
+                                        <Clock size={10} /> {formatTime(selectedAppointment.time)}
+                                        <span className="opacity-50">•</span>
+                                        <span className={`px-1 rounded bg-slate-100 dark:bg-white/10 text-[9px] font-bold`}>{selectedAppointment.status}</span>
+                                    </div>
                                 </div>
                             </div>
+                            
+                            {selectedAppointment.patient_id && setGlobalPatient && setActiveTab && (
+                                <button 
+                                    onClick={() => {
+                                        setGlobalPatient({ id: selectedAppointment.patient_id, name: selectedAppointment.name });
+                                        setActiveTab('patient-overview');
+                                        setIsDetailsModalOpen(false);
+                                    }}
+                                    className="px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-[9px] font-black uppercase flex items-center gap-1 hover:bg-primary/20 transition-all active:scale-95 border border-primary/20"
+                                >
+                                    Open Full Profile <ChevronRight size={12} />
+                                </button>
+                            )}
                         </div>
 
                         <div className="space-y-2">

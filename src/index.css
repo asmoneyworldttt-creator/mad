@@ -81,87 +81,69 @@
   ═══════════════════════════════════════════════════ */
   .dark-theme {
     color-scheme: dark !important;
-
-    /* ── Ambient Backdrop Surface (Stitch Spec) ── */
+    /* Surfaces — Void & Abyss inspired by new-main definitions setups securely */
     --void: #000000;
-    --bg-page: #000000; /* Infinite background for glows to pop */
-    --surface: #131313; /* Level 0 base surface */
-    --bg-deep: #0D0D0D;
-    
-    /* ── Layering Tiers ── */
-    --surface-glass: rgba(19, 19, 19, 0.6);
-    --surface-raised: #1B1B1B; /* Level 1: Sections */
-    --card-bg: rgba(42, 42, 42, 0.6); /* Level 2: Interactive Cards (2a2a2a) @ 60% opacity with 24px blur */
-    --card-bg-alt: #131313;
 
-    /* ── AxoDental Luminescent Palette ── */
-    --primary: #A1E4FF; /* Stitch Spec Primary */
-    --primary-hover: #00CFFF;
-    --primary-glow: rgba(161, 228, 255, 0.25);
+    --bg-page: #000000;
+    --bg-deep: #030308;
+    --surface: #0D0B1A;
+    --surface-raised: #141228;
+    --surface-glass: rgba(13, 11, 26, 0.65);
 
-    --secondary: #D2BBFF; /* Stitch Spec Secondary */
-    --secondary-soft: rgba(210, 187, 255, 0.12);
-
-    --tertiary: #58F2DC; /* Stitch Spec Tertiary */
-    --tertiary-soft: rgba(88, 242, 220, 0.12);
-
-    --pulse-cyan: #00CFFF;
-    --pulse-violet: #7C3AED;
+    /* Gradients / glowing variables setups frames solutions */
+    --pulse-cyan: #00C8FF;
+    --pulse-violet: #7B2FE8;
     --pulse-orange: #FF6B35;
 
-    /* ── Status ── */
-    --success: #58F2DC;
-    --warning: #FFB703;
-    --error: #FFB4AB;
-    --error-soft: rgba(255, 180, 171, 0.12);
-    --alert: #FFB4AB;
+    /* Primary configurations overlays setups cleanly sets */
+    --primary: #00C8FF;
+    --primary-hover: #3B6EFF;
+    --primary-soft: rgba(0, 200, 255, 0.1);
+    --primary-glow: rgba(0, 200, 255, 0.35);
 
-    /* ── Typography (Stitch Spec) ── */
-    --text-dark: #FFFFFF;
-    --text-main: #E2E2E2; /* on_surface spec */
-    --text-muted: #ABABAB; /* on_surface_variant */
-    --text-light: #757575;
+    /* Secondary framing setups */
+    --secondary: #7B2FE8;
+    --secondary-soft: rgba(123, 47, 232, 0.1);
 
-    /* ── Sidebar ── */
-    --sidebar-bg: #0E0E0E;
-    --sidebar-text: #E2E2E2;
-    --sidebar-muted: #757575;
-    --sidebar-active: #A1E4FF;
-    --sidebar-border: rgba(60, 73, 78, 0.15); /* outline_variant @ 15% */
+    /* Statuses setups overlays nicely */
+    --success: #00E676;
+    --success-soft: rgba(0, 230, 118, 0.1);
+    --warning: #FFAB00;
+    --warning-soft: rgba(255, 171, 0, 0.1);
+    --error: #FF1744;
+    --error-soft: rgba(255, 23, 68, 0.1);
 
-    /* ── Glassmorphism (Stitch Spec: 60% opacity with 24px blur) ── */
-    --glass-bg: rgba(14, 14, 14, 0.6);
-    --glass-border: rgba(60, 73, 78, 0.15); /* Ghost border */
-    --glass-shadow: rgba(0, 0, 0, 0.9);
+    /* Typography — Cleaned & crisp solutions index overlays setups nicely */
+    --text-dark: #F0EEFF;
+    --text-main: #F0EEFF;
+    --text-muted: #8B88A8;
+    --text-light: #4A4868;
 
-    /* ── Borders & Elevation ── */
-    --border-color: rgba(60, 73, 78, 0.15); /* Ghost border @ 15% opacity */
-    --border-subtle: rgba(60, 73, 78, 0.08);
+    /* Card & Interface layers setups */
+    --card-bg: rgba(13, 11, 26, 0.75);
+    --card-bg-alt: rgba(20, 18, 40, 0.6);
 
-    --glow-cyan: 0 0 32px rgba(161, 228, 255, 0.2), 0 12px 48px rgba(0, 0, 0, 0.6);
-    --glow-violet: 0 0 32px rgba(210, 187, 255, 0.18), 0 12px 48px rgba(0, 0, 0, 0.6);
-    --card-shadow-dark: 0 12px 48px rgba(0, 0, 0, 0.06); /* Diffuse 6% diffuse Ambient shadow */
-    --card-border-dark: rgba(60, 73, 78, 0.15);
+    /* Sidebar layouts overlays framing securely setup */
+    --sidebar-bg: rgba(7, 6, 15, 0.95);
+    --sidebar-text: #F0EEFF;
+    --sidebar-muted: #8B88A8;
+    --sidebar-active: #00C8FF;
+    --sidebar-border: rgba(123, 47, 232, 0.12);
 
-    --gradient-brand: linear-gradient(135deg, #A1E4FF 0%, #00CFFF 40%, #D2BBFF 100%);
+    /* Custom Glassmorphism configs */
+    --glass-bg: rgba(13, 11, 26, 0.6);
+    --glass-border: rgba(0, 200, 255, 0.15);
+    --glass-shadow: rgba(0, 0, 0, 0.82);
 
-    --radius-premium: 24px;
+    --border-color: rgba(123, 47, 232, 0.14);
+    --border-subtle: rgba(123, 47, 232, 0.08);
+
+    --radius-premium: 20px;
     --radius-bento: 24px;
     --radius-card: 16px;
   }
 
-  /* ── Stitch Spec Typography Override ── */
-  .dark-theme, .dark-theme body, .dark-theme button, .dark-theme input, .dark-theme textarea, .dark-theme select {
-    font-family: 'Inter', system-ui, sans-serif !important;
-  }
-
-  .dark-theme h1, .dark-theme h2, .dark-theme h3, .dark-theme h4 {
-    font-family: 'Space Grotesk', system-ui, sans-serif !important;
-    letter-spacing: -0.03em !important;
-  }
-
   * {
-
     min-width: 0;
     /* Prevents flex-children stretching outside parent bounds triggers layouts */
   }

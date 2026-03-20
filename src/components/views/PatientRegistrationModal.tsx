@@ -233,7 +233,20 @@ export function PatientRegistrationModal({ isOpen, onClose, onSuccess, onNavigat
         : "bg-slate-50 border-slate-200 text-slate-800 placeholder:text-slate-300 focus:border-primary";
 
     const Content = (
-        <div className={cn("flex flex-col h-full", !isPage && "max-h-[85vh] overflow-y-auto")}>
+        <div className={cn("flex flex-col h-full relative overflow-hidden", !isPage && "max-h-[85vh] overflow-y-auto")}>
+            {/* Ambient dynamic background orbs */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
+                <motion.div 
+                    animate={{ x: [0, 40, -40, 0], y: [0, 20, -20, 0] }}
+                    transition={{ repeat: Infinity, duration: 15, ease: "easeInOut" }}
+                    className="absolute top-1/4 -left-10 w-72 h-72 rounded-full bg-cyan-400/10 blur-3xl opacity-60"
+                />
+                <motion.div 
+                    animate={{ x: [0, -30, 30, 0], y: [0, -40, 40, 0] }}
+                    transition={{ repeat: Infinity, duration: 18, ease: "easeInOut" }}
+                    className="absolute bottom-1/4 -right-10 w-80 h-80 rounded-full bg-violet-400/10 blur-3xl opacity-60"
+                />
+            </div>
             <div className="p-8 md:p-12">
                 {/* Header */}
                 <header className="flex items-start justify-between mb-12">

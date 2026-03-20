@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { CustomSelect } from '../ui/CustomControls';
 import imageCompression from 'browser-image-compression';
+import { motion } from 'framer-motion';
 import { useToast } from '../../components/Toast';
 import { supabase } from '../../supabase';
 import {
@@ -709,8 +710,20 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
     }
 
     return (
-
-        <div className={`animate-slide-up space-y-8 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+        <div className={`animate-slide-up space-y-8 relative overflow-hidden ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+            {/* Ambient dynamic background orbs */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
+                <motion.div 
+                    animate={{ x: [0, 30, -30, 0], y: [0, 40, -40, 0] }}
+                    transition={{ repeat: Infinity, duration: 16, ease: "easeInOut" }}
+                    className="absolute top-1/4 -left-10 w-64 h-64 rounded-full bg-cyan-400/10 blur-3xl opacity-60"
+                />
+                <motion.div 
+                    animate={{ x: [0, -40, 40, 0], y: [0, -30, 30, 0] }}
+                    transition={{ repeat: Infinity, duration: 20, ease: "easeInOut" }}
+                    className="absolute bottom-1/4 -right-10 w-72 h-72 rounded-full bg-violet-400/10 blur-3xl opacity-60"
+                />
+            </div>
             <div className="p-3 md:p-4 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-3" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
                 <div className="flex items-center gap-3 w-full md:w-auto">
                     <button onClick={onBack} className="p-2 rounded-lg transition-all" style={{ background: 'var(--card-bg-alt)', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>

@@ -245,12 +245,21 @@ export function TreatmentPlans({ userRole, theme, setActiveTab }: { userRole: Us
 
         const pendingItems = advised.filter((a: any) => !a.status || a.status === 'Pending');
         if (pendingItems.length > 0) {
-            const loadedItems = pendingItems.map((a: any) => ({
-                treatment_name: a.treatment,
-                selected_teeth: [a.tooth],
-                unit_cost: 0, estimated_sessions: 1, cost: 0, status: 'Pending', scheduled_date: '', notes: ''
-            }));
+            const loadedItems = pendingItems.map((a: any) => {
+                const uCost = priceMap[a.treatment] || 0;
+                return {
+                    treatment_name: a.treatment,
+                    selected_teeth: [a.tooth],
+                    unit_cost: uCost,
+                    estimated_sessions: 1,
+                    cost: uCost, // single tooth initially
+                    status: 'Pending',
+                    scheduled_date: '',
+                    notes: `Advised: ${a.treatment}`
+                };
+            });
             setNewItems(loadedItems);
+
             showToast('Pulled recommended items from clinical notes!', 'success');
         } else {
             showToast('No advised treatments found in recent clinical notes.', 'info');
@@ -600,6 +609,11 @@ export function TreatmentPlans({ userRole, theme, setActiveTab }: { userRole: Us
                                                 <input type="date" value={item.scheduled_date} onChange={e => { const n = [...newItems]; n[i].scheduled_date = e.target.value; setNewItems(n); }}
                                                     className={`w-full px-5 py-3.5 rounded-2xl border font-bold text-sm outline-none ${isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-700 focus:border-primary'}`} />
                                             </div>
+                                        </div>
+                                        <div className="space-y-1 mt-2">
+                                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Notes</label>
+                                            <textarea rows={2} value={item.notes || ''} onChange={e => { const n = [...newItems]; n[i].notes = e.target.value; setNewItems(n); }} placeholder="Add manual notes..."
+                                                className={`w-full px-5 py-3 rounded-2xl border font-bold text-xs outline-none ${isDark ? 'bg-slate-900 border-slate-800 text-white placeholder:text-slate-600' : 'bg-white border-slate-200 text-slate-700 focus:border-primary'}`} />
                                         </div>
                                     </div>
                                 ))}
