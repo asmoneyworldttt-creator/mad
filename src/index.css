@@ -3,27 +3,36 @@
 @tailwind utilities;
 
 @layer base {
+
   /* ═══════════════════════════════════════════════════
      LIGHT MODE — "Ultra Futuristic" Theme
      Professional, premium light styling with glassmorphism
   ═══════════════════════════════════════════════════ */
   :root {
+    color-scheme: light !important; /* Forces inputs/pickers to stay legible on system dark mode overrides */
     /* Surfaces */
     --bg-page: #FDFDFF;
+
     --bg-deep: #FFFFFF;
-    --bg-mesh-1: rgba(19, 91, 236, 0.08); /* Premium Blue */
-    --bg-mesh-2: rgba(72, 201, 176, 0.05); /* Mint */
-    --bg-mesh-3: rgba(139, 92, 246, 0.05); /* Purple */
+    --bg-mesh-1: rgba(19, 91, 236, 0.08);
+    /* Premium Blue */
+    --bg-mesh-2: rgba(72, 201, 176, 0.05);
+    /* Mint */
+    --bg-mesh-3: rgba(139, 92, 246, 0.05);
+    /* Purple */
     --card-bg: rgba(255, 255, 255, 0.8);
     --card-bg-alt: #FFFFFF;
 
     /* Borders & Dividers */
-    --border-color: rgba(0, 123, 255, 0.15); /* Techy Blue borders */
+    --border-color: rgba(0, 123, 255, 0.15);
+    /* Techy Blue borders */
     --border-subtle: rgba(44, 62, 80, 0.08);
 
     /* Typography */
-    --text-dark: #1A2530; /* Very dark */
-    --text-main: #2C3E50; /* Dark Grey / Black */
+    --text-dark: #1A2530;
+    /* Very dark */
+    --text-main: #2C3E50;
+    /* Dark Grey / Black */
     --text-muted: rgba(44, 62, 80, 0.65);
     --text-light: rgba(44, 62, 80, 0.45);
 
@@ -70,59 +79,76 @@
      DARK MODE — Applied when body has .dark-theme class
   ═══════════════════════════════════════════════════ */
   .dark-theme {
-    /* Surfaces */
-    --bg-page: #0a0f1e;
-    --bg-deep: #070c1a;
-    --bg-mesh-1: rgba(19, 91, 236, 0.08);
-    --bg-mesh-2: #0a0f1e;
-    --bg-mesh-3: rgba(13, 148, 136, 0.06);
-    --card-bg: rgba(15, 23, 42, 0.9);
-    --card-bg-alt: rgba(22, 33, 58, 0.8);
+    color-scheme: dark !important;
+    /* Surfaces — Void & Abyss inspired by new-main definitions setups securely */
+    --void: #000000;
 
-    /* Borders */
-    --border-color: rgba(255, 255, 255, 0.08);
-    --border-subtle: rgba(255, 255, 255, 0.05);
+    --bg-page: #000000;
+    --bg-deep: #030308;
+    --surface: #0D0B1A;
+    --surface-raised: #141228;
+    --surface-glass: rgba(13, 11, 26, 0.65);
 
-    /* Typography — CRITICAL: these must be readable on dark bg */
-    --text-dark: #f1f5f9;       /* Near-white for headings/values */
-    --text-main: #e2e8f0;       /* Light grey for body text */
-    --text-muted: rgba(148, 163, 184, 0.85); /* Muted grey */
-    --text-light: rgba(148, 163, 184, 0.5);
+    /* Gradients / glowing variables setups frames solutions */
+    --pulse-cyan: #00C8FF;
+    --pulse-violet: #7B2FE8;
+    --pulse-orange: #FF6B35;
 
-    /* Brand */
-    --primary: #4d8ef8;
-    --primary-hover: #6aa3ff;
-    --primary-soft: rgba(77, 142, 248, 0.12);
-    --primary-glow: rgba(77, 142, 248, 0.25);
+    /* Primary configurations overlays setups cleanly sets */
+    --primary: #00C8FF;
+    --primary-hover: #3B6EFF;
+    --primary-soft: rgba(0, 200, 255, 0.1);
+    --primary-glow: rgba(0, 200, 255, 0.35);
 
-    /* Secondary */
-    --secondary: #2dd4bf;
-    --secondary-soft: rgba(45, 212, 191, 0.12);
+    /* Secondary framing setups */
+    --secondary: #7B2FE8;
+    --secondary-soft: rgba(123, 47, 232, 0.1);
 
-    /* Status */
-    --success: #34d399;
-    --success-soft: rgba(52, 211, 153, 0.12);
-    --warning: #fbbf24;
-    --warning-soft: rgba(251, 191, 36, 0.12);
-    --error: #f87171;
-    --error-soft: rgba(248, 113, 113, 0.12);
-    --alert: #f87171;
+    /* Statuses setups overlays nicely */
+    --success: #00E676;
+    --success-soft: rgba(0, 230, 118, 0.1);
+    --warning: #FFAB00;
+    --warning-soft: rgba(255, 171, 0, 0.1);
+    --error: #FF1744;
+    --error-soft: rgba(255, 23, 68, 0.1);
 
-    /* Layout */
-    --sidebar-bg: #070c1a;
-    --sidebar-text: #f1f5f9;
-    --sidebar-muted: rgba(241, 245, 249, 0.6);
-    --sidebar-active: #4d8ef8;
-    --sidebar-border: rgba(255, 255, 255, 0.06);
+    /* Typography — Cleaned & crisp solutions index overlays setups nicely */
+    --text-dark: #F0EEFF;
+    --text-main: #F0EEFF;
+    --text-muted: #8B88A8;
+    --text-light: #4A4868;
 
-    /* Glass */
-    --glass-bg: rgba(15, 23, 42, 0.7);
-    --glass-border: rgba(255, 255, 255, 0.08);
-    --glass-shadow: rgba(0, 0, 0, 0.4);
+    /* Card & Interface layers setups */
+    --card-bg: rgba(13, 11, 26, 0.75);
+    --card-bg-alt: rgba(20, 18, 40, 0.6);
+
+    /* Sidebar layouts overlays framing securely setup */
+    --sidebar-bg: rgba(7, 6, 15, 0.95);
+    --sidebar-text: #F0EEFF;
+    --sidebar-muted: #8B88A8;
+    --sidebar-active: #00C8FF;
+    --sidebar-border: rgba(123, 47, 232, 0.12);
+
+    /* Custom Glassmorphism configs */
+    --glass-bg: rgba(13, 11, 26, 0.6);
+    --glass-border: rgba(0, 200, 255, 0.15);
+    --glass-shadow: rgba(0, 0, 0, 0.82);
+
+    --border-color: rgba(123, 47, 232, 0.14);
+    --border-subtle: rgba(123, 47, 232, 0.08);
+
+    --radius-premium: 20px;
+    --radius-bento: 24px;
+    --radius-card: 16px;
+  }
+
+  * {
+    min-width: 0; /* Prevents flex-children stretching outside parent bounds triggers layouts */
   }
 
   body {
     background: var(--bg-page);
+
     color: var(--text-main);
     font-family: 'Plus Jakarta Sans', sans-serif;
     overflow-x: hidden;
@@ -147,6 +173,7 @@
     text-decoration: none;
     transition: top 0.2s;
   }
+
   .skip-link:focus {
     top: 1rem;
   }
@@ -172,10 +199,16 @@
   }
 
   /* Minimum touch target size 44x44px (WCAG 2.5.5) */
-  button, [role="button"], a, input[type="checkbox"], input[type="radio"], select {
+  button,
+  [role="button"],
+  a,
+  input[type="checkbox"],
+  input[type="radio"],
+  select {
     min-height: 44px;
     min-width: 44px;
   }
+
   /* Exception: inline icon-only buttons in tight UI can be 36px minimum */
   button.icon-sm {
     min-height: 36px;
@@ -228,7 +261,7 @@
   border-color: var(--border-color) !important;
 }
 
-.dark-theme .divide-y > * + * {
+.dark-theme .divide-y>*+* {
   border-color: var(--border-color) !important;
 }
 
@@ -304,28 +337,57 @@
 
 @layer components {
 
-  /* ── Glass Premium Card ── */
-  .glass-premium {
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px) saturate(160%);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
-    border: 1px solid var(--glass-border);
-    box-shadow: 0 8px 32px 0 var(--glass-shadow);
+  /* ── Glassmorphic Layers from new-main setups index overlays ── */
+  .glass-1 {
+    background: rgba(13, 11, 26, 0.6);
+    backdrop-filter: blur(8px) saturate(120%);
+    border: 1px solid rgba(123, 47, 232, 0.1);
+    border-radius: 20px;
+    will-change: transform;
   }
 
-  /* ── Standard Card ── */
-  .card-base {
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-card);
-    box-shadow: 0 1px 12px 0 var(--glass-shadow);
-    transition: all 0.25s ease;
+  .glass-2 {
+    background: rgba(13, 11, 26, 0.7);
+    backdrop-filter: blur(12px) saturate(140%);
+    border: 1px solid rgba(0, 200, 255, 0.12);
+    border-radius: 20px;
+    box-shadow: 0 4px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
+    will-change: transform;
   }
 
-  .card-base:hover {
-    box-shadow: 0 4px 24px 0 var(--primary-glow);
-    border-color: var(--glass-border);
-    transform: translateY(-2px);
+  .glass-2:hover {
+    border-color: rgba(0, 200, 255, 0.35);
+    box-shadow: 0 8px 60px rgba(0, 0, 0, 0.5), 0 0 30px rgba(0, 200, 255, 0.05);
+    transform: translateY(-4px);
+  }
+
+  /* ── Gradient Core Borders ── */
+  .gradient-border {
+    position: relative;
+    border-radius: 20px;
+    background: transparent;
+    z-index: 1;
+  }
+
+  .gradient-border::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    background: linear-gradient(135deg, #00C8FF 0%, #7B2FE8 55%, #FF6B35 100%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    opacity: 0.3;
+    transition: opacity 0.35s;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .gradient-border:hover::before {
+    opacity: 0.8;
   }
 
   /* ── Bento Card ── */
@@ -386,17 +448,42 @@
   }
 
   @keyframes corner-float {
-    0% { transform: translate(0, 0) scale(1); opacity: 0.3; }
-    50% { transform: translate(-3%, 3%) scale(1.15); opacity: 0.5; }
-    100% { transform: translate(3%, -3%) scale(0.95); opacity: 0.3; }
+    0% {
+      transform: translate(0, 0) scale(1);
+      opacity: 0.3;
+    }
+
+    50% {
+      transform: translate(-3%, 3%) scale(1.15);
+      opacity: 0.5;
+    }
+
+    100% {
+      transform: translate(3%, -3%) scale(0.95);
+      opacity: 0.3;
+    }
   }
 
   @keyframes mesh-animation {
-    0% { background-position: 0% 0%; }
-    25% { background-position: 100% 0%; }
-    50% { background-position: 100% 100%; }
-    75% { background-position: 0% 100%; }
-    100% { background-position: 0% 0%; }
+    0% {
+      background-position: 0% 0%;
+    }
+
+    25% {
+      background-position: 100% 0%;
+    }
+
+    50% {
+      background-position: 100% 100%;
+    }
+
+    75% {
+      background-position: 0% 100%;
+    }
+
+    100% {
+      background-position: 0% 0%;
+    }
   }
 
   /* ── Text Gradient ── */
@@ -577,9 +664,24 @@
 @media (max-width: 767px) {
 
   /* ── Typography scaling ── */
-  h1, h2 { font-size: clamp(1.4rem, 5vw, 2rem) !important; }
-  h3      { font-size: clamp(1rem, 4vw, 1.4rem) !important; }
-  h4      { font-size: clamp(0.9rem, 3.5vw, 1.1rem) !important; }
+  p, span, h1, h2, h3, h4, th, td {
+    word-break: break-all; /* Prevents long IDs/numbers stretching containers triggers */
+    overflow-wrap: anywhere;
+  }
+
+  h1,
+  h2 {
+
+    font-size: clamp(1.4rem, 5vw, 2rem) !important;
+  }
+
+  h3 {
+    font-size: clamp(1rem, 4vw, 1.4rem) !important;
+  }
+
+  h4 {
+    font-size: clamp(0.9rem, 3.5vw, 1.1rem) !important;
+  }
 
   /* ── Cards: reduce padding on mobile ── */
   [class*="rounded-[2.5rem]"],
@@ -590,12 +692,21 @@
   }
 
   /* ── Tables: horizontal scroll on mobile ── */
-  .overflow-x-auto { -webkit-overflow-scrolling: touch; }
-  table { min-width: 560px; }
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table {
+    min-width: 560px;
+  }
 
   /* ── Input touch targets ── */
-  input, select, textarea, button {
-    font-size: 16px !important; /* prevents iOS zoom on focus */
+  input,
+  select,
+  textarea,
+  button {
+    font-size: 16px !important;
+    /* prevents iOS zoom on focus */
   }
 
   /* ── KPI grid collapses to 2 columns ── */
@@ -625,19 +736,30 @@
   /* (js handles isOpen toggle, CSS handles transform) */
 
   /* ── Main content: full width ── */
-  .lg\\:ml-64 { margin-left: 0 !important; }
+  .lg\\:ml-64 {
+    margin-left: 0 !important;
+  }
 
   /* ── Button text shrinks ── */
-  button span { font-size: 0.75rem; }
+  button span {
+    font-size: 0.75rem;
+  }
 
   /* ── Chart containers ── */
-  .recharts-wrapper { font-size: 10px; }
+  .recharts-wrapper {
+    font-size: 10px;
+  }
 
   /* ── Sticky billing sidebar on mobile becomes normal ── */
-  .sticky { position: relative !important; top: auto !important; }
+  .sticky {
+    position: relative !important;
+    top: auto !important;
+  }
 
   /* ── Safe area for notched phones ── */
-  body { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  body {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
 }
 
 /* ── Tablet: 768-1024px ── */
