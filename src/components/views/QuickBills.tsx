@@ -458,7 +458,7 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
                     {/* General Info */}
                     <div className={cardCls} style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
                         <p className="text-xs font-bold text-primary flex items-center gap-2 mb-4">Clinic Information</p>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
                                 <label className={labelCls} style={{ color: 'var(--text-muted)' }}>Date</label>
                                 <input type="date" value={clinicInfo.date} onChange={e => setClinicInfo({ ...clinicInfo, date: e.target.value })} className={inputCls} style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }} />
@@ -518,7 +518,7 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
                                 </div>
                             </div>
                         )}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className={labelCls} style={{ color: 'var(--text-muted)' }}>Name</label>
                                 <input type="text" value={patientInfo.name} onChange={e => setPatientInfo({ ...patientInfo, name: e.target.value })} placeholder="Temporary" className={inputCls} style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)', color: 'var(--text-main)' }} />
@@ -654,7 +654,7 @@ export function QuickBills({ userRole, theme, setActiveTab }: { userRole: UserRo
                     {/* Follow-up */}
                     <div className={cardCls}>
                         <p className="text-xs font-extrabold uppercase tracking-widest text-slate-400 mb-4">Follow-up & Advice</p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="col-span-2">
                                 <label className={labelCls}>Advice / Remarks</label>
                                 <textarea rows={2} value={followUpInfo.advice} onChange={e => setFollowUpInfo({ ...followUpInfo, advice: e.target.value })} className={`${inputCls} resize-none`} />
