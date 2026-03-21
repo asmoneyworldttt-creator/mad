@@ -723,15 +723,7 @@
     min-height: unset;
   }
 
-  /* ── KPI grid collapses to 2 columns ── */
-  .grid.lg\\:grid-cols-4 {
-    grid-template-columns: repeat(2, 1fr) !important;
-  }
-
-  /* ── Single column for most grids ── */
-  .grid.lg\\:grid-cols-3 {
-    grid-template-columns: 1fr !important;
-  }
+  /* Grid layouts managed by Tailwind classes */
 
   /* ── Full-width modals on mobile ── */
   .modal-container {

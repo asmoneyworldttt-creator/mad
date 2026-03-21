@@ -141,7 +141,7 @@ export function MobileBottomNav({ activeTab, setActiveTab, toggleMore, theme, us
                         >
                             <Plus size={28} strokeWidth={2.5} />
                         </button>
-                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">New Patient</span>
+                        <span className="text-[9px] font-bold text-slate-400 tracking-normal mt-0.5">New Patient</span>
                     </div>
 
                     <button
