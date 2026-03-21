@@ -215,6 +215,14 @@
     min-height: 28px;
     min-width: 28px;
   }
+
+  svg, .lucide {
+    flex-shrink: 0 !important;
+  }
+
+  button, .badge, [class*="badge"], [class*="status"] {
+    white-space: nowrap !important;
+  }
 }
 
 /* ══════════════════════════════════════════════════════
@@ -674,9 +682,8 @@
 @media (max-width: 767px) {
 
   /* ── Typography: only content text wraps, NOT table cells or buttons ── */
-  p,
-  span {
-    overflow-wrap: anywhere;
+  p, span {
+    overflow-wrap: break-word;
   }
 
   /* Headings: clamp only for actual page headings, not UI labels */
