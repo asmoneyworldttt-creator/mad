@@ -419,7 +419,7 @@ export function Dashboard({ setActiveTab, userRole, theme, session, staffData }:
                                  <Calendar size={18} className="text-cyan-500" />
                              </div>
                          </div>
-                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+                         <div className="grid grid-cols-2 gap-3 mt-4">
                              <div className="p-3 bg-slate-500/5 rounded-xl border border-black/[0.02]">
                                  <p className="text-[9px] font-bold text-slate-400">Appointments</p>
                                  <h4 className="text-xl font-black mt-0.5" style={{ color: 'var(--text-dark)' }}>{stats.todayAppointments}</h4>
@@ -453,7 +453,7 @@ export function Dashboard({ setActiveTab, userRole, theme, session, staffData }:
                                  <Users size={18} className="text-emerald-500" />
                              </div>
                          </div>
-                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+                         <div className="grid grid-cols-2 gap-3 mt-4">
                              <div className="p-3 bg-slate-500/5 rounded-xl border border-black/[0.02]">
                                  <p className="text-[9px] font-bold text-slate-400">Total Patients</p>
                                  <h4 className="text-xl font-black mt-0.5" style={{ color: 'var(--text-dark)' }}>{stats.totalPatients}</h4>
@@ -492,7 +492,7 @@ export function Dashboard({ setActiveTab, userRole, theme, session, staffData }:
                              <p className="text-xs font-bold text-slate-400">Total Revenue</p>
                              <h4 className="text-2xl font-black mt-1 text-emerald-600">{formatINR(stats.totalRevenue)}</h4>
                          </div>
-                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                         <div className="grid grid-cols-2 gap-3 mb-3">
                              <div className="p-3 bg-slate-500/5 rounded-xl border border-black/[0.02]">
                                  <p className="text-[9px] font-bold text-slate-400">Clinical Expenses</p>
                                  <h4 className="text-sm font-black mt-0.5 text-rose-500">{formatINR(stats.totalExpenses)}</h4>
