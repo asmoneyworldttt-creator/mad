@@ -115,7 +115,7 @@ export function MobileBottomNav({ activeTab, setActiveTab, toggleMore, theme, us
                 </div>
             )}
 
-            <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[94%] max-w-sm rounded-[2.5rem] px-6 py-3 z-50 transition-all duration-500 shadow-2xl backdrop-blur-xl"
+            <nav className="fixed bottom-3 left-1/2 -translate-x-1/2 w-[94%] max-w-sm rounded-[2.5rem] px-6 py-3 z-50 transition-all duration-500 shadow-2xl backdrop-blur-xl"
                 style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
                 <div className="flex items-center justify-between">
                     <button
@@ -129,7 +129,7 @@ export function MobileBottomNav({ activeTab, setActiveTab, toggleMore, theme, us
                         onClick={() => setActiveTab('appointments')}
                         className={`flex flex-col items-center gap-1 transition-all duration-300 p-2 rounded-xl ${activeTab === 'appointments' ? 'text-primary' : 'text-slate-400 hover:text-slate-600'}`}>
                         <Calendar size={24} />
-                        <span className="text-[10px] font-bold">Schedule</span>
+                        <span className="text-[10px] font-bold">Appointment</span>
                     </button>
 
                     {/* Central Action Button */}
@@ -141,7 +141,7 @@ export function MobileBottomNav({ activeTab, setActiveTab, toggleMore, theme, us
                         >
                             <Plus size={28} strokeWidth={2.5} />
                         </button>
-                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Register</span>
+                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">New Patient</span>
                     </div>
 
                     <button

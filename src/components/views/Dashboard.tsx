@@ -82,8 +82,8 @@ function DateFilterTabs({ active, onChange, customStart, setCustomStart, customE
         { id: 'custom', label: 'Custom' },
     ];
     return (
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-0.5">
-            <div className="flex items-center p-1 rounded-xl shrink-0" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
+        <div className="flex flex-wrap items-center gap-2 pb-1 w-full">
+            <div className="flex flex-wrap items-center p-1 rounded-xl w-full" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
                 {tabs.map(t => {
                     const isActive = active === t.id;
                     return (

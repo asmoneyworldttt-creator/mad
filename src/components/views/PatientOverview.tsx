@@ -151,6 +151,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
     const [photos, setPhotos] = useState<{ name: string, url: string }[]>([]);
     const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
     const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
+    const [profileUrl, setProfileUrl] = useState(patient.profile_picture_url);
     
     // Real data states
     const [patientBills, setPatientBills] = useState<any[]>([]);
@@ -312,6 +313,33 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                 return { name: f.name, url: publicUrl };
             });
             setPhotos(list);
+        }
+    };
+
+    const handlePhotoUpload = async (e: any) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setIsUploadingPhoto(true);
+        try {
+            const options = { maxSizeMB: 0.5, maxWidthOrHeight: 800, useWebWorker: true };
+            const compressedFile = await imageCompression(file, options);
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${patient.id}_${Date.now()}.${fileExt}`;
+            const filePath = `profiles/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage.from('clinical-assets').upload(filePath, compressedFile);
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage.from('clinical-assets').getPublicUrl(filePath);
+            const { error: updateError } = await supabase.from('patients').update({ profile_picture_url: publicUrl }).eq('id', patient.id);
+            if (updateError) throw updateError;
+
+            setProfileUrl(publicUrl);
+            showToast('Profile photo updated successfully', 'success');
+        } catch (error: any) {
+            showToast(error.message || 'Error uploading photo', 'error');
+        } finally {
+            setIsUploadingPhoto(false);
         }
     };
 
@@ -755,8 +783,19 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                         <ChevronLeft size={16} />
                     </button>
                     <div className="flex items-center gap-5">
-                        <div className="w-14 h-14 rounded-2xl bg-primary text-white flex items-center justify-center font-bold text-2xl shadow-xl shadow-primary/30">
-                            {patient.name?.charAt(0) || 'U'}
+                        <div className="relative group cursor-pointer shrink-0">
+                            {profileUrl ? (
+                                <img src={profileUrl} alt={patient.name} className="w-14 h-14 rounded-2xl object-cover border-2 border-primary shadow-xl shadow-primary/20" />
+                            ) : (
+                                <div className="w-14 h-14 rounded-2xl bg-primary text-white flex items-center justify-center font-bold text-2xl shadow-xl shadow-primary/30">
+                                    {patient.name?.charAt(0) || 'U'}
+                                </div>
+                            )}
+                            <div className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                <Plus size={14} className="text-white" />
+                            </div>
+                            <input type="file" accept="image/*" onChange={handlePhotoUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
+                            {isUploadingPhoto && <div className="absolute inset-0 bg-black/60 rounded-2xl flex items-center justify-center"><div className="w-4 h-4 border-2 border-white border-t-transparent animate-spin rounded-full" /></div>}
                         </div>
                         <div>
                             <div className="flex items-center gap-2.5">

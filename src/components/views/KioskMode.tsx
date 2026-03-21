@@ -62,8 +62,8 @@ export function KioskMode({ theme }: { theme?: 'light' | 'dark' }) {
     };
 
     return (
-        <div className={`min-h-[80vh] flex items-center justify-center p-10 rounded-[3rem] ${isDark ? 'bg-slate-950/50' : 'bg-slate-50'}`}>
-            <div className={`w-full max-w-2xl p-12 rounded-[4rem] border shadow-2xl text-center transition-all duration-700 ${isDark ? 'bg-slate-900 border-white/5 shadow-primary/10' : 'bg-white border-slate-100 shadow-xl'}`}>
+        <div className={`min-h-[80vh] flex items-center justify-center p-3 sm:p-10 rounded-2xl sm:rounded-[3rem] animate-fade-in ${isDark ? 'bg-slate-950/50' : 'bg-slate-50'}`}>
+            <div className={`w-full max-w-2xl p-6 sm:p-12 rounded-[2rem] sm:rounded-[4rem] border shadow-2xl text-center transition-all duration-700 ${isDark ? 'bg-slate-900 border-white/5 shadow-primary/10' : 'bg-white border-slate-100 shadow-xl'}`}>
 
                 {step === 1 && (
                     <div className="animate-fade-in flex flex-col items-center">

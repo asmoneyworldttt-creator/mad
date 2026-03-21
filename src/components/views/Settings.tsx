@@ -133,6 +133,7 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
 
     const [branches, setBranches] = useState<any[]>([]);
     const [isBranchModalOpen, setIsBranchModalOpen] = useState(false);
+    const [editingBranchId, setEditingBranchId] = useState<string | number | null>(null);
     const [branchForm, setBranchForm] = useState({ 
         name: '', 
         address: '', 
@@ -190,12 +191,27 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
             is_default: branchForm.is_default
         };
 
-        const { error } = await supabase.from('branches').insert([branchData]);
+        const { error } = editingBranchId 
+            ? await supabase.from('branches').update(branchData).eq('id', editingBranchId)
+            : await supabase.from('branches').insert([branchData]);
+
         if (!error) {
-            showToast('Branch/Location added successfully', 'success');
+            showToast(editingBranchId ? 'Branch updated successfully' : 'Branch/Location added successfully', 'success');
             setIsBranchModalOpen(false);
+            setEditingBranchId(null);
+            setBranchForm({ name: '', address: '', city: 'Chennai', is_primary: false, latitude: '', longitude: '', radius: 100, is_default: false });
             fetchBranches();
         } else showToast(error.message, 'error');
+    };
+
+    const handleDeleteBranch = async (id: string | number, name: string) => {
+        if (confirm(`Are you sure you want to remove branch "${name}"?`)) {
+            const { error } = await supabase.from('branches').delete().eq('id', id);
+            if (!error) {
+                showToast('Branch removed', 'success');
+                fetchBranches();
+            } else showToast(error.message, 'error');
+        }
     };
 
     const handleUpdateStaffStatus = async (id: string, status: string) => {
@@ -699,19 +715,19 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
 
             <div className="flex flex-col lg:flex-row gap-5">
                 {/* Navigation Sidebar */}
-                <div className="lg:w-52 space-y-1 flex-shrink-0">
+                <div className="flex flex-row overflow-x-auto lg:flex-col lg:w-52 gap-1.5 flex-shrink-0 pb-3 lg:pb-0 font-sans" style={{ touchAction: 'pan-x' }}>
                     {tabs.map(tab => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`w-full flex items-center justify-between p-2.5 rounded-xl transition-all group relative overflow-hidden ${activeTab === tab.id
+                            className={`w-max lg:w-full flex-shrink-0 flex items-center justify-between p-2.5 rounded-xl transition-all group relative overflow-hidden ${activeTab === tab.id
                                 ? 'bg-primary text-white shadow-lg shadow-primary/20 font-bold border-primary'
                                 : theme === 'dark' ? 'text-slate-400 hover:bg-white/5 border border-transparent hover:border-white/10' : 'text-slate-500 hover:bg-slate-50 border border-transparent hover:border-slate-200'
                                 } border shadow-sm`}
                         >
                             <div className="flex items-center gap-2.5 relative z-10">
                                 <tab.icon size={14} className={activeTab === tab.id ? 'text-white' : 'text-slate-400 group-hover:text-primary transition-colors'} />
-                                <span className="text-[9px] font-bold uppercase tracking-wider">{tab.label}</span>
+                                <span className="text-[9px] font-bold uppercase tracking-wider whitespace-nowrap">{tab.label}</span>
                             </div>
                             {tab.badge && <span className={`text-[6px] font-bold px-1 py-0.5 rounded-lg relative z-10 ${activeTab === tab.id ? 'bg-white/20 text-white' : 'bg-primary/10 text-primary'}`}>{tab.badge}</span>}
                         </button>
@@ -759,32 +775,38 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
                                 </div>
                             </div>
 
-                            <div className="p-8 rounded-2xl border text-white relative overflow-hidden shadow-xl group/branch" style={{ background: 'var(--sidebar-bg)', borderColor: 'rgba(255,255,255,0.1)' }}>
+                            <div className="p-6 rounded-2xl border relative overflow-hidden shadow-lg group/branch" style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
                                 <div className="absolute -right-20 -bottom-20 w-80 h-80 bg-primary/20 rounded-full blur-[100px] pointer-events-none" />
                                 <div className="flex justify-between items-center mb-6 relative z-10">
-                                    <h3 className="font-bold text-lg flex items-center gap-3 tracking-tight">
+                                    <h3 className="font-bold text-lg flex items-center gap-3 tracking-tight" style={{ color: 'var(--text-dark)' }}>
                                         <MapPin size={24} className="text-primary" /> Branch Network
                                     </h3>
-                                    <button onClick={() => setIsBranchModalOpen(true)} className="bg-white/10 hover:bg-white/20 text-white text-[9px] font-bold uppercase tracking-wider px-5 py-2.5 rounded-xl transition-all border border-white/10 hover:scale-105 active:scale-95 shadow-lg">Add Branch</button>
+                                    <button onClick={() => setIsBranchModalOpen(true)} className="bg-primary hover:bg-primary-hover text-white text-[10px] font-bold uppercase tracking-wider px-5 py-2.5 rounded-xl transition-all hover:scale-105 active:scale-95 shadow-lg shadow-primary/20">Add Branch</button>
                                 </div>
-                                <div className="space-y-4 relative z-10">
+                                <div className="space-y-3 relative z-10">
                                     {branches.map((b) => (
-                                        <div key={b.id} className="p-4 bg-white/5 border border-white/20 rounded-2xl flex justify-between items-center group transition-all hover:bg-white/10 shadow-lg">
+                                        <div key={b.id} className="p-4 bg-slate-50 dark:bg-white/5 border dark:border-white/5 rounded-2xl flex justify-between items-center group transition-all hover:border-primary/20 shadow-sm">
                                             <div className="flex items-center gap-4">
                                                 <div className="w-12 h-12 rounded-xl bg-primary text-white flex items-center justify-center font-black text-xl">{b.name.charAt(0).toUpperCase()}</div>
                                                 <div>
-                                                    <p className="font-bold text-base tracking-tight text-white">{b.name}</p>
-                                                    <p className="text-[10px] opacity-60 font-medium text-slate-300">{b.address || 'Location Address unspecified'}</p>
+                                                    <p className="font-bold text-base tracking-tight" style={{ color: 'var(--text-dark)' }}>{b.name}</p>
+                                                    <p className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>{b.address || 'Location Address unspecified'}</p>
                                                 </div>
                                             </div>
-                                            <div className="flex flex-col items-end gap-1">
-                                                {b.is_primary && <span className="text-[7px] bg-primary text-white px-2 py-0.5 rounded-full font-bold tracking-wider">PRIMARY</span>}
-                                                {b.is_default && <span className="text-[7px] bg-emerald-500 text-white px-2 py-0.5 rounded-full font-bold tracking-wider">DEFAULT</span>}
+                                            <div className="flex items-center gap-3">
+                                                <div className="flex flex-col items-end gap-1">
+                                                    {b.is_primary && <span className="text-[7px] bg-primary text-white px-2 py-0.5 rounded-full font-bold tracking-wider">PRIMARY</span>}
+                                                    {b.is_default && <span className="text-[7px] bg-emerald-500 text-white px-2 py-0.5 rounded-full font-bold tracking-wider">DEFAULT</span>}
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                    <button onClick={() => { setBranchForm({ name: b.name, address: b.address || '', city: b.city || 'Chennai', is_primary: b.is_primary || false, latitude: b.latitude?.toString() || '', longitude: b.longitude?.toString() || '', radius: b.radius || 100, is_default: b.is_default || false }); setEditingBranchId(b.id); setIsBranchModalOpen(true); }} className="p-1.5 rounded-lg border text-slate-400 hover:text-primary hover:bg-white/10 transition-all"><Edit3 size={14} /></button>
+                                                    <button onClick={() => handleDeleteBranch(b.id, b.name)} className="p-1.5 rounded-lg border text-slate-400 hover:text-rose-500 hover:bg-white/10 transition-all"><Trash2 size={14} /></button>
+                                                </div>
                                             </div>
                                         </div>
                                     ))}
                                     {branches.length === 0 && (
-                                        <p className="text-center text-white/50 text-[10px] font-bold py-6">No branch Node grids initialized.</p>
+                                        <p className="text-center text-[10px] font-bold py-6" style={{ color: 'var(--text-muted)' }}>No branch Node grids initialized.</p>
                                     )}
                                 </div>
                             </div>
@@ -1308,8 +1330,8 @@ export function Settings({ userRole, theme }: { userRole: UserRole; theme?: 'lig
             {isBranchModalOpen && (
                 <Modal 
                     isOpen={isBranchModalOpen} 
-                    onClose={() => setIsBranchModalOpen(false)} 
-                    title="Initialize Branch Node"
+                    onClose={() => { setIsBranchModalOpen(false); setEditingBranchId(null); setBranchForm({ name: '', address: '', city: 'Chennai', is_primary: false, latitude: '', longitude: '', radius: 100, is_default: false }); }} 
+                    title={editingBranchId ? "Edit Branch Node" : "Initialize Branch Node"}
                 >
                     <div className="space-y-4 p-2">
                         <div className="space-y-2">

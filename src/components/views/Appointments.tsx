@@ -397,7 +397,7 @@ export function Appointments({ userRole, theme, setActiveTab, setGlobalPatient }
                     className="p-2.5 sm:p-3 rounded-xl border cursor-pointer hover:shadow-sm transition-all active:scale-[0.99] backdrop-blur-md"
                     style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}
                 >
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                         <div className="flex items-center gap-2 min-w-0 flex-1">
                             <div className="w-8 h-8 rounded-md bg-primary/5 flex items-center justify-center text-primary font-bold text-xs shrink-0">{apt.name?.charAt(0) || 'P'}</div>
                              <div className="min-w-0 flex-1">
@@ -422,20 +422,22 @@ export function Appointments({ userRole, theme, setActiveTab, setGlobalPatient }
                                 </div>
                             </div>
                         </div>
-                        <select
-                            onClick={(e) => e.stopPropagation()}
-                            value={apt.status}
-                            onChange={(e) => handleUpdateStatus(apt.id, e.target.value)}
-                            className={`text-[9px] font-extrabold px-1.5 py-1 rounded-lg border shrink-0 outline-none cursor-pointer transition-all max-w-[80px] ${
-                                apt.status === 'Confirmed' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                                apt.status === 'Completed' ? 'bg-primary/10 text-primary border-primary/20' :
-                                apt.status === 'Cancelled' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 'bg-slate-500/10 text-slate-500 border-slate-500/20'
-                            }`}
-                        >
-                            {['Confirmed', 'Completed', 'Missed', 'Cancelled'].map(s => (
-                                <option key={s} value={s} className="text-black bg-white">{s}</option>
-                            ))}
-                        </select>
+                        <div className="flex justify-start sm:justify-end border-t sm:border-t-0 dark:border-white/5 pt-2 sm:pt-0">
+                            <select
+                                onClick={(e) => e.stopPropagation()}
+                                value={apt.status}
+                                onChange={(e) => handleUpdateStatus(apt.id, e.target.value)}
+                                className={`text-[9px] font-extrabold px-2 py-1 rounded-lg border shrink-0 outline-none cursor-pointer transition-all w-full sm:w-auto ${
+                                    apt.status === 'Confirmed' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                                    apt.status === 'Completed' ? 'bg-primary/10 text-primary border-primary/20' :
+                                    apt.status === 'Cancelled' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 'bg-slate-500/10 text-slate-500 border-slate-500/20'
+                                }`}
+                            >
+                                {['Confirmed', 'Completed', 'Missed', 'Cancelled'].map(s => (
+                                    <option key={s} value={s} className="text-black bg-white">{s}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -540,7 +542,7 @@ export function Appointments({ userRole, theme, setActiveTab, setGlobalPatient }
                             <CalendarDays size={18} />
                         </div>
                         <div>
-                            <h2 className="text-sm sm:text-base font-bold uppercase tracking-tight">Appointments</h2>
+                            <h2 className="text-xl md:text-2xl font-black tracking-tight" style={{ color: 'var(--text-dark)' }}>Appointments</h2>
                                 <div className="relative">
                                     <p onClick={() => setIsCalendarOpen(!isCalendarOpen)} className="text-[10px] font-medium text-slate-500 hover:text-primary cursor-pointer transition-all flex items-center gap-1">
                                         {new Date(selectedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} • {appointments.length} Total
