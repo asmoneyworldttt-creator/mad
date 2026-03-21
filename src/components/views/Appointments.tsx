@@ -181,7 +181,7 @@ export function Appointments({ userRole, theme, setActiveTab, setGlobalPatient }
 
     useEffect(() => {
         const fetchPatients = async () => {
-            const { data } = await supabase.from('patients').select('id, phone');
+            const { data } = await supabase.from('patients').select('id, phone, age');
             if (data) {
                 const map: any = {};
                 data.forEach((p: any) => { map[p.id] = p; });
@@ -400,12 +400,26 @@ export function Appointments({ userRole, theme, setActiveTab, setGlobalPatient }
                     <div className="flex items-center gap-2">
                         <div className="flex items-center gap-2 min-w-0 flex-1">
                             <div className="w-8 h-8 rounded-md bg-primary/5 flex items-center justify-center text-primary font-bold text-xs shrink-0">{apt.name?.charAt(0) || 'P'}</div>
-                            <div className="min-w-0 flex-1">
-                                <h4 className={`text-xs font-bold truncate max-w-[130px] sm:max-w-none ${isCancelled ? 'line-through opacity-50' : ''} ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>{apt.name}</h4>
-                                <p className="text-[9px] text-slate-500 flex items-center gap-1 truncate">
-                                    <Stethoscope size={9} /> {apt.doctor_name || 'Assign Doctor'}
-                                </p>
-                                {apt.type && <p className="text-[9px] text-slate-400">{apt.type}</p>}
+                             <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                    <h4 className={`text-xs font-bold truncate ${isCancelled ? 'line-through opacity-50' : ''} ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>{apt.name}</h4>
+                                    {apt.patient_id && <span className="text-[9px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-md">#{apt.patient_id.slice(0, 8)}</span>}
+                                    {patientMap[apt.patient_id]?.age && <span className="text-[9px] font-bold text-slate-400">({patientMap[apt.patient_id]?.age}y)</span>}
+                                </div>
+                                <div className="flex flex-col gap-0.5 mt-0.5">
+                                    {patientMap[apt.patient_id]?.phone && (
+                                        <p className="text-[9px] text-slate-400 font-bold flex items-center gap-1"><span className="opacity-60">Mobile:</span> {patientMap[apt.patient_id].phone}</p>
+                                    )}
+                                    <p className="text-[9px] text-slate-500 flex items-center gap-1 truncate">
+                                        <Stethoscope size={9} /> {apt.doctor_name || 'Assign Doctor'}
+                                    </p>
+                                    {apt.type && (
+                                        <p className="text-[10px] text-slate-700 dark:text-slate-200 font-extrabold flex items-center gap-1 mt-0.5">
+                                            {apt.tooth_id && !apt.type?.includes(`#${apt.tooth_id}`) && <span className="text-[9px] font-bold bg-amber-500/10 text-amber-500 px-1 py-0.25 rounded border border-amber-500/20">#{apt.tooth_id}</span>}
+                                            <span className="text-primary">{apt.type}</span>
+                                        </p>
+                                    )}
+                                </div>
                             </div>
                         </div>
                         <select

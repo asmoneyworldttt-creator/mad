@@ -831,12 +831,25 @@ export function Dashboard({ setActiveTab, userRole, theme, session, staffData }:
 /* ── Today's Queue sub-component ── */
 function TodayQueue({ theme, setActiveTab }: { theme?: string; setActiveTab?: (t: string) => void }) {
     const [queue, setQueue] = useState<any[]>([]);
+    const [patientMap, setPatientMap] = useState<any>({});
     const isDark = theme === 'dark';
 
     const fetch = useCallback(async () => {
         const today = new Date().toLocaleDateString('en-CA');
         const { data } = await supabase.from('appointments').select('*').eq('date', today).order('time').limit(6);
         setQueue(data || []);
+
+        if (data && data.length > 0) {
+            const ids = data.map((appt: any) => appt.patient_id).filter(Boolean);
+            if (ids.length > 0) {
+                const { data: pts } = await supabase.from('patients').select('id, phone, age').in('id', ids);
+                if (pts) {
+                    const map: any = {};
+                    pts.forEach((p: any) => { map[p.id] = p; });
+                    setPatientMap(map);
+                }
+            }
+        }
     }, []);
 
     useEffect(() => {
@@ -884,8 +897,17 @@ function TodayQueue({ theme, setActiveTab }: { theme?: string; setActiveTab?: (t
                                     <span className="text-[9px] font-black" style={{ color: 'var(--primary)' }}>{p.time?.slice(0, 5)}</span>
                                 </div>
                                 <div>
-                                    <p className="font-bold text-xs" style={{ color: 'var(--text-dark)' }}>{p.name}</p>
-                                    <p className="text-[9px] font-bold" style={{ color: 'var(--text-muted)' }}>{p.type}</p>
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                        <p className="font-bold text-xs" style={{ color: 'var(--text-dark)' }}>{p.name}</p>
+                                        {p.patient_id && <span className="text-[8px] font-bold text-primary bg-primary/10 px-1 py-0.25 rounded-md">#{p.patient_id.slice(0, 8)}</span>}
+                                        {patientMap[p.patient_id]?.age && <span className="text-[8px] font-bold text-slate-400">({patientMap[p.patient_id]?.age}y)</span>}
+                                    </div>
+                                    <p className="text-[8px] text-slate-400 font-bold mb-0.5">{patientMap[p.patient_id]?.phone || ''}</p>
+                                    <div className="flex items-center gap-1 flex-wrap">
+                                        <p className="text-[9px] font-extrabold text-slate-600 dark:text-slate-300">{p.type}</p>
+                                        {p.tooth_id && <span className="text-[8px] font-bold bg-amber-500/10 text-amber-500 px-1 rounded">#{p.tooth_id}</span>}
+                                    </div>
+                                    {p.doctor_name && <p className="text-[8px] text-slate-400">Dr. {p.doctor_name.replace('Dr. ', '')}</p>}
                                 </div>
                             </div>
                             <span className="px-2 py-0.5 rounded-lg text-[9px] font-bold"
