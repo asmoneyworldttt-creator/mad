@@ -800,7 +800,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                         <div>
                             <div className="flex items-center gap-2.5">
                                 <h3 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--text-dark)' }}>{patient.name}</h3>
-                                <span className={`${patientLifecycle.color} text-sm font-bold px-3 py-1 rounded-full border shadow-sm`}>{patientLifecycle.status}</span>
+                                <span className={`${patientLifecycle.color} text-sm font-bold whitespace-nowrap px-3 py-1 rounded-full border shadow-sm`}>{patientLifecycle.status}</span>
                             </div>
                             <p className="text-base font-medium mt-1" style={{ color: 'var(--text-muted)' }}>
                                 {patient.gender}, {patient.age}y • Blood Group: <span className="text-rose-500 font-bold">{patient.blood_group || 'O+'}</span> • ID: <span className="font-bold text-primary">#{patient.id.slice(0, 8)}</span>
@@ -1452,19 +1452,382 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
 
                         {clinicalSubTab === 'soap' && (
                             <div className="space-y-4">
+                                
                                 <div className="flex justify-end mb-2">
                                     <button onClick={() => {
-                                        setNewNote({ subjective: '', objective: '', assessment: '', plan: '', doctor_name: 'Dr. Sarah Jenkins' });
-                                        setAdvisedTreatments([]);
-                                        setAdvisedLabOrders([]);
-                                        setTreatmentsDone([]);
-                                        setIsEditingNote(false);
-                                        setEditingNoteId(null);
-                                        setIsSoapModalOpen(true);
-                                    }} className="bg-primary text-white px-4 py-2 rounded-xl flex items-center gap-1.5 text-xs font-bold transition-all shadow-lg shadow-primary/20 hover:scale-105 active:scale-95">
-                                        <Plus size={14} /> New Clinical Note
+                                        if (isSoapModalOpen) {
+                                            setIsSoapModalOpen(false);
+                                        } else {
+                                            setNewNote({ subjective: '', objective: '', assessment: '', plan: '', doctor_name: 'Dr. Sarah Jenkins' });
+                                            setAdvisedTreatments([]);
+                                            setAdvisedLabOrders([]);
+                                            setTreatmentsDone([]);
+                                            setIsEditingNote(false);
+                                            setEditingNoteId(null);
+                                            setIsSoapModalOpen(true);
+                                        }
+                                    }} className={`${isSoapModalOpen ? 'bg-slate-800 text-slate-400' : 'bg-primary text-white'} px-4 py-2 rounded-xl flex items-center gap-1.5 text-xs font-bold transition-all shadow-lg shadow-primary/20 hover:scale-105 active:scale-95`}>
+                                        {isSoapModalOpen ? 'Cancel Note' : <><Plus size={14} /> New Clinical Note</>}
                                     </button>
                                 </div>
+
+                                {isSoapModalOpen && (
+                                    <div className={`p-4 sm:p-6 rounded-[2rem] border animate-slide-up space-y-4 mb-4 ${theme === 'dark' ? 'bg-slate-900 border-white/5' : 'bg-slate-50 border-slate-100 shadow-sm'}`} style={{ border: '1px solid var(--border-color)' }}>
+                                        <div className="flex justify-between items-center mb-2 border-b pb-4" style={{ borderColor: 'var(--border-color)' }}>
+                                            <h3 className="font-black text-lg tracking-tight">New Clinical Note</h3>
+                                            <button onClick={() => setIsSoapModalOpen(false)} className={`p-1.5 rounded-xl transition-all ${theme === 'dark' ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}>×</button>
+                                        </div>
+<div className="space-y-4">
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Practitioner</label>
+                                    <div className="relative">
+                                        <select value={newNote.doctor_name} onChange={e => setNewNote({ ...newNote, doctor_name: e.target.value })} className={`w-full px-5 py-3 rounded-2xl border font-bold text-sm outline-none ${theme === 'dark' ? 'bg-slate-800 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
+                                            {doctorsList.length > 0 ? doctorsList.map((d, i) => (
+                                                <option key={i} value={`Dr. ${d}`}>{`Dr. ${d}`}</option>
+                                            )) : (
+                                                <>
+                                                    <option value="Dr. Sarah Jenkins">Dr. Sarah Jenkins</option>
+                                                    <option value="Dr. Michael Chen">Dr. Michael Chen</option>
+                                                    <option value="Dr. Mark Sloan">Dr. Mark Sloan</option>
+                                                </>
+                                            )}
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Chief Complaint</label>
+                                    <textarea value={newNote.subjective} onChange={e => setNewNote({ ...newNote, subjective: e.target.value })} className="w-full h-16 rounded-2xl p-4 text-xs font-bold outline-none border transition-all" placeholder="Patient reports..." />
+                                </div>
+                                
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Intra Oral Examination (IOE)</label>
+                                    <textarea 
+                                        value={newNote.objective} 
+                                        onChange={e => {
+                                            const val = e.target.value;
+                                            setNewNote({ ...newNote, objective: val });
+                                            
+                                            // Auto parser supporting multiples processed only on comma/newline (delimiter)
+                                            const fragments = val.split(/[\,\n]+/).map(f => f.trim());
+                                            const isDoneTypingLast = val.endsWith(',') || val.endsWith('\n');
+
+                                            const validItems = [];
+                                            let currentShortcut = '';
+                                            fragments.forEach((frag, idx) => {
+                                                if (idx === fragments.length - 1 && !isDoneTypingLast) return;
+                                                const matchFull = frag.match(/^([A-Za-z]+)\s+(\d{1,2})$/i);
+                                                if (matchFull) {
+                                                    currentShortcut = matchFull[1].toUpperCase();
+                                                    validItems.push({ code: currentShortcut, tooth: matchFull[2] });
+                                                } else {
+                                                    const matchNum = frag.match(/^(\d{1,2})$/);
+                                                    if (matchNum && currentShortcut) {
+                                                        validItems.push({ code: currentShortcut, tooth: matchNum[1] });
+                                                    }
+                                                }
+                                            });
+
+                                            if (validItems.length > 0) {
+                                                setAdvisedTreatments(prev => {
+                                                    const updated = [...prev];
+                                                    validItems.forEach(it => {
+                                                        const exists = updated.some(a => a.tooth === it.tooth && a.code === it.code);
+                                                        if (!exists) updated.push({ tooth: it.tooth, code: it.code, treatment: '', status: 'Pending' });
+                                                    });
+                                                    return updated;
+                                                });
+
+                                                setTreatmentsDone(prev => {
+                                                    const updated = [...prev];
+                                                    validItems.forEach(it => {
+                                                        const exists = updated.some(d => d.tooth === it.tooth && d.code === it.code);
+                                                        if (!exists) updated.push({ tooth: it.tooth, code: it.code, treatment: '', status: 'Completed' });
+                                                    });
+                                                    return updated;
+                                                });
+                                            }
+                                        }} 
+                                        className="w-full h-16 rounded-2xl p-4 text-xs font-bold outline-none border transition-all" 
+                                        placeholder="I/O exam reveals... (e.g., DC 16, RS 34)" 
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Assessment (Diagnosis)</label>
+                                    <textarea value={newNote.assessment} onChange={e => setNewNote({ ...newNote, assessment: e.target.value })} className={`w-full h-16 rounded-2xl p-4 text-xs font-bold outline-none border transition-all ${theme === 'dark' ? 'bg-slate-800 border-white/10' : 'bg-slate-50 border-slate-200'}`} placeholder="Diagnosis details..." />
+                                </div>
+
+
+
+                                {/* ── Advised Treatments Row ── */}
+                                <div className="border border-dashed border-slate-200 dark:border-slate-700 p-4 rounded-2xl">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Advised Treatments</label>
+                                    <div className="flex gap-2 mb-2">
+                                        <input 
+                                            type="text" 
+                                            list="standard-treatments-list"
+                                            value={newAdvice.treatment} 
+                                            onChange={e => setNewAdvice({ ...newAdvice, treatment: e.target.value, tooth: '' })} 
+                                            placeholder="Type or Select Treatment..."
+                                            className="flex-1 px-3 py-2 text-xs font-bold bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none" 
+                                        />
+                                        <datalist id="standard-treatments-list">
+                                            {standardTreatments.map((t, i) => <option key={i} value={t} />)}
+                                        </datalist>
+                                        <button onClick={() => {
+                                            if (newAdvice.treatment) {
+                                                setAdvisedTreatments([...advisedTreatments, newAdvice]);
+                                                // Link Status and Sync to Treatments Done automatically
+                                                setTreatmentsDone([...treatmentsDone, { ...newAdvice, status: 'Completed' }]);
+                                                setNewAdvice({ tooth: '', treatment: '', code: '' });
+                                            }
+                                        }} className="p-2.5 rounded-xl bg-emerald-500 text-white flex items-center justify-center"><Plus size={16} /></button>
+                                    </div>
+                                    {newAdvice.treatment && (
+                                        <ToothSelector 
+                                            selected={newAdvice.tooth} 
+                                            onSelect={t => setNewAdvice({ ...newAdvice, tooth: t })} 
+                                            codeValue={newAdvice.code}
+                                            onCodeChange={c => setNewAdvice({ ...newAdvice, code: c })}
+                                            patientAge={patient.age} 
+                                        />
+                                    )}
+                                    
+                                    {advisedTreatments.length > 0 && (
+                                        <div className="mt-2 space-y-1">
+                                            {advisedTreatments.map((a: any, i: number) => (
+                                                <div key={i} className="flex justify-between items-center bg-slate-100 dark:bg-white/5 p-2 rounded-xl">
+                                                    <div className="flex items-center gap-1.5 min-w-0">
+                                                        <span className="text-slate-400 text-xs font-black">#</span>
+                                                        <input 
+                                                            type="text" 
+                                                            value={a.tooth || ''} 
+                                                            onChange={e => { 
+                                                                const updated = [...advisedTreatments]; updated[i].tooth = e.target.value; setAdvisedTreatments(updated); 
+                                                                const updatedDone = [...treatmentsDone]; if (updatedDone[i]) { updatedDone[i].tooth = e.target.value; setTreatmentsDone(updatedDone); }
+                                                            }} 
+                                                            className="w-11 p-1 py-0.5 bg-white dark:bg-slate-800 rounded-lg text-[10px] font-extrabold outline-none border dark:border-white/10 text-center"
+                                                        />
+                                                        <input 
+                                                            type="text" 
+                                                            value={a.code || ''} 
+                                                            onChange={e => { 
+                                                                const updated = [...advisedTreatments]; updated[i].code = e.target.value.toUpperCase(); setAdvisedTreatments(updated); 
+                                                                const updatedDone = [...treatmentsDone]; if (updatedDone[i]) { updatedDone[i].code = e.target.value.toUpperCase(); setTreatmentsDone(updatedDone); }
+                                                            }} 
+                                                            className="w-11 p-1 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg text-[8px] font-black outline-none border border-emerald-500/20 text-center"
+                                                        />
+                                                        <span className="text-slate-400">:</span> 
+                                                        <select 
+                                                            value={a.treatment || ''} 
+                                                            onChange={e => { 
+                                                                const updated = [...advisedTreatments]; 
+                                                                updated[i].treatment = e.target.value; 
+                                                                setAdvisedTreatments(updated); 
+                                                                
+                                                                // Sync to Treatment Done
+                                                                const updatedDone = [...treatmentsDone];
+                                                                const doneIdx = updatedDone.findIndex(d => d.tooth === a.tooth && d.code === a.code);
+                                                                if (doneIdx !== -1) {
+                                                                    updatedDone[doneIdx].treatment = e.target.value;
+                                                                    setTreatmentsDone(updatedDone);
+                                                                }
+                                                            }} 
+                                                            className="flex-1 min-w-[120px] px-2 py-1 bg-white dark:bg-slate-800 rounded-lg text-[10px] font-extrabold outline-none border dark:border-white/10"
+                                                        >
+                                                            <option value="">Select Treatment...</option>
+                                                            {standardTreatments.map((t, idx) => <option key={idx} value={t}>{t}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <select 
+                                                            value={a.status || 'Pending'} 
+                                                            onChange={(e) => { 
+                                                                const updated = [...advisedTreatments]; 
+                                                                updated[i].status = e.target.value; 
+                                                                setAdvisedTreatments(updated); 
+                                                                
+                                                                // Sync to Treatment Done status
+                                                                const updatedDone = [...treatmentsDone];
+                                                                const doneIdx = updatedDone.findIndex(d => d.tooth === a.tooth && d.code === a.code);
+                                                                if (doneIdx !== -1) {
+                                                                    updatedDone[doneIdx].status = e.target.value;
+                                                                    setTreatmentsDone(updatedDone);
+                                                                }
+                                                            }} 
+                                                            className="px-2 py-1 bg-slate-200 dark:bg-slate-700/50 rounded-lg text-[9px] font-bold outline-none border border-slate-300 dark:border-white/10"
+                                                        >
+                                                            <option value="Pending">Pending</option><option value="In Progress">In Progress</option><option value="Completed">Completed</option>
+                                                        </select>
+                                                        <button onClick={() => setAdvisedTreatments(advisedTreatments.filter((_, idx) => idx !== i))} className="text-rose-500 hover:text-rose-600"><Trash2 size={12} /></button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* ── Advised Lab Orders Row ── */}
+                                <div className="border border-dashed border-slate-200 dark:border-slate-700 p-4 rounded-2xl">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Advised Lab Orders</label>
+                                    <div className="flex gap-2 mb-2">
+                                        <select value={newLabAdvice.item} onChange={e => setNewLabAdvice({ ...newLabAdvice, item: e.target.value, tooth: '' })} className="flex-1 px-3 py-2 text-xs font-bold bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none">
+                                            <option value="">Select Lab Item...</option>
+                                            {standardLabs.map((l, i) => <option key={i} value={l}>{l}</option>)}
+                                        </select>
+                                        <button onClick={() => {
+                                            if (newLabAdvice.item) {
+                                                setAdvisedLabOrders([...advisedLabOrders, { ...newLabAdvice, status: 'Pending' }]);
+                                                setNewLabAdvice({ tooth: '', item: '' });
+                                            }
+                                        }} className="p-2.5 rounded-xl bg-blue-500 text-white flex items-center justify-center"><Plus size={16} /></button>
+                                    </div>
+                                    {newLabAdvice.item && (
+                                        <ToothSelector selected={newLabAdvice.tooth} onSelect={t => setNewLabAdvice({ ...newLabAdvice, tooth: t })} patientAge={patient.age} />
+                                    )}
+                                    
+                                    {advisedLabOrders.length > 0 && (
+                                        <div className="mt-2 space-y-1">
+                                            {advisedLabOrders.map((a: any, i) => (
+                                                <div key={i} className="flex justify-between items-center bg-slate-100 dark:bg-white/5 p-2 rounded-xl">
+                                                    <span className="text-xs font-black"><span className="text-slate-400"># {a.tooth || 'All'}:</span> {a.item}</span>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <select value={a.status || 'Pending'} onChange={(e) => { const updated = [...advisedLabOrders]; updated[i].status = e.target.value; setAdvisedLabOrders(updated); }} className="px-2 py-1 bg-slate-200 dark:bg-slate-700/50 rounded-lg text-[9px] font-bold outline-none border border-slate-300 dark:border-white/10">
+                                                            <option value="Pending">Pending</option><option value="In Progress">In Progress</option><option value="Completed">Completed</option>
+                                                        </select>
+                                                        <button onClick={() => setAdvisedLabOrders(advisedLabOrders.filter((_, idx) => idx !== i))} className="text-rose-500 hover:text-rose-600"><Trash2 size={12} /></button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* ── Treatment Done Row ── */}
+                                <div className="border border-dashed border-slate-200 dark:border-slate-700 p-4 rounded-2xl">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Treatment Done</label>
+                                    <div className="flex gap-2 mb-2">
+                                        <input 
+                                            type="text" 
+                                            list="standard-treatments-list-done"
+                                            value={newTreatmentDone.treatment} 
+                                            onChange={e => setNewTreatmentDone({ ...newTreatmentDone, treatment: e.target.value, tooth: '' })} 
+                                            placeholder="Type or Select Treatment..."
+                                            className="flex-1 px-3 py-2 text-xs font-bold bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none" 
+                                        />
+                                        <datalist id="standard-treatments-list-done">
+                                            {standardTreatments.map((t, i) => <option key={i} value={t} />)}
+                                        </datalist>
+                                        <select value={newTreatmentDone.status} onChange={e => setNewTreatmentDone({ ...newTreatmentDone, status: e.target.value })} className="px-2 py-1 text-[10px] font-bold bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-lg outline-none">
+                                            <option value="Completed">Completed</option><option value="Pending">Pending</option><option value="In Progress">In Progress</option>
+                                        </select>
+                                        <button onClick={() => {
+                                            if (newTreatmentDone.treatment) {
+                                                setTreatmentsDone([...treatmentsDone, newTreatmentDone]);
+                                                // Link Status to Advised Treatments
+                                                const updatedAdvised = advisedTreatments.map(a => {
+                                                    if (a.treatment === newTreatmentDone.treatment && (!newTreatmentDone.tooth || a.tooth === newTreatmentDone.tooth)) {
+                                                        return { ...a, status: newTreatmentDone.status };
+                                                    }
+                                                    return a;
+                                                });
+                                                setAdvisedTreatments(updatedAdvised);
+                                                setNewTreatmentDone({ tooth: '', treatment: '', code: '', status: 'Completed' });
+                                            }
+                                        }} className="p-2.5 rounded-xl bg-violet-500 text-white flex items-center justify-center"><Plus size={16} /></button>
+
+                                    </div>
+                                    {newTreatmentDone.treatment && (
+                                        <ToothSelector 
+                                            selected={newTreatmentDone.tooth} 
+                                            onSelect={t => setNewTreatmentDone({ ...newTreatmentDone, tooth: t })} 
+                                            codeValue={newTreatmentDone.code}
+                                            onCodeChange={c => setNewTreatmentDone({ ...newTreatmentDone, code: c })}
+                                            patientAge={patient.age} 
+                                        />
+                                    )}
+                                    
+                                    {treatmentsDone.length > 0 && (
+                                        <div className="mt-2 space-y-1">
+                                            {treatmentsDone.map((t: any, i: number) => (
+                                                <div key={i} className="flex justify-between items-center bg-slate-100 dark:bg-white/5 p-2 rounded-xl">
+                                                    <div className="flex items-center gap-1.5 min-w-0">
+                                                        <span className="text-slate-400 text-xs font-black">#</span>
+                                                        <input 
+                                                            type="text" 
+                                                            value={t.tooth || ''} 
+                                                            onChange={e => { 
+                                                                const updated = [...treatmentsDone]; updated[i].tooth = e.target.value; setTreatmentsDone(updated); 
+                                                                const updatedAdvised = [...advisedTreatments]; if (updatedAdvised[i]) { updatedAdvised[i].tooth = e.target.value; setAdvisedTreatments(updatedAdvised); }
+                                                            }} 
+                                                            className="w-11 p-1 py-0.5 bg-white dark:bg-slate-800 rounded-lg text-[10px] font-extrabold outline-none border dark:border-white/10 text-center"
+                                                        />
+                                                        <input 
+                                                            type="text" 
+                                                            value={t.code || ''} 
+                                                            onChange={e => { 
+                                                                const updated = [...treatmentsDone]; updated[i].code = e.target.value.toUpperCase(); setTreatmentsDone(updated); 
+                                                                const updatedAdvised = [...advisedTreatments]; if (updatedAdvised[i]) { updatedAdvised[i].code = e.target.value.toUpperCase(); setAdvisedTreatments(updatedAdvised); }
+                                                            }} 
+                                                            className="w-11 p-1 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg text-[8px] font-black outline-none border border-emerald-500/20 text-center"
+                                                        />
+                                                        <span className="text-slate-400">:</span> 
+                                                        <select 
+                                                            value={t.treatment || ''} 
+                                                            onChange={e => { 
+                                                                const updated = [...treatmentsDone]; 
+                                                                updated[i].treatment = e.target.value; 
+                                                                setTreatmentsDone(updated); 
+                                                                
+                                                                // Sync to Advised Treatment
+                                                                const updatedAdvised = [...advisedTreatments];
+                                                                if (updatedAdvised[i]) {
+                                                                    updatedAdvised[i].treatment = e.target.value;
+                                                                    setAdvisedTreatments(updatedAdvised);
+                                                                }
+                                                            }} 
+                                                            className="flex-1 min-w-[120px] px-2 py-1 bg-white dark:bg-slate-800 rounded-lg text-[10px] font-extrabold outline-none border dark:border-white/10"
+                                                        >
+                                                            <option value="">Select Treatment...</option>
+                                                            {standardTreatments.map((tr, idx) => <option key={idx} value={tr}>{tr}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <select 
+                                                            value={t.status || 'Completed'} 
+                                                            onChange={e => { 
+                                                                const updated = [...treatmentsDone]; 
+                                                                updated[i].status = e.target.value; 
+                                                                setTreatmentsDone(updated); 
+                                                                
+                                                                // Sync to Advised Treatment status
+                                                                const updatedAdvised = [...advisedTreatments];
+                                                                if (updatedAdvised[i]) {
+                                                                    updatedAdvised[i].status = e.target.value;
+                                                                    setAdvisedTreatments(updatedAdvised);
+                                                                }
+                                                            }} 
+                                                            className="px-2 py-1 bg-white dark:bg-slate-800 rounded-lg text-[9px] font-bold outline-none border dark:border-white/10"
+                                                        >
+                                                            <option value="Completed">Completed</option>
+                                                            <option value="In Progress">In Progress</option>
+                                                            <option value="Pending">Pending</option>
+                                                        </select>
+                                                        <button onClick={() => setTreatmentsDone(treatmentsDone.filter((_, idx) => idx !== i))} className="text-rose-500 hover:text-rose-600"><Trash2 size={12} /></button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <button onClick={handleSaveNote} disabled={isSavingNote} className="w-full py-4 bg-primary hover:bg-primary-hover text-white rounded-2xl font-bold text-xs shadow-lg transition-all flex items-center justify-center gap-2">
+                                    {isSavingNote ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={14} />} Save Record
+                                </button>
+                            </div>
+                                    </div>
+                                )}
                                 {patientNotes.length > 0 ? patientNotes.map(note => (
                                     <div key={note.id} className="p-4 sm:p-8 rounded-[2rem] border shadow-sm" style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
                                         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 mb-6">
@@ -1576,7 +1939,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                                                             {advised.map((a: any, i: number) => (
                                                                                 <div key={i} className="flex justify-between items-center text-xs font-black">
                                                                                     <span><span className="text-slate-400">Tooth {a.tooth}:</span> {a.treatment}</span>
-                                                                                    <span className={`px-1.5 py-0.5 rounded text-[8px] uppercase tracking-wider ${a.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-500' : a.status === 'In Progress' ? 'bg-amber-500/10 text-amber-500' : 'bg-slate-100 dark:bg-white/5 text-slate-500'}`}>{a.status || 'Pending'}</span>
+                                                                                    <span className={`px-1.5 py-0.5 rounded text-[8px] uppercase tracking-wider whitespace-nowrap ${a.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-500' : a.status === 'In Progress' ? 'bg-amber-500/10 text-amber-500' : 'bg-slate-100 dark:bg-white/5 text-slate-500'}`}>{a.status || 'Pending'}</span>
                                                                                 </div>
                                                                             ))}
                                                                         </div>
@@ -1589,7 +1952,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                                                             {advisedLabs.map((a: any, i: number) => (
                                                                                 <div key={i} className="flex justify-between items-center text-xs font-black">
                                                                                     <span><span className="text-slate-400">Tooth {a.tooth}:</span> {a.item}</span>
-                                                                                    <span className={`px-1.5 py-0.5 rounded text-[8px] uppercase tracking-wider ${a.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-500' : a.status === 'In Progress' ? 'bg-amber-500/10 text-amber-500' : 'bg-slate-100 dark:bg-white/5 text-slate-500'}`}>{a.status || 'Pending'}</span>
+                                                                                    <span className={`px-1.5 py-0.5 rounded text-[8px] uppercase tracking-wider whitespace-nowrap ${a.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-500' : a.status === 'In Progress' ? 'bg-amber-500/10 text-amber-500' : 'bg-slate-100 dark:bg-white/5 text-slate-500'}`}>{a.status || 'Pending'}</span>
                                                                                 </div>
                                                                             ))}
                                                                         </div>
@@ -1602,7 +1965,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                                                              {treatmentsDoneListed.map((t: any, i: number) => (
                                                                                  <div key={i} className="flex justify-between items-center text-xs font-black">
                                                                                      <span><span className="text-slate-400">Tooth {t.tooth || 'All'}:</span> {t.treatment}</span>
-                                                                                     <span className={`px-1.5 py-0.5 rounded text-[8px] uppercase tracking-wider ${t.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-500' : t.status === 'In Progress' ? 'bg-amber-500/10 text-amber-500' : 'bg-slate-100 dark:bg-white/5 text-slate-500'}`}>{t.status || 'Completed'}</span>
+                                                                                     <span className={`px-1.5 py-0.5 rounded text-[8px] uppercase tracking-wider whitespace-nowrap ${t.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-500' : t.status === 'In Progress' ? 'bg-amber-500/10 text-amber-500' : 'bg-slate-100 dark:bg-white/5 text-slate-500'}`}>{t.status || 'Completed'}</span>
                                                                                  </div>
                                                                              ))}
                                                                          </div>
@@ -2014,355 +2377,6 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                             </div>
                             <h4 className="text-xl font-bold mb-2" style={{ color: 'var(--text-dark)' }}>Payments</h4>
                             <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Collect payment from patient.</p>
-                        </div>
-                    </div>
-                )}
-                {isSoapModalOpen && (
-                    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-                        <div className={`p-8 rounded-[2.5rem] w-full max-w-xl shadow-2xl animate-scale-up space-y-4 max-h-[85vh] overflow-y-auto ${theme === 'dark' ? 'bg-slate-900 text-white' : 'bg-white text-slate-900'}`} style={{ border: '1px solid var(--border-color)' }}>
-                            <div className="flex justify-between items-center mb-2 border-b pb-4" style={{ borderColor: 'var(--border-color)' }}>
-                                <h3 className="font-black text-xl tracking-tight">New Clinical Note</h3>
-                                <button onClick={() => setIsSoapModalOpen(false)} className={`p-2 rounded-xl transition-all ${theme === 'dark' ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}>×</button>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Practitioner</label>
-                                    <div className="relative">
-                                        <select value={newNote.doctor_name} onChange={e => setNewNote({ ...newNote, doctor_name: e.target.value })} className={`w-full px-5 py-3 rounded-2xl border font-bold text-sm outline-none ${theme === 'dark' ? 'bg-slate-800 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
-                                            {doctorsList.length > 0 ? doctorsList.map((d, i) => (
-                                                <option key={i} value={`Dr. ${d}`}>{`Dr. ${d}`}</option>
-                                            )) : (
-                                                <>
-                                                    <option value="Dr. Sarah Jenkins">Dr. Sarah Jenkins</option>
-                                                    <option value="Dr. Michael Chen">Dr. Michael Chen</option>
-                                                    <option value="Dr. Mark Sloan">Dr. Mark Sloan</option>
-                                                </>
-                                            )}
-                                        </select>
-                                    </div>
-                                </div>
-                                
-                                <div>
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Chief Complaint</label>
-                                    <textarea value={newNote.subjective} onChange={e => setNewNote({ ...newNote, subjective: e.target.value })} className="w-full h-16 rounded-2xl p-4 text-xs font-bold outline-none border transition-all" placeholder="Patient reports..." />
-                                </div>
-                                
-                                <div>
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Intra Oral Examination (IOE)</label>
-                                    <textarea 
-                                        value={newNote.objective} 
-                                        onChange={e => {
-                                            const val = e.target.value;
-                                            setNewNote({ ...newNote, objective: val });
-                                            
-                                            // Auto parser supporting multiples processed only on comma/newline (delimiter)
-                                            const fragments = val.split(/[,\n]+/).map(f => f.trim());
-                                            const isDoneTypingLast = val.endsWith(',') || val.endsWith('\n');
-
-                                            const validItems: { code: string, tooth: string }[] = [];
-                                            fragments.forEach((frag, idx) => {
-                                                if (idx === fragments.length - 1 && !isDoneTypingLast) return;
-                                                const match = frag.match(/\b([A-Za-z]+)\s+(\d{1,2})\b/);
-                                                if (match) {
-                                                    validItems.push({ code: match[1].toUpperCase(), tooth: match[2] });
-                                                }
-                                            });
-
-                                            if (validItems.length > 0) {
-                                                const updatedAdvised = [...advisedTreatments];
-                                                const updatedDone = [...treatmentsDone];
-
-                                                validItems.forEach(it => {
-                                                    const existsAdvised = updatedAdvised.some(a => a.tooth === it.tooth && a.code === it.code);
-                                                    if (!existsAdvised) updatedAdvised.push({ tooth: it.tooth, code: it.code, treatment: '', status: 'Pending' });
-
-                                                    const existsDone = updatedDone.some(d => d.tooth === it.tooth && d.code === it.code);
-                                                    if (!existsDone) updatedDone.push({ tooth: it.tooth, code: it.code, treatment: '', status: 'Completed' });
-                                                });
-
-                                                setAdvisedTreatments(updatedAdvised);
-                                                setTreatmentsDone(updatedDone);
-                                            }
-                                        }} 
-                                        className="w-full h-16 rounded-2xl p-4 text-xs font-bold outline-none border transition-all" 
-                                        placeholder="I/O exam reveals... (e.g., DC 16, RS 34)" 
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Assessment (Diagnosis)</label>
-                                    <textarea value={newNote.assessment} onChange={e => setNewNote({ ...newNote, assessment: e.target.value })} className={`w-full h-16 rounded-2xl p-4 text-xs font-bold outline-none border transition-all ${theme === 'dark' ? 'bg-slate-800 border-white/10' : 'bg-slate-50 border-slate-200'}`} placeholder="Diagnosis details..." />
-                                </div>
-
-
-
-                                {/* ── Advised Treatments Row ── */}
-                                <div className="border border-dashed border-slate-200 dark:border-slate-700 p-4 rounded-2xl">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Advised Treatments</label>
-                                    <div className="flex gap-2 mb-2">
-                                        <input 
-                                            type="text" 
-                                            list="standard-treatments-list"
-                                            value={newAdvice.treatment} 
-                                            onChange={e => setNewAdvice({ ...newAdvice, treatment: e.target.value, tooth: '' })} 
-                                            placeholder="Type or Select Treatment..."
-                                            className="flex-1 px-3 py-2 text-xs font-bold bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none" 
-                                        />
-                                        <datalist id="standard-treatments-list">
-                                            {standardTreatments.map((t, i) => <option key={i} value={t} />)}
-                                        </datalist>
-                                        <button onClick={() => {
-                                            if (newAdvice.treatment) {
-                                                setAdvisedTreatments([...advisedTreatments, newAdvice]);
-                                                // Link Status and Sync to Treatments Done automatically
-                                                setTreatmentsDone([...treatmentsDone, { ...newAdvice, status: 'Completed' }]);
-                                                setNewAdvice({ tooth: '', treatment: '', code: '' });
-                                            }
-                                        }} className="p-2.5 rounded-xl bg-emerald-500 text-white flex items-center justify-center"><Plus size={16} /></button>
-                                    </div>
-                                    {newAdvice.treatment && (
-                                        <ToothSelector 
-                                            selected={newAdvice.tooth} 
-                                            onSelect={t => setNewAdvice({ ...newAdvice, tooth: t })} 
-                                            codeValue={newAdvice.code}
-                                            onCodeChange={c => setNewAdvice({ ...newAdvice, code: c })}
-                                            patientAge={patient.age} 
-                                        />
-                                    )}
-                                    
-                                    {advisedTreatments.length > 0 && (
-                                        <div className="mt-2 space-y-1">
-                                            {advisedTreatments.map((a: any, i: number) => (
-                                                <div key={i} className="flex justify-between items-center bg-slate-100 dark:bg-white/5 p-2 rounded-xl">
-                                                    <div className="flex items-center gap-1.5 min-w-0">
-                                                        <span className="text-slate-400 text-xs font-black">#</span>
-                                                        <input 
-                                                            type="text" 
-                                                            value={a.tooth || ''} 
-                                                            onChange={e => { 
-                                                                const updated = [...advisedTreatments]; updated[i].tooth = e.target.value; setAdvisedTreatments(updated); 
-                                                                const updatedDone = [...treatmentsDone]; if (updatedDone[i]) { updatedDone[i].tooth = e.target.value; setTreatmentsDone(updatedDone); }
-                                                            }} 
-                                                            className="w-8 px-1 py-0.5 bg-white dark:bg-slate-800 rounded-lg text-[10px] font-extrabold outline-none border dark:border-white/10 text-center"
-                                                        />
-                                                        <input 
-                                                            type="text" 
-                                                            value={a.code || ''} 
-                                                            onChange={e => { 
-                                                                const updated = [...advisedTreatments]; updated[i].code = e.target.value.toUpperCase(); setAdvisedTreatments(updated); 
-                                                                const updatedDone = [...treatmentsDone]; if (updatedDone[i]) { updatedDone[i].code = e.target.value.toUpperCase(); setTreatmentsDone(updatedDone); }
-                                                            }} 
-                                                            className="w-10 px-1 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg text-[8px] font-black outline-none border border-emerald-500/20 text-center"
-                                                        />
-                                                        <span className="text-slate-400">:</span> 
-                                                        <select 
-                                                            value={a.treatment || ''} 
-                                                            onChange={e => { 
-                                                                const updated = [...advisedTreatments]; 
-                                                                updated[i].treatment = e.target.value; 
-                                                                setAdvisedTreatments(updated); 
-                                                                
-                                                                // Sync to Treatment Done
-                                                                const updatedDone = [...treatmentsDone];
-                                                                const doneIdx = updatedDone.findIndex(d => d.tooth === a.tooth && d.code === a.code);
-                                                                if (doneIdx !== -1) {
-                                                                    updatedDone[doneIdx].treatment = e.target.value;
-                                                                    setTreatmentsDone(updatedDone);
-                                                                }
-                                                            }} 
-                                                            className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded-lg text-[10px] font-extrabold outline-none border dark:border-white/10"
-                                                        >
-                                                            <option value="">Select Treatment...</option>
-                                                            {standardTreatments.map((t, idx) => <option key={idx} value={t}>{t}</option>)}
-                                                        </select>
-                                                    </div>
-                                                    <div className="flex items-center gap-1.5">
-                                                        <select 
-                                                            value={a.status || 'Pending'} 
-                                                            onChange={(e) => { 
-                                                                const updated = [...advisedTreatments]; 
-                                                                updated[i].status = e.target.value; 
-                                                                setAdvisedTreatments(updated); 
-                                                                
-                                                                // Sync to Treatment Done status
-                                                                const updatedDone = [...treatmentsDone];
-                                                                const doneIdx = updatedDone.findIndex(d => d.tooth === a.tooth && d.code === a.code);
-                                                                if (doneIdx !== -1) {
-                                                                    updatedDone[doneIdx].status = e.target.value;
-                                                                    setTreatmentsDone(updatedDone);
-                                                                }
-                                                            }} 
-                                                            className="px-2 py-1 bg-slate-200 dark:bg-slate-700/50 rounded-lg text-[9px] font-bold outline-none border border-slate-300 dark:border-white/10"
-                                                        >
-                                                            <option value="Pending">Pending</option><option value="In Progress">In Progress</option><option value="Completed">Completed</option>
-                                                        </select>
-                                                        <button onClick={() => setAdvisedTreatments(advisedTreatments.filter((_, idx) => idx !== i))} className="text-rose-500 hover:text-rose-600"><Trash2 size={12} /></button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* ── Advised Lab Orders Row ── */}
-                                <div className="border border-dashed border-slate-200 dark:border-slate-700 p-4 rounded-2xl">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Advised Lab Orders</label>
-                                    <div className="flex gap-2 mb-2">
-                                        <select value={newLabAdvice.item} onChange={e => setNewLabAdvice({ ...newLabAdvice, item: e.target.value, tooth: '' })} className="flex-1 px-3 py-2 text-xs font-bold bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none">
-                                            <option value="">Select Lab Item...</option>
-                                            {standardLabs.map((l, i) => <option key={i} value={l}>{l}</option>)}
-                                        </select>
-                                        <button onClick={() => {
-                                            if (newLabAdvice.item) {
-                                                setAdvisedLabOrders([...advisedLabOrders, { ...newLabAdvice, status: 'Pending' }]);
-                                                setNewLabAdvice({ tooth: '', item: '' });
-                                            }
-                                        }} className="p-2.5 rounded-xl bg-blue-500 text-white flex items-center justify-center"><Plus size={16} /></button>
-                                    </div>
-                                    {newLabAdvice.item && (
-                                        <ToothSelector selected={newLabAdvice.tooth} onSelect={t => setNewLabAdvice({ ...newLabAdvice, tooth: t })} patientAge={patient.age} />
-                                    )}
-                                    
-                                    {advisedLabOrders.length > 0 && (
-                                        <div className="mt-2 space-y-1">
-                                            {advisedLabOrders.map((a: any, i) => (
-                                                <div key={i} className="flex justify-between items-center bg-slate-100 dark:bg-white/5 p-2 rounded-xl">
-                                                    <span className="text-xs font-black"><span className="text-slate-400"># {a.tooth || 'All'}:</span> {a.item}</span>
-                                                    <div className="flex items-center gap-1.5">
-                                                        <select value={a.status || 'Pending'} onChange={(e) => { const updated = [...advisedLabOrders]; updated[i].status = e.target.value; setAdvisedLabOrders(updated); }} className="px-2 py-1 bg-slate-200 dark:bg-slate-700/50 rounded-lg text-[9px] font-bold outline-none border border-slate-300 dark:border-white/10">
-                                                            <option value="Pending">Pending</option><option value="In Progress">In Progress</option><option value="Completed">Completed</option>
-                                                        </select>
-                                                        <button onClick={() => setAdvisedLabOrders(advisedLabOrders.filter((_, idx) => idx !== i))} className="text-rose-500 hover:text-rose-600"><Trash2 size={12} /></button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* ── Treatment Done Row ── */}
-                                <div className="border border-dashed border-slate-200 dark:border-slate-700 p-4 rounded-2xl">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Treatment Done</label>
-                                    <div className="flex gap-2 mb-2">
-                                        <input 
-                                            type="text" 
-                                            list="standard-treatments-list-done"
-                                            value={newTreatmentDone.treatment} 
-                                            onChange={e => setNewTreatmentDone({ ...newTreatmentDone, treatment: e.target.value, tooth: '' })} 
-                                            placeholder="Type or Select Treatment..."
-                                            className="flex-1 px-3 py-2 text-xs font-bold bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-xl outline-none" 
-                                        />
-                                        <datalist id="standard-treatments-list-done">
-                                            {standardTreatments.map((t, i) => <option key={i} value={t} />)}
-                                        </datalist>
-                                        <select value={newTreatmentDone.status} onChange={e => setNewTreatmentDone({ ...newTreatmentDone, status: e.target.value })} className="px-2 py-1 text-[10px] font-bold bg-slate-50 dark:bg-slate-800 border dark:border-white/10 rounded-lg outline-none">
-                                            <option value="Completed">Completed</option><option value="Pending">Pending</option><option value="In Progress">In Progress</option>
-                                        </select>
-                                        <button onClick={() => {
-                                            if (newTreatmentDone.treatment) {
-                                                setTreatmentsDone([...treatmentsDone, newTreatmentDone]);
-                                                // Link Status to Advised Treatments
-                                                const updatedAdvised = advisedTreatments.map(a => {
-                                                    if (a.treatment === newTreatmentDone.treatment && (!newTreatmentDone.tooth || a.tooth === newTreatmentDone.tooth)) {
-                                                        return { ...a, status: newTreatmentDone.status };
-                                                    }
-                                                    return a;
-                                                });
-                                                setAdvisedTreatments(updatedAdvised);
-                                                setNewTreatmentDone({ tooth: '', treatment: '', code: '', status: 'Completed' });
-                                            }
-                                        }} className="p-2.5 rounded-xl bg-violet-500 text-white flex items-center justify-center"><Plus size={16} /></button>
-
-                                    </div>
-                                    {newTreatmentDone.treatment && (
-                                        <ToothSelector 
-                                            selected={newTreatmentDone.tooth} 
-                                            onSelect={t => setNewTreatmentDone({ ...newTreatmentDone, tooth: t })} 
-                                            codeValue={newTreatmentDone.code}
-                                            onCodeChange={c => setNewTreatmentDone({ ...newTreatmentDone, code: c })}
-                                            patientAge={patient.age} 
-                                        />
-                                    )}
-                                    
-                                    {treatmentsDone.length > 0 && (
-                                        <div className="mt-2 space-y-1">
-                                            {treatmentsDone.map((t: any, i: number) => (
-                                                <div key={i} className="flex justify-between items-center bg-slate-100 dark:bg-white/5 p-2 rounded-xl">
-                                                    <div className="flex items-center gap-1.5 min-w-0">
-                                                        <span className="text-slate-400 text-xs font-black">#</span>
-                                                        <input 
-                                                            type="text" 
-                                                            value={t.tooth || ''} 
-                                                            onChange={e => { 
-                                                                const updated = [...treatmentsDone]; updated[i].tooth = e.target.value; setTreatmentsDone(updated); 
-                                                                const updatedAdvised = [...advisedTreatments]; if (updatedAdvised[i]) { updatedAdvised[i].tooth = e.target.value; setAdvisedTreatments(updatedAdvised); }
-                                                            }} 
-                                                            className="w-8 px-1 py-0.5 bg-white dark:bg-slate-800 rounded-lg text-[10px] font-extrabold outline-none border dark:border-white/10 text-center"
-                                                        />
-                                                        <input 
-                                                            type="text" 
-                                                            value={t.code || ''} 
-                                                            onChange={e => { 
-                                                                const updated = [...treatmentsDone]; updated[i].code = e.target.value.toUpperCase(); setTreatmentsDone(updated); 
-                                                                const updatedAdvised = [...advisedTreatments]; if (updatedAdvised[i]) { updatedAdvised[i].code = e.target.value.toUpperCase(); setAdvisedTreatments(updatedAdvised); }
-                                                            }} 
-                                                            className="w-10 px-1 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg text-[8px] font-black outline-none border border-emerald-500/20 text-center"
-                                                        />
-                                                        <span className="text-slate-400">:</span> 
-                                                        <select 
-                                                            value={t.treatment || ''} 
-                                                            onChange={e => { 
-                                                                const updated = [...treatmentsDone]; 
-                                                                updated[i].treatment = e.target.value; 
-                                                                setTreatmentsDone(updated); 
-                                                                
-                                                                // Sync to Advised Treatment
-                                                                const updatedAdvised = [...advisedTreatments];
-                                                                if (updatedAdvised[i]) {
-                                                                    updatedAdvised[i].treatment = e.target.value;
-                                                                    setAdvisedTreatments(updatedAdvised);
-                                                                }
-                                                            }} 
-                                                            className="px-2 py-0.5 bg-white dark:bg-slate-800 rounded-lg text-[10px] font-extrabold outline-none border dark:border-white/10"
-                                                        >
-                                                            <option value="">Select Treatment...</option>
-                                                            {standardTreatments.map((tr, idx) => <option key={idx} value={tr}>{tr}</option>)}
-                                                        </select>
-                                                    </div>
-                                                    <div className="flex items-center gap-1.5">
-                                                        <select 
-                                                            value={t.status || 'Completed'} 
-                                                            onChange={e => { 
-                                                                const updated = [...treatmentsDone]; 
-                                                                updated[i].status = e.target.value; 
-                                                                setTreatmentsDone(updated); 
-                                                                
-                                                                // Sync to Advised Treatment status
-                                                                const updatedAdvised = [...advisedTreatments];
-                                                                if (updatedAdvised[i]) {
-                                                                    updatedAdvised[i].status = e.target.value;
-                                                                    setAdvisedTreatments(updatedAdvised);
-                                                                }
-                                                            }} 
-                                                            className="px-2 py-1 bg-white dark:bg-slate-800 rounded-lg text-[9px] font-bold outline-none border dark:border-white/10"
-                                                        >
-                                                            <option value="Completed">Completed</option>
-                                                            <option value="In Progress">In Progress</option>
-                                                            <option value="Pending">Pending</option>
-                                                        </select>
-                                                        <button onClick={() => setTreatmentsDone(treatmentsDone.filter((_, idx) => idx !== i))} className="text-rose-500 hover:text-rose-600"><Trash2 size={12} /></button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-
-                                <button onClick={handleSaveNote} disabled={isSavingNote} className="w-full py-4 bg-primary hover:bg-primary-hover text-white rounded-2xl font-bold text-xs shadow-lg transition-all flex items-center justify-center gap-2">
-                                    {isSavingNote ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={14} />} Save Record
-                                </button>
-                            </div>
                         </div>
                     </div>
                 )}

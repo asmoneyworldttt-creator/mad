@@ -82,8 +82,8 @@ function DateFilterTabs({ active, onChange, customStart, setCustomStart, customE
         { id: 'custom', label: 'Custom' },
     ];
     return (
-        <div className="flex flex-wrap items-center gap-2 pb-1 w-full">
-            <div className="flex flex-wrap items-center p-1 rounded-xl w-full" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
+        <div className="flex flex-col gap-2 pb-1 w-full">
+            <div className="flex items-center p-1 rounded-xl w-full select-none overflow-x-auto scrollbar-none" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)' }}>
                 {tabs.map(t => {
                     const isActive = active === t.id;
                     return (
@@ -105,10 +105,10 @@ function DateFilterTabs({ active, onChange, customStart, setCustomStart, customE
                 })}
             </div>
             {active === 'custom' && setCustomStart && setCustomEnd && (
-                <div className="flex items-center gap-2 p-1.5 rounded-xl border backdrop-blur-md shrink-0" style={{ background: 'var(--card-bg)', borderColor: 'var(--border-color)' }}>
-                    <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="bg-transparent border-none text-[10px] font-bold px-1 outline-none text-slate-400" />
+                <div className="flex items-center gap-2 p-1.5 rounded-xl border backdrop-blur-md self-start mt-1" style={{ background: 'var(--card-bg-alt)', borderColor: 'var(--border-color)' }}>
+                    <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="bg-slate-100 dark:bg-white/10 rounded-lg px-2 py-1 text-[10px] font-bold outline-none text-slate-800 dark:text-slate-200" />
                     <span className="text-[9px] font-bold text-slate-500">to</span>
-                    <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="bg-transparent border-none text-[10px] font-bold px-1 outline-none text-slate-400" />
+                    <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="bg-slate-100 dark:bg-white/10 rounded-lg px-2 py-1 text-[10px] font-bold outline-none text-slate-800 dark:text-slate-200" />
                 </div>
             )}
         </div>
