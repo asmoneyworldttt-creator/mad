@@ -1512,7 +1512,7 @@ export function PatientOverview({ onBack, patient, theme, setActiveTab: setGloba
                                             const fragments = val.split(/[\,\n]+/).map(f => f.trim());
                                             const isDoneTypingLast = val.endsWith(',') || val.endsWith('\n');
 
-                                            const validItems = [];
+                                            const validItems: { code: string, tooth: string }[] = [];
                                             let currentShortcut = '';
                                             fragments.forEach((frag, idx) => {
                                                 if (idx === fragments.length - 1 && !isDoneTypingLast) return;
