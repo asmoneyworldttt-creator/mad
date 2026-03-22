@@ -15,6 +15,8 @@ import {
 export function LandingPage({ onStartLogin }: { onStartLogin: () => void }) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
+    const [roiPatients, setRoiPatients] = useState(240);
+    const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
 
     useEffect(() => {
         const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -251,6 +253,57 @@ export function LandingPage({ onStartLogin }: { onStartLogin: () => void }) {
                 </div>
             </section>
 
+            {/* 2.5 ROI CALCULATOR SECTION */}
+            <section className="py-20 px-6 bg-white relative overflow-hidden">
+                <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center gap-12 bento-card p-10 bg-slate-50/80 backdrop-blur-md">
+                    <div className="flex-1 flex flex-col gap-5 text-left">
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 rounded-full w-fit border border-emerald-100">
+                            <Star size={14} className="fill-emerald-500 text-emerald-500" />
+                            <span className="text-emerald-700 font-bold text-[10px] tracking-wide">Direct Profit Impact</span>
+                        </div>
+                        <h2 className="text-3xl font-black text-dark tracking-tight leading-tight">Calculate your savings immediately.</h2>
+                        <p className="text-xs text-muted font-medium leading-relaxed">Slide to input your average monthly patient count. See how much time and operational costs you save with Dentora overall setup framing overlays securely.</p>
+                        
+                        <div className="flex flex-col gap-3 mt-4">
+                            <div className="flex items-baseline justify-between">
+                                <label className="text-xs font-bold text-slate-700">Monthly Volume:</label>
+                                <span className="text-primary text-xl font-black">{roiPatients} <span className="text-xs text-muted">Patients</span></span>
+                            </div>
+                            <input 
+                                type="range" 
+                                min="20" 
+                                max="1000" 
+                                step="10"
+                                value={roiPatients} 
+                                onChange={(e) => setRoiPatients(Number(e.target.value))} 
+                                className="w-full h-1.5 bg-emerald-100 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex-1 w-full grid grid-cols-2 gap-4">
+                        {[
+                            { label: "Hours Saved", value: `${Math.floor(roiPatients * 0.25)} hrs`, desc: "per Month setup framing", color: "text-blue-600" },
+                            { label: "Turnover Speed", value: `+${Math.floor(roiPatients * 0.15)}%`, desc: "faster processing speeds", color: "text-emerald-600" },
+                            { label: "Missed Calls Saved", value: `+${Math.floor(roiPatients * 0.08)}`, desc: "recovered slots average", color: "text-violet-600" },
+                            { label: "Est. Savings Gained", value: `$${Math.floor(roiPatients * 6.5 * 1.5).toLocaleString()}`, desc: "gained operational budget", color: "text-amber-600" }
+                        ].map((stat, i) => (
+                            <motion.div 
+                                key={i} 
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                whileInView={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: i * 0.05 }}
+                                className="p-4 rounded-xl bg-white shadow-sm border border-slate-100 flex flex-col gap-1 text-left"
+                            >
+                                <span className="text-[10px] font-bold text-muted">{stat.label}</span>
+                                <span className={`text-xl font-black tracking-tight ${stat.color}`}>{stat.value}</span>
+                                <span className="text-[9px] text-slate-400 font-medium">{stat.desc}</span>
+                            </motion.div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
             {/* 3. CORE FEATURES BENTO SECTION */}
             <section id="features" className="py-24 px-6 max-w-7xl mx-auto">
                 <div className="text-center mb-16 flex flex-col items-center gap-4">
@@ -368,17 +421,70 @@ export function LandingPage({ onStartLogin }: { onStartLogin: () => void }) {
                             className="relative flex items-end gap-4"
                         >
                             {/* Smartphone frame */}
-                            <div className="w-56 aspect-[9/19.5] rounded-[2.5rem] bg-slate-900 p-2.5 shadow-2x border border-slate-800 flex-shrink-0 relative overflow-hidden">
-                                <div className="absolute top-2 left-1/2 -translate-x-1/2 w-20 h-4 rounded-full bg-black z-10" />
-                                <div className="w-full h-full rounded-[2rem] bg-white overflow-hidden flex flex-col">
-                                    <img src="https://images.unsplash.com/photo-1629909613654-28e377c37b09?q=80&w=300&auto=format&fit=crop" className="w-full h-full object-cover" alt="Mobile UI mockup" />
+                            <div className="w-56 aspect-[9/19.5] rounded-[2.5rem] bg-slate-950 p-[6px] shadow-2x border border-slate-800 flex-shrink-0 relative overflow-hidden ring-1 ring-white/10">
+                                <div className="absolute top-2 left-1/2 -translate-x-1/2 w-16 h-3 rounded-full bg-black z-20" />
+                                <div className="w-full h-full rounded-[2rem] bg-gradient-to-br from-slate-900 via-slate-800 to-primary/20 overflow-hidden flex flex-col p-4 text-white relative">
+                                    <div className="flex items-center justify-between pt-1 border-b border-white/5 pb-2">
+                                        <div className="flex gap-1 items-center">
+                                            <div className="w-4 h-4 rounded-md bg-primary flex items-center justify-center"><Activity size={8}/></div>
+                                            <span className="text-[10px] font-black">Dentora</span>
+                                        </div>
+                                        <div className="w-4 h-4 rounded-full bg-white/10 flex items-center justify-center"><Users size={8}/></div>
+                                    </div>
+                                    
+                                    <div className="flex flex-col gap-2 mt-3 flex-1">
+                                        <div className="p-2.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/10 flex flex-col gap-1 shadow-inner">
+                                            <span className="text-[8px] font-bold text-slate-300">Live Vitals Scan</span>
+                                            <span className="text-xl font-black text-white flex items-baseline">128/80 <span className="text-[7px] font-normal text-emerald-400 ml-1">Normal</span></span>
+                                        </div>
+                                        
+                                        <div className="p-2.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/10 flex flex-col gap-1 flex-1 overflow-hidden shadow-inner">
+                                            <span className="text-[8px] font-bold text-slate-300">Diagnostics Profile</span>
+                                            <div className="flex-1 rounded-lg bg-gradient-to-b from-white/5 to-transparent p-1.5 flex flex-col gap-1.5 mt-1">
+                                                <div className="flex items-center gap-1.5 p-1 rounded bg-white/5">
+                                                    <div className="w-4 h-4 rounded-full bg-amber-400/20 flex items-center justify-center text-amber-500 font-black text-[7px]">S</div>
+                                                    <div className="flex flex-col"><span className="text-[7px] font-bold">Sarah P.</span><span className="text-[6px] text-slate-400">Regular Checkup</span></div>
+                                                </div>
+                                                <div className="flex-1 rounded bg-white/2 p-2 relative flex items-center justify-center">
+                                                    <div className="w-12 h-12 rounded-full tooth-3d flex items-center justify-center scale-75 animate-pulse"><span className="text-[7px] font-black text-blue-500">3D</span></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="mt-auto h-8 bg-slate-900 border border-white/5 p-1 rounded-xl flex items-center justify-around shadow-lg">
+                                        <div className="w-6 h-6 rounded-md bg-primary/20 flex items-center justify-center text-primary"><Activity size={10}/></div>
+                                        <div className="w-6 h-6 rounded-md text-slate-400 flex items-center justify-center"><Users size={10}/></div>
+                                        <div className="w-6 h-6 rounded-md text-slate-400 flex items-center justify-center"><Heart size={10}/></div>
+                                    </div>
                                 </div>
                             </div>
 
                             {/* Tablet / Desktop offset behind */}
-                            <div className="w-80 aspect-[4/3] rounded-2xl bg-slate-100/80 p-1 hidden md:flex shadow-xl border border-white/50 absolute left-24 -bottom-4 -z-10 rotate-3 p-1">
-                                <div className="w-full h-full rounded-xl bg-white overflow-hidden">
-                                    <img src="https://images.unsplash.com/photo-1576091160399-212fe6220486?q=80&w=400&auto=format&fit=crop" className="w-full h-5/6 object-cover" alt="Dashboard device mockup" />
+                            <div className="w-80 aspect-[4/3] rounded-2xl bg-slate-100/80 p-1 hidden md:flex shadow-2xl border border-white/50 absolute left-24 -bottom-4 -z-10 rotate-3 p-1 backdrop-blur-sm">
+                                <div className="w-full h-full rounded-xl bg-white/80 overflow-hidden flex flex-col p-4 shadow-inner">
+                                    <div className="flex items-center justify-between border-b pb-2 mb-2">
+                                        <span className="text-[10px] font-black text-dark">Dentora Cloud Dashboard</span>
+                                        <div className="flex gap-1">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2 flex-1">
+                                        <div className="rounded-xl bg-slate-50 border p-2 flex flex-col gap-1">
+                                            <span className="text-[8px] font-bold text-muted">Revenue</span>
+                                            <span className="text-sm font-black text-dark">$14.2k</span>
+                                        </div>
+                                        <div className="rounded-xl bg-slate-50 border p-2 flex flex-col gap-1">
+                                            <span className="text-[8px] font-bold text-muted">Appointments</span>
+                                            <span className="text-sm font-black text-dark">28 today</span>
+                                        </div>
+                                        <div className="col-span-2 rounded-xl bg-primary/5 border border-primary/10 flex-1 p-2">
+                                            <div className="h-full w-full bg-white/40 rounded flex items-center justify-center">
+                                                <Activity size={24} className="text-primary/40" />
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </motion.div>
@@ -415,6 +521,70 @@ export function LandingPage({ onStartLogin }: { onStartLogin: () => void }) {
                                     <span className="text-sm font-black -mt-0.5">Google Play</span>
                                 </div>
                             </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* 5.5 ONBOARDING, SECURITY & FAQ */}
+            <section className="py-24 px-6 bg-slate-50 border-y border-slate-100 relative overflow-hidden">
+                <div className="absolute inset-0 bg-mesh-1" style={{ opacity: 0.1 }} />
+                <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative z-10">
+                    <div className="flex flex-col gap-6 text-left">
+                        <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 shadow-xl shadow-amber-500/10"><ShieldCheck size={24} /></div>
+                        <h2 className="text-3xl font-black text-dark tracking-tight leading-tight">Switching made absolutely stress-free.</h2>
+                        <p className="text-sm text-muted font-medium leading-relaxed">
+                            Concerned about moving all your patient history and files? Dentora's **White-Glove Migration team** ports everything securely with zero downtime setup framing safely.
+                        </p>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                            {[
+                                { title: "HIPAA Compliant", desc: "Enterprise graded vaults framing securely setup." },
+                                { title: "10-Minute Setup", desc: "No installer executable installation setups required." },
+                                { title: "24/7 Help Desks", desc: "Live chat with doctor experts support anytime." },
+                                { title: "Daily Cloud Sync", desc: "Unlimited Backups automatically enabled securely." }
+                            ].map((item, i) => (
+                                <div key={i} className="p-4 rounded-xl bg-white border border-slate-200/50 shadow-sm flex flex-col gap-1">
+                                    <div className="w-2 h-2 rounded-full bg-emerald-500 mb-1" />
+                                    <span className="text-xs font-black text-dark">{item.title}</span>
+                                    <span className="text-[10px] text-muted font-medium">{item.desc}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col gap-4 text-left">
+                        <h3 className="font-black text-xs text-primary uppercase tracking-wider mb-2">Answers you need</h3>
+                        <div className="flex flex-col gap-2.5">
+                            {[
+                                { q: "How secure is my patient data?", a: "Extremely secure. All records are stored with full compliance encryption vaults overlay with regular secure nodes." },
+                                { q: "Will I need any hardware setup?", a: "None at all. Any modern browser desktop or tablet device connected over the cloud works immediately." },
+                                { q: "Do you offer offline capabilities?", a: "Yes, fully integrated synced setups backups loaded securely framing updates correctly." },
+                                { q: "How long does setup onboarding take?", a: "From old tools migrations usually take up to 24-hours setup with priority White glove assist support framing." }
+                            ].map((item, i) => (
+                                <motion.div 
+                                    key={i} 
+                                    className="p-4 rounded-xl bg-white border border-slate-200/50 shadow-sm flex flex-col cursor-pointer hover:shadow-md transition-all"
+                                    onClick={() => setExpandedFaq(expandedFaq === i ? null : i)}
+                                >
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs font-black text-dark">{item.q}</span>
+                                        <ChevronRight size={16} className={`text-slate-400 transition-transform ${expandedFaq === i ? 'rotate-90' : ''}`} />
+                                    </div>
+                                    <AnimatePresence>
+                                        {expandedFaq === i && (
+                                            <motion.div 
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: 'auto', opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                                className="text-[11px] text-muted font-medium mt-2 pt-2 border-t border-slate-100 overflow-hidden"
+                                            >
+                                                {item.a}
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </motion.div>
+                            ))}
                         </div>
                     </div>
                 </div>
