@@ -8,6 +8,7 @@ import { Header } from './components/Header';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { Auth } from './components/ai/Auth';
 import { MasterAuth } from './components/ai/MasterAuth';
+import { LandingPage } from './components/views/LandingPage';
 import { CommandPalette } from './components/CommandPalette';
 import { SkeletonList } from './components/SkeletonLoader';
 import type { Session } from '@supabase/supabase-js';
@@ -62,6 +63,7 @@ function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (localStorage.getItem('dentora_theme') as 'light' | 'dark') || 'light';
   });
+  const [unauthView, setUnauthView] = useState<'landing' | 'auth'>('landing');
   // ─── Hash-based Navigation for Back Button & Refresh Resistance ───
   const [activeTab, setActiveTab] = useState(() => {
     const hash = window.location.hash.replace('#', '');
@@ -392,7 +394,26 @@ function App() {
       return <MasterAuth onAuthSuccess={() => {}} theme={theme} />;
     }
     
-    return <Auth onAuthSuccess={() => { }} theme={theme} />;
+    const isApp = Capacitor.isNativePlatform();
+    if (isApp) {
+      return <Auth onAuthSuccess={() => { }} theme={theme} />;
+    }
+    
+    if (unauthView === 'landing') {
+      return <LandingPage onStartLogin={() => setUnauthView('auth')} />;
+    }
+    
+    return (
+      <div className="relative">
+        <button 
+          onClick={() => setUnauthView('landing')} 
+          className="absolute top-4 left-4 z-50 flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 backdrop-blur-md text-white font-bold text-xs border border-white/10 hover:bg-white/20 transition-all shadow-lg"
+        >
+          ← Back to Site
+        </button>
+        <Auth onAuthSuccess={() => { }} theme={theme} />
+      </div>
+    );
   }
 
   // Skeleton fallback for lazy-loaded views

@@ -25,8 +25,8 @@ export default {
                 }
             },
             fontFamily: {
-                sans: ['Plus Jakarta Sans', 'sans-serif'],
-                display: ['Outfit', 'sans-serif'],
+                sans: ['Inter', 'Plus Jakarta Sans', 'sans-serif'],
+                display: ['Space Grotesk', 'Outfit', 'sans-serif'],
             },
             animation: {
                 pulse: 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',

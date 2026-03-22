@@ -39,7 +39,7 @@ export function GlobalAIAssistant({ activeTab }: { activeTab: string }) {
     };
 
     return (
-        <div className="fixed bottom-28 right-3 z-[60] flex flex-col items-end pointer-events-none md:bottom-8 md:right-6">
+        <div className="fixed bottom-24 right-4 z-[60] flex flex-col items-end pointer-events-none md:bottom-8 md:right-6">
             <div className="pointer-events-auto flex flex-col items-end">
             <AnimatePresence>
                 {isOpen && !isMinimized && (
@@ -47,7 +47,7 @@ export function GlobalAIAssistant({ activeTab }: { activeTab: string }) {
                         initial={{ opacity: 0, scale: 0.9, y: 20, transformOrigin: 'bottom right' }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                        className="mb-4 w-[calc(100vw-1.5rem)] sm:w-[380px] h-[70vh] sm:h-[600px] max-h-[80vh] bg-white rounded-2xl shadow-premium border border-slate-200 flex flex-col overflow-hidden"
+                        className="mb-4 w-[calc(100vw-2rem)] sm:w-[380px] h-[70vh] sm:h-[600px] max-h-[80vh] bg-white rounded-2xl shadow-premium border border-slate-200 flex flex-col overflow-hidden"
                     >
                         {/* Header */}
                         <div className="p-4 bg-primary text-white flex items-center justify-between shadow-sm">
@@ -135,7 +135,7 @@ export function GlobalAIAssistant({ activeTab }: { activeTab: string }) {
                             setIsOpen(!isOpen);
                         }
                     }}
-                    className={`relative w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all transform hover:scale-110 active:scale-95 ${isOpen && !isMinimized ? 'bg-slate-800 text-white' : 'bg-primary text-white shadow-primary/30'
+                    className={`relative w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center shadow-lg transition-all transform hover:scale-110 active:scale-95 ${isOpen && !isMinimized ? 'bg-slate-800 text-white' : 'bg-primary text-white shadow-primary/30'
                         }`}
                     style={{ border: '2px solid rgba(255,255,255,0.2)' }}
                 >
@@ -146,7 +146,7 @@ export function GlobalAIAssistant({ activeTab }: { activeTab: string }) {
                             </motion.div>
                         ) : (
                             <motion.div key="bot" initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 1.5, opacity: 0 }} className="relative">
-                                <Bot size={28} className="stroke-[2.5px]" />
+                                <Bot size={24} className="md:w-7 md:h-7 stroke-[2.5px]" />
                                 <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-400 rounded-full border border-white animate-pulse" />
                             </motion.div>
                         )}
